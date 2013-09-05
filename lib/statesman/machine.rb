@@ -92,9 +92,12 @@ module Statesman
 
     def transition_to(new_state)
       unless self.class.successors[current_state].include?(new_state)
+    private
+
+    def validate_transition(from: nil, to: nil)
+      unless self.class.successors[from].include?(to)
         raise InvalidTransitionError,
-          "Cannot transition from #{current_state} to #{new_state}"
-        return
+          "Cannot transition from '#{from}' to '#{to}'"
       end
     end
   end
