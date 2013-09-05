@@ -155,5 +155,42 @@ describe Statesman::Machine do
 
     end
   end
+
+  describe "#guards_for_transition" do
+    before do
+      machine.class_eval do
+        state :x
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :y, to: :z
+      end
+    end
+
+    let(:instance) { machine.new }
+    let(:guards) { instance.guards_for_transition(from: :x, to: :y) }
+
+    context "with no defined guards" do
+      specify { expect(guards).to eq([]) }
+    end
+
+    context "with defined guards" do
+      let(:guard_cb_1) { -> { "Hi" } }
+      let(:guard_cb_2) { -> { "Bye" } }
+
+      before do
+        machine.guard_transition(from: :x, to: :y, &guard_cb_1)
+        machine.guard_transition(from: :y, to: :z, &guard_cb_2)
+      end
+
+      it "contains the relevant guard" do
+        expect(guards).to include(guard_cb_1)
+      end
+
+      it "does not contain the irrelevant guard" do
+        expect(guards).to_not include(guard_cb_2)
+      end
+    end
+  end
 end
 
