@@ -1,39 +1,26 @@
 require "spec_helper"
 
 describe Statesman::Machine do
-  let(:bare_sm) { Class.new { include Statesman::Machine } }
-  let(:basic_sm) do
-    Class.new do
-      include Statesman::Machine
-      state :x
-      state :y
-      state :z
-    end
-  end
-
-  let(:transition_sm) do
-    Class.new do
-      include Statesman::Machine
-      state :x
-      state :y
-      state :z
-
-      transition from: :x, to: :y
-      transition from: :y, to: :z
-    end
-  end
+  let(:machine) { Class.new { include Statesman::Machine } }
 
   describe ".state" do
-    before { bare_sm.state(:x) }
-    before { bare_sm.state(:y) }
-    specify { expect(bare_sm.states).to eq([:x, :y]) }
+    before { machine.state(:x) }
+    before { machine.state(:y) }
+    specify { expect(machine.states).to eq([:x, :y]) }
   end
 
   describe ".transition" do
+    before do
+      machine.class_eval do
+        state :x
+        state :y
+        state :z
+      end
+    end
     context "given neither a 'from' nor a 'to' state" do
       it "raises an error" do
         expect do
-          basic_sm.transition
+          machine.transition
         end.to raise_error(Statesman::InvalidStateError)
       end
     end
@@ -41,7 +28,7 @@ describe Statesman::Machine do
     context "given an invalid 'from' state" do
       it "raises an error" do
         expect do
-          basic_sm.transition(from: :a, to: :x)
+          machine.transition(from: :a, to: :x)
         end.to raise_error(Statesman::InvalidStateError)
       end
     end
@@ -49,25 +36,36 @@ describe Statesman::Machine do
     context "given an invalid 'to' state" do
       it "raises an error" do
         expect do
-          basic_sm.transition(from: :x, to: :a)
+          machine.transition(from: :x, to: :a)
         end.to raise_error(Statesman::InvalidStateError)
       end
     end
 
     context "valid 'from' and 'to' states" do
       it "records the transition" do
-        basic_sm.transition(from: :x, to: :y)
-        basic_sm.transition(from: :x, to: :z)
-        expect(basic_sm.successors).to eq(x: [:y, :z])
+        machine.transition(from: :x, to: :y)
+        machine.transition(from: :x, to: :z)
+        expect(machine.successors).to eq(x: [:y, :z])
       end
     end
   end
 
   describe "#transition_to" do
-    let(:instance) { transition_sm.new }
-    before { instance.current_state = :x }
+    before do
+      machine.class_eval do
+        state :x
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :y, to: :z
+      end
+    end
+
+    let(:instance) { machine.new }
 
     context "when the state cannot be transitioned to" do
+      before { instance.current_state = :x }
+
       it "raises an error" do
         expect do
           instance.transition_to(:z)
