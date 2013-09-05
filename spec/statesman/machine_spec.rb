@@ -103,7 +103,7 @@ describe Statesman::Machine do
 
   shared_examples "a callback store" do |assignment_method, callback_store|
     it "stores callbacks" do
-      cb = -> {}
+      cb = -> {  }
       machine.send(assignment_method, &cb)
       expect(machine.send(callback_store)).to include([nil, nil, cb])
     end
