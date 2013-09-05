@@ -26,11 +26,7 @@ module Statesman
         successors[from] ||= []
         to = Array(to)
 
-        ([from] + to).each do |state|
-          unless valid_state?(state)
-            raise InvalidStateError, "Invalid state '#{state}'"
-          end
-        end
+        ([from] + to).each { |state| validate_state(state) }
 
         successors[from] += to
       end
@@ -60,8 +56,10 @@ module Statesman
 
       private
 
-      def valid_state?(state)
-        states.include?(state)
+      def validate_state(state)
+        unless states.include?(state)
+          raise InvalidStateError, "Invalid state '#{state}'"
+        end
       end
     end
 
