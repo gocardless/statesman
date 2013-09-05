@@ -7,7 +7,7 @@ A statesmanlike state machine library.
 
 ```ruby
 class PaymentStateMachine
-  extend Statesman
+  include Statesman
 
   state :created, initial: true
   state :submitted
