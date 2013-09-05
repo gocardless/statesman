@@ -36,8 +36,17 @@ module Statesman
       end
 
       private
+
       def valid_state?(state)
         states.include?(state)
+      end
+    end
+
+    def transition_to(new_state)
+      unless self.class.successors[current_state].include?(new_state)
+        raise InvalidTransitionError,
+          "Cannot transition from #{current_state} to #{new_state}"
+        return
       end
     end
   end

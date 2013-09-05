@@ -11,6 +11,18 @@ describe Statesman::Machine do
     end
   end
 
+  let(:transition_sm) do
+    Class.new do
+      include Statesman::Machine
+      state :x
+      state :y
+      state :z
+
+      transition from: :x, to: :y
+      transition from: :y, to: :z
+    end
+  end
+
   describe ".state" do
     before { bare_sm.state(:x) }
     before { bare_sm.state(:y) }
@@ -47,6 +59,19 @@ describe Statesman::Machine do
         basic_sm.transition(from: :x, to: :y)
         basic_sm.transition(from: :x, to: :z)
         expect(basic_sm.successors).to eq(x: [:y, :z])
+      end
+    end
+  end
+
+  describe "#transition_to" do
+    let(:instance) { transition_sm.new }
+    before { instance.current_state = :x }
+
+    context "when the state cannot be transitioned to" do
+      it "raises an error" do
+        expect do
+          instance.transition_to(:z)
+        end.to raise_error(Statesman::InvalidTransitionError)
       end
     end
   end
