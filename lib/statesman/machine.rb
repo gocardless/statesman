@@ -91,6 +91,16 @@ module Statesman
     end
 
     def transition_to(new_state)
+      validate_transition(from: current_state, to: new_state)
+
+      guards = guards_for(from: current_state, to: new_state)
+      befores = before_callbacks_for(from: current_state, to: new_state)
+      afters = after_callbacks_for(from: current_state, to: new_state)
+
+      return unless guards.map { |guard| guard.call }.all?
+      befores.each { |callback| callback.call }
+      self.current_state = new_state
+      afters.each { |callback| callback.call }
     end
 
     def guards_for(from: nil, to: nil)

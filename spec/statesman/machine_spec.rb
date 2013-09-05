@@ -151,8 +151,62 @@ describe Statesman::Machine do
     end
 
     context "when the state can be transitioned to" do
-      before { instance.current_state = :y }
+      before { instance.current_state = :x }
 
+      it "changes state" do
+        instance.transition_to(:y)
+        expect(instance.current_state).to eq(:y)
+      end
+
+      context "with a guard" do
+        before { machine.guard_transition(from: :x, to: :y) { result } }
+        context "which passes" do
+          let(:result) { true }
+
+          it "changes state" do
+            instance.current_state = :x
+            instance.transition_to(:y)
+            expect(instance.current_state).to eq(:y)
+          end
+        end
+
+        context "which fails" do
+          let(:result) { false }
+
+          it "does not change state" do
+            instance.current_state = :x
+            instance.transition_to(:y)
+            expect(instance.current_state).to eq(:x)
+          end
+        end
+      end
+
+      context "with a before callback" do
+        let(:spy) { double.as_null_object }
+        let(:callback) { -> { spy.call } }
+        before { machine.before_transition(from: :x, to: :y, &callback) }
+
+        it "is called before the state transition" do
+          spy.should_receive(:call).once do
+            expect(instance.current_state).to eq(:x)
+          end
+          instance.transition_to(:y)
+          expect(instance.current_state).to eq(:y)
+        end
+      end
+
+      context "with an after callback" do
+        let(:spy) { double.as_null_object }
+        let(:callback) { -> { spy.call } }
+        before { machine.after_transition(from: :x, to: :y, &callback) }
+
+        it "is called after the state transition" do
+          spy.should_receive(:call).once do
+            expect(instance.current_state).to eq(:y)
+          end
+          instance.transition_to(:y)
+        end
+      end
     end
   end
 
