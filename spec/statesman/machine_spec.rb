@@ -127,7 +127,7 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :guard_transition, :guards
   end
 
-  describe "#transition_to" do
+  describe "#transition_to!" do
     before do
       machine.class_eval do
         state :x
@@ -145,7 +145,7 @@ describe Statesman::Machine do
 
       it "raises an error" do
         expect do
-          instance.transition_to(:z)
+          instance.transition_to!(:z)
         end.to raise_error(Statesman::InvalidTransitionError)
       end
     end
@@ -154,7 +154,7 @@ describe Statesman::Machine do
       before { instance.current_state = :x }
 
       it "changes state" do
-        instance.transition_to(:y)
+        instance.transition_to!(:y)
         expect(instance.current_state).to eq(:y)
       end
 
@@ -164,8 +164,7 @@ describe Statesman::Machine do
           let(:result) { true }
 
           it "changes state" do
-            instance.current_state = :x
-            instance.transition_to(:y)
+            instance.transition_to!(:y)
             expect(instance.current_state).to eq(:y)
           end
         end
@@ -173,10 +172,10 @@ describe Statesman::Machine do
         context "which fails" do
           let(:result) { false }
 
-          it "does not change state" do
-            instance.current_state = :x
-            instance.transition_to(:y)
-            expect(instance.current_state).to eq(:x)
+          it "raises an exception" do
+            expect do
+              instance.transition_to!(:y)
+            end.to raise_error(Statesman::GuardFailedError)
           end
         end
       end
@@ -190,7 +189,7 @@ describe Statesman::Machine do
           spy.should_receive(:call).once do
             expect(instance.current_state).to eq(:x)
           end
-          instance.transition_to(:y)
+          instance.transition_to!(:y)
           expect(instance.current_state).to eq(:y)
         end
       end
@@ -204,9 +203,26 @@ describe Statesman::Machine do
           spy.should_receive(:call).once do
             expect(instance.current_state).to eq(:y)
           end
-          instance.transition_to(:y)
+          instance.transition_to!(:y)
         end
       end
+    end
+  end
+
+  describe "#transition_to" do
+    let(:instance) { machine.new }
+    subject { instance.transition_to(:some_state) }
+
+    context "when it is succesful" do
+      before { instance.stub(:transition_to!).and_return(true) }
+      it { should be_true }
+    end
+
+    context "when it is unsuccesful" do
+      before do
+        instance.stub(:transition_to!).and_raise(Statesman::GuardFailedError)
+      end
+      it { should be_false }
     end
   end
 

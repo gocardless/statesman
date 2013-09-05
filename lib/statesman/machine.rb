@@ -90,17 +90,24 @@ module Statesman
       end
     end
 
-    def transition_to(new_state)
+    def transition_to!(new_state)
       validate_transition(from: current_state, to: new_state)
 
       guards = guards_for(from: current_state, to: new_state)
       befores = before_callbacks_for(from: current_state, to: new_state)
       afters = after_callbacks_for(from: current_state, to: new_state)
 
-      return unless guards.map { |guard| guard.call }.all?
+      evaluate_guards(guards, from: current_state, to: new_state)
       befores.each { |callback| callback.call }
       self.current_state = new_state
       afters.each { |callback| callback.call }
+    end
+
+    def transition_to(new_state)
+      self.transition_to!(new_state)
+      true
+    rescue => error
+      false
     end
 
     def guards_for(from: nil, to: nil)
@@ -129,6 +136,15 @@ module Statesman
       unless self.class.successors[from].include?(to)
         raise InvalidTransitionError,
           "Cannot transition from '#{from}' to '#{to}'"
+      end
+    end
+
+    def evaluate_guards(guards, from: nil, to: nil)
+      guards.each do |guard|
+        unless guard.call
+          raise GuardFailedError,
+            "Guard on transition from: '#{from}' to '#{to}' returned false"
+        end
       end
     end
   end
