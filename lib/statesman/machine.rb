@@ -22,6 +22,18 @@ module Statesman
         @successors ||= {}
       end
 
+      def before_callbacks
+        @before_callbacks ||= []
+      end
+
+      def after_callbacks
+        @after_callbacks ||= []
+      end
+
+      def guards
+        @guards ||= []
+      end
+
       def transition(from: nil, to: nil)
         successors[from] ||= []
         to = Array(to)
@@ -29,6 +41,21 @@ module Statesman
         ([from] + to).each { |state| validate_state(state) }
 
         successors[from] += to
+      end
+
+      def before_transition(from: nil, to: nil, &block)
+        validate_callback_condition(from: from, to: to)
+        before_callbacks << [from, to, block]
+      end
+
+      def after_transition(from: nil, to: nil, &block)
+        validate_callback_condition(from: from, to: to)
+        after_callbacks << [from, to, block]
+      end
+
+      def guard_transition(from: nil, to: nil, &block)
+        validate_callback_condition(from: from, to: to)
+        guards << [from, to, block]
       end
 
       def validate_callback_condition(from: nil, to: nil)
