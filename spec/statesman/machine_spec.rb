@@ -156,7 +156,7 @@ describe Statesman::Machine do
     end
   end
 
-  describe "#guards_for_transition" do
+  shared_examples "a callback filter" do |definer, getter|
     before do
       machine.class_eval do
         state :x
@@ -168,29 +168,42 @@ describe Statesman::Machine do
     end
 
     let(:instance) { machine.new }
-    let(:guards) { instance.guards_for_transition(from: :x, to: :y) }
+    let(:callbacks) { instance.send(getter, from: :x, to: :y) }
 
-    context "with no defined guards" do
-      specify { expect(guards).to eq([]) }
+    context "with no defined callbacks" do
+      specify { expect(callbacks).to eq([]) }
     end
 
-    context "with defined guards" do
-      let(:guard_cb_1) { -> { "Hi" } }
-      let(:guard_cb_2) { -> { "Bye" } }
+    context "with defined callbacks" do
+      let(:callback_1) { -> { "Hi" } }
+      let(:callback_2) { -> { "Bye" } }
 
       before do
-        machine.guard_transition(from: :x, to: :y, &guard_cb_1)
-        machine.guard_transition(from: :y, to: :z, &guard_cb_2)
+        machine.send(definer, from: :x, to: :y, &callback_1)
+        machine.send(definer, from: :y, to: :z, &callback_2)
       end
 
-      it "contains the relevant guard" do
-        expect(guards).to include(guard_cb_1)
+      it "contains the relevant callback" do
+        expect(callbacks).to include(callback_1)
       end
 
-      it "does not contain the irrelevant guard" do
-        expect(guards).to_not include(guard_cb_2)
+      it "does not contain the irrelevant callback" do
+        expect(callbacks).to_not include(callback_2)
       end
     end
   end
-end
 
+  describe "#guards_for" do
+    it_behaves_like "a callback filter", :guard_transition, :guards_for
+  end
+
+  describe "#before_callbacks_for" do
+    it_behaves_like "a callback filter", :before_transition,
+                    :before_callbacks_for
+  end
+
+  describe "#after_callbacks_for" do
+    it_behaves_like "a callback filter", :after_transition,
+                    :after_callbacks_for
+  end
+end

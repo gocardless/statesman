@@ -91,16 +91,29 @@ module Statesman
     end
 
     def transition_to(new_state)
-      unless self.class.successors[current_state].include?(new_state)
-    def guards_for_transition(from: nil, to: nil)
-      self.class.guards.select do |guard_from, guard_to, _|
+    end
+
+    def guards_for(from: nil, to: nil)
+      select_callbacks_for(self.class.guards, from: from, to: to)
+    end
+
+    def before_callbacks_for(from: nil, to: nil)
+      select_callbacks_for(self.class.before_callbacks, from: from, to: to)
+    end
+
+    def after_callbacks_for(from: nil, to: nil)
+      select_callbacks_for(self.class.after_callbacks, from: from, to: to)
+    end
+
+    private
+
+    def select_callbacks_for(callbacks, from: nil, to: nil)
+      callbacks.select do |guard_from, guard_to, _|
         (from == nil && to == guard_to) ||
         (from == guard_from && to == nil) ||
         (from == guard_from && to == guard_to)
       end.map(&:last)
     end
-
-    private
 
     def validate_transition(from: nil, to: nil)
       unless self.class.successors[from].include?(to)
