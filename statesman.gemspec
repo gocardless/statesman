@@ -6,9 +6,10 @@ require 'statesman/version'
 Gem::Specification.new do |spec|
   spec.name          = "statesman"
   spec.version       = Statesman::VERSION
-  spec.authors       = ["Harry Marr"]
+  spec.authors       = ["Harry Marr", "Andy Appleton"]
   spec.email         = ["developers@gocardless.com"]
   spec.description   = %q{A statesmanlike state machine library}
+  spec.summary       = spec.description
   spec.homepage      = "https://github.com/gocardless/statesman"
   spec.license       = "MIT"
 
@@ -19,4 +20,6 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "bundler", "~> 1.3"
   spec.add_development_dependency "rake"
+  spec.add_development_dependency "rspec", "~> 2.14.1"
+  spec.add_development_dependency "rubocop", "~> 0.12.0"
 end

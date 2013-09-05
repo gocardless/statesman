@@ -1,0 +1,8 @@
+# For all options see https://github.com/bbatsov/rubocop/tree/master/config
+
+StringLiterals:
+  Enabled: false
+
+Documentation:
+  Enabled: false
+
