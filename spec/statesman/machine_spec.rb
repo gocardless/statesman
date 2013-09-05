@@ -87,13 +87,17 @@ describe Statesman::Machine do
     end
 
     context "with any states" do
-      subject { machine.validate_callback_condition }
-      it { should_not raise_error }
+      it "does not raise an exception" do
+        expect { machine.validate_callback_condition }.to_not raise_error
+      end
     end
 
     context "with a valid transition" do
-      subject { machine.validate_callback_condition(from: :x, to: :y) }
-      it { should_not raise_error }
+      it "does not raise an exception" do
+        expect do
+          machine.validate_callback_condition(from: :x, to: :y)
+        end.to_not raise_error
+      end
     end
   end
 
