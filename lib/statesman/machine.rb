@@ -2,6 +2,7 @@ require "statesman/version"
 require "statesman/exceptions"
 require "statesman/guard"
 require "statesman/callback"
+require "statesman/transition"
 
 module Statesman
   # The main module, that should be `extend`ed in to state machine classes.
