@@ -148,10 +148,38 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :guard_transition, :guards
   end
 
+  describe "#current_state" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :y, to: :z
+      end
+    end
+
+    let(:instance) { machine.new }
+    subject { instance.current_state }
+
+    context "with no transitions" do
+      it { should be(machine.initial_state) }
+    end
+
+    context "with multiple transitions" do
+      before do
+        instance.transition_to(:y)
+        instance.transition_to(:z)
+      end
+
+      it { should be(:z) }
+    end
+  end
+
   describe "#transition_to!" do
     before do
       machine.class_eval do
-        state :x
+        state :x, initial: true
         state :y
         state :z
         transition from: :x, to: :y
@@ -162,8 +190,6 @@ describe Statesman::Machine do
     let(:instance) { machine.new }
 
     context "when the state cannot be transitioned to" do
-      before { instance.current_state = :x }
-
       it "raises an error" do
         expect do
           instance.transition_to!(:z)
@@ -172,8 +198,6 @@ describe Statesman::Machine do
     end
 
     context "when the state can be transitioned to" do
-      before { instance.current_state = :x }
-
       it "changes state" do
         instance.transition_to!(:y)
         expect(instance.current_state).to eq(:y)

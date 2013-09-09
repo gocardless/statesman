@@ -9,7 +9,6 @@ module Statesman
   module Machine
     def self.included(base)
       base.extend(ClassMethods)
-      base.send(:attr_accessor, :current_state)
     end
 
     module ClassMethods
@@ -108,6 +107,11 @@ module Statesman
       end
     end
 
+    def current_state
+      latest_history = history.sort_by(&:created_at).last
+      latest_history ? latest_history.to : self.class.initial_state
+    end
+
     def history
       @history ||= []
     end
@@ -119,7 +123,6 @@ module Statesman
       before_callbacks_for(from: current_state, to: new_state).each(&:call)
 
       history << Transition.new(current_state, new_state)
-      self.current_state = new_state
 
       after_callbacks_for(from: current_state, to: new_state).each(&:call)
     end
