@@ -17,7 +17,15 @@ module Statesman
         @states ||= []
       end
 
+      def initial_state
+        @initial_state
+      end
+
       def state(name, initial: false)
+        if initial
+          validate_initial_state(name)
+          @initial_state = name
+        end
         states << name
       end
 
@@ -89,6 +97,13 @@ module Statesman
       def validate_state(state)
         unless states.include?(state)
           raise InvalidStateError, "Invalid state '#{state}'"
+        end
+      end
+
+      def validate_initial_state(state)
+        unless initial_state.nil?
+          raise InvalidStateError, "Cannot set initial state to '#{state}', " +
+                                   "already defined as #{initial_state}."
         end
       end
     end

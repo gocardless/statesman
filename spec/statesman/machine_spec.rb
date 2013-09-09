@@ -7,6 +7,19 @@ describe Statesman::Machine do
     before { machine.state(:x) }
     before { machine.state(:y) }
     specify { expect(machine.states).to eq([:x, :y]) }
+
+    context "initial" do
+      before { machine.state(:x, initial: true) }
+      specify { expect(machine.initial_state).to be(:x) }
+
+      context "when an initial state is already defined" do
+        it "raises an error" do
+          expect do
+            machine.state(:y, initial: true)
+          end.to raise_error(Statesman::InvalidStateError)
+        end
+      end
+    end
   end
 
   describe ".transition" do
