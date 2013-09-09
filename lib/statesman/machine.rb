@@ -125,11 +125,11 @@ module Statesman
       history << Transition.new(current_state, new_state)
 
       after_callbacks_for(from: current_state, to: new_state).each(&:call)
+      current_state
     end
 
     def transition_to(new_state)
       self.transition_to!(new_state)
-      true
     rescue
       false
     end

@@ -213,6 +213,10 @@ describe Statesman::Machine do
         expect(instance.history.first.to).to be(:y)
       end
 
+      it "returns the new state" do
+        expect(instance.transition_to!(:y)).to be(:y)
+      end
+
       context "with a guard" do
         before { machine.guard_transition(from: :x, to: :y) { result } }
         context "which passes" do
@@ -269,8 +273,8 @@ describe Statesman::Machine do
     subject { instance.transition_to(:some_state) }
 
     context "when it is succesful" do
-      before { instance.stub(:transition_to!).and_return(true) }
-      it { should be_true }
+      before { instance.stub(:transition_to!).and_return(:some_state) }
+      it { should be(:some_state) }
     end
 
     context "when it is unsuccesful" do
