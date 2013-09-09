@@ -9,6 +9,7 @@ module Statesman
   module Machine
     def self.included(base)
       base.extend(ClassMethods)
+      base.send(:attr_reader, :object)
     end
 
     module ClassMethods
@@ -105,6 +106,10 @@ module Statesman
                                    "already defined as #{initial_state}."
         end
       end
+    end
+
+    def initialize(object = nil)
+      @object = object
     end
 
     def current_state

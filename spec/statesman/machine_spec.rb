@@ -148,6 +148,16 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :guard_transition, :guards
   end
 
+  describe "#initialize" do
+    let(:my_class) { Class.new { attr_accessor :current_state } }
+    let(:my_instance) { my_class.new }
+
+    it "accepts an object to manipulate" do
+      machine_instance = machine.new(my_instance)
+      expect(machine_instance.object).to be(my_instance)
+    end
+  end
+
   describe "#current_state" do
     before do
       machine.class_eval do
