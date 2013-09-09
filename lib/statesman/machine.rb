@@ -67,19 +67,19 @@ module Statesman
         # Check that the 'from' state is not terminal
         unless from.nil? || successors.keys.include?(from)
           raise InvalidTransitionError,
-            "Cannont transition away from terminal state '#{from}'"
+                "Cannont transition away from terminal state '#{from}'"
         end
 
         # Check that the 'to' state is not initial
         unless to.nil? || successors.values.flatten.include?(to)
           raise InvalidTransitionError,
-            "Cannont transition to initial state '#{from}'"
+                "Cannont transition to initial state '#{from}'"
         end
 
         # Check that the transition is valid when 'from' and 'to' are given
         unless successors.fetch(from, []).include?(to)
           raise InvalidTransitionError,
-            "Cannot transition from '#{from}' to '#{to}'"
+                "Cannot transition from '#{from}' to '#{to}'"
         end
       end
 
@@ -106,7 +106,7 @@ module Statesman
     def transition_to(new_state)
       self.transition_to!(new_state)
       true
-    rescue => error
+    rescue
       false
     end
 
@@ -126,8 +126,8 @@ module Statesman
 
     def select_callbacks_for(callbacks, from: nil, to: nil)
       callbacks.select do |callback|
-        (from == nil && to == callback.to) ||
-        (from == callback.from && to == nil) ||
+        (from.nil? && to == callback.to) ||
+        (from == callback.from && to.nil?) ||
         (from == callback.from && to == callback.to)
       end
     end
@@ -135,8 +135,9 @@ module Statesman
     def validate_transition(from: nil, to: nil)
       unless self.class.successors[from].include?(to)
         raise InvalidTransitionError,
-          "Cannot transition from '#{from}' to '#{to}'"
+              "Cannot transition from '#{from}' to '#{to}'"
       end
     end
+
   end
 end

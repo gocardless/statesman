@@ -1,8 +1,20 @@
 # For all options see https://github.com/bbatsov/rubocop/tree/master/config
 
+AllCops:
+  Includes:
+    - Rakefile
+    - statesman.gemfile
+  Excludes:
+    - vendor/**
+
 StringLiterals:
   Enabled: false
 
 Documentation:
   Enabled: false
+
+# Avoid methods longer than 30 lines of code
+MethodLength:
+  CountComments: false  # count full line comments?
+  Max: 15
 
