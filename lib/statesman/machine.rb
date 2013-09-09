@@ -1,5 +1,7 @@
 require "statesman/version"
 require "statesman/exceptions"
+require "statesman/guard"
+require "statesman/callback"
 
 module Statesman
   # The main module, that should be `extend`ed in to state machine classes.
@@ -45,17 +47,17 @@ module Statesman
 
       def before_transition(from: nil, to: nil, &block)
         validate_callback_condition(from: from, to: to)
-        before_callbacks << [from, to, block]
+        before_callbacks << Callback.new(from: from, to: to, callback: block)
       end
 
       def after_transition(from: nil, to: nil, &block)
         validate_callback_condition(from: from, to: to)
-        after_callbacks << [from, to, block]
+        after_callbacks << Callback.new(from: from, to: to, callback: block)
       end
 
       def guard_transition(from: nil, to: nil, &block)
         validate_callback_condition(from: from, to: to)
-        guards << [from, to, block]
+        guards << Guard.new(from: from, to: to, callback: block)
       end
 
       def validate_callback_condition(from: nil, to: nil)
@@ -93,14 +95,12 @@ module Statesman
     def transition_to!(new_state)
       validate_transition(from: current_state, to: new_state)
 
-      guards = guards_for(from: current_state, to: new_state)
-      befores = before_callbacks_for(from: current_state, to: new_state)
-      afters = after_callbacks_for(from: current_state, to: new_state)
+      guards_for(from: current_state, to: new_state).each(&:call)
+      before_callbacks_for(from: current_state, to: new_state).each(&:call)
 
-      evaluate_guards(guards, from: current_state, to: new_state)
-      befores.each { |callback| callback.call }
       self.current_state = new_state
-      afters.each { |callback| callback.call }
+
+      after_callbacks_for(from: current_state, to: new_state).each(&:call)
     end
 
     def transition_to(new_state)
@@ -125,26 +125,17 @@ module Statesman
     private
 
     def select_callbacks_for(callbacks, from: nil, to: nil)
-      callbacks.select do |guard_from, guard_to, _|
-        (from == nil && to == guard_to) ||
-        (from == guard_from && to == nil) ||
-        (from == guard_from && to == guard_to)
-      end.map(&:last)
+      callbacks.select do |callback|
+        (from == nil && to == callback.to) ||
+        (from == callback.from && to == nil) ||
+        (from == callback.from && to == callback.to)
+      end
     end
 
     def validate_transition(from: nil, to: nil)
       unless self.class.successors[from].include?(to)
         raise InvalidTransitionError,
           "Cannot transition from '#{from}' to '#{to}'"
-      end
-    end
-
-    def evaluate_guards(guards, from: nil, to: nil)
-      guards.each do |guard|
-        unless guard.call
-          raise GuardFailedError,
-            "Guard on transition from: '#{from}' to '#{to}' returned false"
-        end
       end
     end
   end

@@ -103,9 +103,17 @@ describe Statesman::Machine do
 
   shared_examples "a callback store" do |assignment_method, callback_store|
     it "stores callbacks" do
-      cb = -> {}
-      machine.send(assignment_method, &cb)
-      expect(machine.send(callback_store)).to include([nil, nil, cb])
+      expect do
+        machine.send(assignment_method) {}
+      end.to change(machine.send(callback_store), :count).by(1)
+    end
+
+    it "stores callback instances" do
+      machine.send(assignment_method) {}
+
+      machine.send(callback_store).each do |callback|
+        expect(callback).to be_a(Statesman::Callback)
+      end
     end
 
     it "raises an exception when invalid states are passed" do
@@ -186,7 +194,7 @@ describe Statesman::Machine do
         before { machine.before_transition(from: :x, to: :y, &callback) }
 
         it "is called before the state transition" do
-          spy.should_receive(:call).once do
+          spy.should_recieve(:call).once do
             expect(instance.current_state).to eq(:x)
           end
           instance.transition_to!(:y)
@@ -200,7 +208,7 @@ describe Statesman::Machine do
         before { machine.after_transition(from: :x, to: :y, &callback) }
 
         it "is called after the state transition" do
-          spy.should_receive(:call).once do
+          spy.should_recieve(:call).once do
             expect(instance.current_state).to eq(:y)
           end
           instance.transition_to!(:y)
@@ -254,11 +262,11 @@ describe Statesman::Machine do
       end
 
       it "contains the relevant callback" do
-        expect(callbacks).to include(callback_1)
+        expect(callbacks.map(&:callback)).to include(callback_1)
       end
 
       it "does not contain the irrelevant callback" do
-        expect(callbacks).to_not include(callback_2)
+        expect(callbacks.map(&:callback)).to_not include(callback_2)
       end
     end
   end
