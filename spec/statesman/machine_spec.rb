@@ -166,6 +166,16 @@ describe Statesman::Machine do
         expect(instance.current_state).to eq(:y)
       end
 
+      it "creates a new transition object" do
+        expect do
+          instance.transition_to!(:y)
+        end.to change(instance.history, :count).by(1)
+
+        expect(instance.history.first).to be_a(Statesman::Transition)
+        expect(instance.history.first.from).to be(:x)
+        expect(instance.history.first.to).to be(:y)
+      end
+
       context "with a guard" do
         before { machine.guard_transition(from: :x, to: :y) { result } }
         context "which passes" do

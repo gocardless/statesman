@@ -93,12 +93,17 @@ module Statesman
       end
     end
 
+    def history
+      @history ||= []
+    end
+
     def transition_to!(new_state)
       validate_transition(from: current_state, to: new_state)
 
       guards_for(from: current_state, to: new_state).each(&:call)
       before_callbacks_for(from: current_state, to: new_state).each(&:call)
 
+      history << Transition.new(current_state, new_state)
       self.current_state = new_state
 
       after_callbacks_for(from: current_state, to: new_state).each(&:call)
