@@ -1,7 +1,7 @@
 require "spec_helper"
 
 describe Statesman::Callback do
-  let(:cb_lambda) { -> {} }
+  let(:cb_lambda) { -> { } }
   let(:callback) do
     Statesman::Callback.new(from: nil, to: nil, callback: cb_lambda)
   end

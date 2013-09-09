@@ -7,7 +7,7 @@ module Statesman
     def call
       unless super
         raise GuardFailedError,
-          "Guard on transition from: '#{from}' to '#{to}' returned false"
+              "Guard on transition from: '#{from}' to '#{to}' returned false"
       end
     end
 
