@@ -20,5 +20,10 @@ module Statesman
       callback.call
     end
 
+    def applies_to?(from: nil, to: nil)
+      (from.nil? && to == self.to) ||
+      (from == self.from && to.nil?) ||
+      (from == self.from && to == self.to)
+    end
   end
 end

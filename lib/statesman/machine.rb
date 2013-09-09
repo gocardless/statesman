@@ -125,11 +125,7 @@ module Statesman
     private
 
     def select_callbacks_for(callbacks, from: nil, to: nil)
-      callbacks.select do |callback|
-        (from.nil? && to == callback.to) ||
-        (from == callback.from && to.nil?) ||
-        (from == callback.from && to == callback.to)
-      end
+      callbacks.select { |callback| callback.applies_to?(from: from, to: to) }
     end
 
     def validate_transition(from: nil, to: nil)
