@@ -13,12 +13,10 @@ module Statesman
     end
 
     module ClassMethods
+      attr_reader :initial_state
+
       def states
         @states ||= []
-      end
-
-      def initial_state
-        @initial_state
       end
 
       def state(name, initial: false)
