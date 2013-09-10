@@ -5,6 +5,7 @@ module Statesman
   autoload :Guard,      'statesman/guard'
   autoload :Transition, 'statesman/transition'
   autoload :Version,    'statesman/version'
+  require "statesman/adapters/memory"
 
   # Example:
   #   Statesman.configure do
