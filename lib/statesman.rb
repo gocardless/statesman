@@ -17,4 +17,7 @@ module Statesman
     @storage_adapter = config.adapter_class
   end
 
+  def self.storage_adapter
+    @storage_adapter || Adapters::Memory
+  end
 end

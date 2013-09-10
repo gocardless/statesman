@@ -106,17 +106,18 @@ module Statesman
       end
     end
 
-    def initialize(object = nil)
+    def initialize(object: nil, transition_class: Statesman::Transition)
       @object = object
+      @storage_adapter = Statesman.storage_adapter.new(transition_class)
     end
 
     def current_state
-      latest_history = history.sort_by(&:created_at).last
-      latest_history ? latest_history.to : self.class.initial_state
+      last_action = @storage_adapter.last
+      last_action ? last_action.to : self.class.initial_state
     end
 
     def history
-      @history ||= []
+      @storage_adapter.history
     end
 
     def transition_to!(new_state)
@@ -125,7 +126,7 @@ module Statesman
       guards_for(from: current_state, to: new_state).each(&:call)
       before_callbacks_for(from: current_state, to: new_state).each(&:call)
 
-      history << Transition.new(current_state, new_state)
+      @storage_adapter.create(current_state, new_state)
 
       after_callbacks_for(from: current_state, to: new_state).each(&:call)
       current_state

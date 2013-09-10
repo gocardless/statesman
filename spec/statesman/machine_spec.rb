@@ -153,7 +153,7 @@ describe Statesman::Machine do
     let(:my_instance) { my_class.new }
 
     it "accepts an object to manipulate" do
-      machine_instance = machine.new(my_instance)
+      machine_instance = machine.new(object: my_instance)
       expect(machine_instance.object).to be(my_instance)
     end
   end
@@ -178,8 +178,8 @@ describe Statesman::Machine do
 
     context "with multiple transitions" do
       before do
-        instance.transition_to(:y)
-        instance.transition_to(:z)
+        instance.transition_to!(:y)
+        instance.transition_to!(:z)
       end
 
       it { should be(:z) }
