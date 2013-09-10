@@ -44,3 +44,47 @@ class PaymentStateMachine
 end
 ```
 
+## Persistence
+
+By default Statesman stores transition history in memory only. It can be
+persisted by configuring Statesman to use a different adapter. For example,
+ActiveRecord within rails:
+  
+`config/initializers/statesman.rb`:
+
+```ruby
+Statesman.configure do
+  storage_adapter(Statesman::Adapters::ActiveRecord)
+end
+```
+
+`db/migrate/create_my_transitions_migration.rb`:
+
+```ruby
+class CreateMyTransitionsMigration < ActiveRecord::Migration
+  def change
+    create_table :my_transitions do |t|
+      t.string  :from
+      t.string  :to
+      t.integer :my_model_id
+      t.hstore  :metadata
+      t.timestamps
+    end
+  end
+end  
+```
+
+`app/models/my_transition.rb`:
+
+```ruby
+class MyModel < ActiveRecord::Base
+  has_many :my_transitions
+end
+```
+
+and on machine initialization:
+
+```ruby
+  my_state_machine = MyStateMachine.new(object: my_model_instance,
+                                        transition_class: MyTransition)
+```
