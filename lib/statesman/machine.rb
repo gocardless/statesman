@@ -130,6 +130,7 @@ module Statesman
       before_callbacks_for(from: current_state, to: new_state).each(&:call)
 
       @storage_adapter.create(current_state, new_state)
+      @object.send("#{@state_attr}=", current_state) unless @object.nil?
 
       after_callbacks_for(from: current_state, to: new_state).each(&:call)
       current_state

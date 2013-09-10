@@ -254,6 +254,26 @@ describe Statesman::Machine do
         expect(instance.transition_to!(:y)).to be(:y)
       end
 
+      context "with an object" do
+        let(:object) { Class.new { attr_accessor :current_state }.new }
+        let(:instance) { machine.new(object: object) }
+
+        it "updates the object's state attr" do
+          instance.transition_to!(:y)
+          expect(object.current_state).to be(:y)
+        end
+
+        context "and a custom state attr" do
+          let(:object) { Class.new { attr_accessor :status }.new }
+          let(:instance) { machine.new(object: object, state_attr: :status) }
+
+          it "updates the object's state attr" do
+            instance.transition_to!(:y)
+            expect(object.status).to be(:y)
+          end
+        end
+      end
+
       context "with a guard" do
         before { machine.guard_transition(from: :x, to: :y) { result } }
         context "which passes" do
