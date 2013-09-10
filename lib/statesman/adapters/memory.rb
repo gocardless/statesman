@@ -16,7 +16,7 @@ module Statesman
       end
 
       def last
-        history.last
+        history.sort_by(&:created_at).last
       end
     end
   end
