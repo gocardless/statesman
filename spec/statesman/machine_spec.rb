@@ -156,6 +156,33 @@ describe Statesman::Machine do
       machine_instance = machine.new(object: my_instance)
       expect(machine_instance.object).to be(my_instance)
     end
+
+    context "transition class" do
+      it "sets a default" do
+        Statesman.storage_adapter.should_receive(:new).once
+          .with(Statesman::Transition)
+        machine.new
+      end
+
+      it "sets the passed class" do
+        my_transition_class = Class.new
+        Statesman.storage_adapter.should_receive(:new).once
+          .with(my_transition_class)
+        machine.new(transition_class: my_transition_class)
+      end
+    end
+
+    context "state_attr" do
+      it "sets a default" do
+        my_machine = machine.new
+        expect(my_machine.state_attr).to be(:current_state)
+      end
+
+      it "sets the passed value" do
+        my_machine = machine.new(state_attr: :beans)
+        expect(my_machine.state_attr).to be(:beans)
+      end
+    end
   end
 
   describe "#current_state" do

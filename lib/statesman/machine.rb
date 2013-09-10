@@ -10,6 +10,7 @@ module Statesman
     def self.included(base)
       base.extend(ClassMethods)
       base.send(:attr_reader, :object)
+      base.send(:attr_reader, :state_attr)
     end
 
     module ClassMethods
@@ -106,9 +107,11 @@ module Statesman
       end
     end
 
-    def initialize(object: nil, transition_class: Statesman::Transition)
+    def initialize(object: nil, transition_class: Statesman::Transition,
+                   state_attr: :current_state)
       @object = object
       @storage_adapter = Statesman.storage_adapter.new(transition_class)
+      @state_attr = state_attr
     end
 
     def current_state
