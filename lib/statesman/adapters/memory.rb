@@ -14,6 +14,10 @@ module Statesman
         history << new_transistion
         new_transistion
       end
+
+      def last
+        history.last
+      end
     end
   end
 end

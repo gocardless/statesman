@@ -22,4 +22,16 @@ describe Statesman::Adapters::Memory do
       it { should be_a(Statesman::Transition) }
     end
   end
+
+  describe "#last" do
+    before do
+      adapter.create(:x, :y)
+      adapter.create(:y, :z)
+    end
+    subject { adapter.last }
+
+    it { should be_a(Statesman::Transition) }
+    its(:from) { should be(:y) }
+    its(:to) { should be(:z) }
+  end
 end
