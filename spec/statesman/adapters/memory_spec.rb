@@ -4,8 +4,9 @@ describe Statesman::Adapters::Memory do
   let(:adapter) { Statesman::Adapters::Memory.new(Statesman::Transition) }
 
   describe "#initialize" do
-    subject { adapter.transition_class }
-    it { should be(Statesman::Transition) }
+    subject { adapter }
+    its(:transition_class) { should be(Statesman::Transition) }
+    its(:history) { should eq([]) }
   end
 
   describe "#create" do
