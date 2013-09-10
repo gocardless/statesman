@@ -8,8 +8,8 @@
 module Statesman
   module Adapters
     class Memory
-      attr_accessor :transition_class
-      attr_accessor :history
+      attr_reader :transition_class
+      attr_reader :history
 
       def initialize(transition_class)
         @history = []
@@ -18,12 +18,12 @@ module Statesman
 
       def create(from, to)
         new_transistion = transition_class.new(from, to)
-        history << new_transistion
+        @history << new_transistion
         new_transistion
       end
 
       def last
-        history.sort_by(&:created_at).last
+        @history.sort_by(&:created_at).last
       end
     end
   end
