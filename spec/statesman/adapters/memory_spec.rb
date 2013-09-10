@@ -20,6 +20,8 @@ describe Statesman::Adapters::Memory do
     context "the new transition" do
       let(:subject) { create }
       it { should be_a(Statesman::Transition) }
+      its(:from) { should be(from) }
+      its(:to) { should be(to) }
     end
   end
 
