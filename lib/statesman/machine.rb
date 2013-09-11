@@ -110,7 +110,8 @@ module Statesman
     def initialize(object: nil, transition_class: Statesman::Transition,
                    state_attr: :current_state)
       @object = object
-      @storage_adapter = Statesman.storage_adapter.new(transition_class)
+      @storage_adapter = Statesman.storage_adapter.new(transition_class,
+                                                       object, state_attr)
       @state_attr = state_attr
     end
 
@@ -142,7 +143,6 @@ module Statesman
       end
 
       @storage_adapter.create(current_state, new_state, metadata)
-      @object.send("#{@state_attr}=", current_state) unless @object.nil?
 
       after_callbacks_for(from: current_state, to: new_state).each do |cb|
         cb.call(@object)

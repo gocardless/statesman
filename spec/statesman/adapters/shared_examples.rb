@@ -1,9 +1,10 @@
 require "spec_helper"
 
-# All adpators must define six methods:
-#   initialize:       Accepts a transition class and a parent model.
+# All adpators must define seven methods:
+#   initialize:       Accepts a transition class, parent model and state_attr.
 #   transition_class: Returns the transition class object passed to initialize.
 #   parent_model:     Returns the model class object passed to initialize.
+#   state_attr:       Returns the state attribute to set on the parent.
 #   create:           Accepts from, to and optional metadata. Creates a new
 #                     transition class and transforms metadata to a JSON
 #                     string.
@@ -11,12 +12,13 @@ require "spec_helper"
 #   last:             Returns the latest transition history item
 #
 shared_examples_for "an adapter" do |adapter_class, transition_class|
-  let(:adapter) { adapter_class.new(transition_class, model) }
+  let(:adapter) { adapter_class.new(transition_class, model, :current_state) }
 
   describe "#initialize" do
     subject { adapter }
     its(:transition_class) { should be(transition_class) }
     its(:parent_model) { should be(model) }
+    its(:state_attr) { should be(:current_state) }
     its(:history) { should eq([]) }
   end
 
@@ -39,6 +41,12 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
       let(:metadata) { { some: :hash } }
       subject { adapter.create(from, to, metadata) }
       its(:metadata) { should eq(metadata.to_json) }
+    end
+
+    context "with a parent_model and state_attr" do
+      before { adapter.create(from, to) }
+      subject { model.current_state }
+      it { should eq(to) }
     end
   end
 

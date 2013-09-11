@@ -149,8 +149,7 @@ describe Statesman::Machine do
   end
 
   describe "#initialize" do
-    let(:my_class) { Class.new { attr_accessor :current_state } }
-    let(:my_instance) { my_class.new }
+    let(:my_instance) { Class.new { attr_accessor :current_state }.new }
 
     it "accepts an object to manipulate" do
       machine_instance = machine.new(object: my_instance)
@@ -160,15 +159,15 @@ describe Statesman::Machine do
     context "transition class" do
       it "sets a default" do
         Statesman.storage_adapter.should_receive(:new).once
-          .with(Statesman::Transition)
-        machine.new
+          .with(Statesman::Transition, my_instance, :current_state)
+        machine.new(object: my_instance)
       end
 
       it "sets the passed class" do
         my_transition_class = Class.new
         Statesman.storage_adapter.should_receive(:new).once
-          .with(my_transition_class)
-        machine.new(transition_class: my_transition_class)
+          .with(my_transition_class, my_instance, :current_state)
+        machine.new(transition_class: my_transition_class, object: my_instance)
       end
     end
 
