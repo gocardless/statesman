@@ -1,10 +1,3 @@
-# Adapters::ActiveRecord
-# All adpators must define four methods:
-#   initialize: Accepts a transition class
-#   create:     Accepts from and to and creates a new transition class
-#   history:    Returns the full transitino history
-#   last:       Returns the latest transition history
-#
 module Statesman
   module Adapters
     class ActiveRecord

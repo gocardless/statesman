@@ -1,19 +1,14 @@
-# Adapters::Memory
-# All adpators must define four methods:
-#   initialize: Accepts a transition class
-#   create:     Accepts from and to and creates a new transition class
-#   history:    Returns the full transitino history
-#   last:       Returns the latest transition history
-#
 module Statesman
   module Adapters
     class Memory
       attr_reader :transition_class
       attr_reader :history
+      attr_reader :parent_model
 
-      def initialize(transition_class)
+      def initialize(transition_class, parent_model = nil)
         @history = []
         @transition_class = transition_class
+        @parent_model = parent_model
       end
 
       def create(from, to)
