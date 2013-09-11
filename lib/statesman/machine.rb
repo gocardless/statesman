@@ -107,7 +107,7 @@ module Statesman
       end
     end
 
-    def initialize(object: nil, transition_class: Statesman::Transition,
+    def initialize(object, transition_class: Statesman::Transition,
                    state_attr: :current_state)
       @object = object
       @storage_adapter = Statesman.storage_adapter.new(transition_class,

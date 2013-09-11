@@ -2,6 +2,7 @@ require "spec_helper"
 
 describe Statesman::Machine do
   let(:machine) { Class.new { include Statesman::Machine } }
+  let(:my_model) { Class.new { attr_accessor :current_state }.new }
 
   describe ".state" do
     before { machine.state(:x) }
@@ -149,36 +150,34 @@ describe Statesman::Machine do
   end
 
   describe "#initialize" do
-    let(:my_instance) { Class.new { attr_accessor :current_state }.new }
-
     it "accepts an object to manipulate" do
-      machine_instance = machine.new(object: my_instance)
-      expect(machine_instance.object).to be(my_instance)
+      machine_instance = machine.new(my_model)
+      expect(machine_instance.object).to be(my_model)
     end
 
     context "transition class" do
       it "sets a default" do
         Statesman.storage_adapter.should_receive(:new).once
-          .with(Statesman::Transition, my_instance, :current_state)
-        machine.new(object: my_instance)
+          .with(Statesman::Transition, my_model, :current_state)
+        machine.new(my_model)
       end
 
       it "sets the passed class" do
         my_transition_class = Class.new
         Statesman.storage_adapter.should_receive(:new).once
-          .with(my_transition_class, my_instance, :current_state)
-        machine.new(transition_class: my_transition_class, object: my_instance)
+          .with(my_transition_class, my_model, :current_state)
+        machine.new(my_model, transition_class: my_transition_class)
       end
     end
 
     context "state_attr" do
       it "sets a default" do
-        my_machine = machine.new
+        my_machine = machine.new(my_model)
         expect(my_machine.state_attr).to be(:current_state)
       end
 
       it "sets the passed value" do
-        my_machine = machine.new(state_attr: :beans)
+        my_machine = machine.new(my_model, state_attr: :beans)
         expect(my_machine.state_attr).to be(:beans)
       end
     end
@@ -195,7 +194,7 @@ describe Statesman::Machine do
       end
     end
 
-    let(:instance) { machine.new }
+    let(:instance) { machine.new(my_model) }
     subject { instance.current_state }
 
     context "with no transitions" do
@@ -221,7 +220,7 @@ describe Statesman::Machine do
       end
     end
 
-    let(:instance) { machine.new }
+    let(:instance) { machine.new(my_model) }
     subject { instance.can_transition_to?(new_state) }
 
     context "when the transition is invalid" do
@@ -246,7 +245,7 @@ describe Statesman::Machine do
       end
     end
 
-    let(:instance) { machine.new }
+    let(:instance) { machine.new(my_model) }
 
     context "when the state cannot be transitioned to" do
       it "raises an error" do
@@ -283,21 +282,20 @@ describe Statesman::Machine do
       end
 
       context "with an object" do
-        let(:object) { Class.new { attr_accessor :current_state }.new }
-        let(:instance) { machine.new(object: object) }
+        let(:instance) { machine.new(my_model) }
 
         it "updates the object's state attr" do
           instance.transition_to!(:y)
-          expect(object.current_state).to be(:y)
+          expect(my_model.current_state).to be(:y)
         end
 
         context "and a custom state attr" do
-          let(:object) { Class.new { attr_accessor :status }.new }
-          let(:instance) { machine.new(object: object, state_attr: :status) }
+          let(:my_model) { Class.new { attr_accessor :status }.new }
+          let(:instance) { machine.new(my_model, state_attr: :status) }
 
           it "updates the object's state attr" do
             instance.transition_to!(:y)
-            expect(object.status).to be(:y)
+            expect(my_model.status).to be(:y)
           end
         end
       end
@@ -308,8 +306,7 @@ describe Statesman::Machine do
         before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
 
         context "and an object to act on" do
-          let(:my_model) { Class.new { attr_accessor :current_state }.new }
-          let(:instance) { machine.new(object: my_model) }
+          let(:instance) { machine.new(my_model) }
 
           it "passes the object to the guard" do
             guard_cb.should_receive(:call).once.with(my_model).and_return(true)
@@ -365,7 +362,7 @@ describe Statesman::Machine do
   end
 
   describe "#transition_to" do
-    let(:instance) { machine.new }
+    let(:instance) { machine.new(my_model) }
     let(:metadata) { { some: :metadata } }
     subject { instance.transition_to(:some_state, metadata) }
 
@@ -396,7 +393,7 @@ describe Statesman::Machine do
       end
     end
 
-    let(:instance) { machine.new }
+    let(:instance) { machine.new(my_model) }
     let(:callbacks) { instance.send(getter, from: :x, to: :y) }
 
     context "with no defined callbacks" do
