@@ -116,6 +116,14 @@ describe Statesman::Machine do
   end
 
   shared_examples "a callback store" do |assignment_method, callback_store|
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        transition from: :x, to: :y
+      end
+    end
+
     it "stores callbacks" do
       expect do
         machine.send(assignment_method) {}
@@ -130,10 +138,38 @@ describe Statesman::Machine do
       end
     end
 
-    it "raises an exception when invalid states are passed" do
-      expect do
-        machine.send(assignment_method, from: :foo, to: :bar)
-      end.to raise_error(Statesman::InvalidStateError)
+    context "with invalid states" do
+      it "raises an exception when both are invalid" do
+        expect do
+          machine.send(assignment_method, from: :foo, to: :bar) {}
+        end.to raise_error(Statesman::InvalidStateError)
+      end
+
+      it "raises an exception with a terminal from state and nil to state" do
+        expect do
+          machine.send(assignment_method, from: :y) {}
+        end.to raise_error(Statesman::InvalidTransitionError)
+      end
+
+      it "raises an exception with an initial to state and nil from state" do
+        expect do
+          machine.send(assignment_method, to: :x) {}
+        end.to raise_error(Statesman::InvalidTransitionError)
+      end
+    end
+
+    context "with validate_states" do
+      it "allows a nil from state" do
+        expect do
+          machine.send(assignment_method, to: :y) {}
+        end.to_not raise_error
+      end
+
+      it "allows a nil to state" do
+        expect do
+          machine.send(assignment_method, from: :x) {}
+        end.to_not raise_error
+      end
     end
   end
 

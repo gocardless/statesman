@@ -84,6 +84,8 @@ module Statesman
                 "Cannont transition to initial state '#{from}'"
         end
 
+        return if from.nil? || to.nil?
+
         # Check that the transition is valid when 'from' and 'to' are given
         unless successors.fetch(from, []).include?(to)
           raise InvalidTransitionError,
