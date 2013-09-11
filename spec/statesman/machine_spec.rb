@@ -213,6 +213,29 @@ describe Statesman::Machine do
     end
   end
 
+  describe "#can_transition_to?" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        transition from: :x, to: :y
+      end
+    end
+
+    let(:instance) { machine.new }
+    subject { instance.can_transition_to?(new_state) }
+
+    context "when the transition is invalid" do
+      let(:new_state) { :x }
+      it { should be_false }
+    end
+
+    context "when the transition invalid" do
+      let(:new_state) { :y }
+      it { should be_true }
+    end
+  end
+
   describe "#transition_to!" do
     before do
       machine.class_eval do

@@ -119,6 +119,13 @@ module Statesman
       last_action ? last_action.to : self.class.initial_state
     end
 
+    def can_transition_to?(new_state)
+      validate_transition(from: current_state, to: new_state)
+      true
+    rescue InvalidTransitionError
+      false
+    end
+
     def history
       @storage_adapter.history
     end
