@@ -4,4 +4,6 @@ machine:
 test:
   pre:
     - bundle exec rubocop
-
+database:
+  override:
+    -
