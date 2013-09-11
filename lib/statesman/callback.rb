@@ -16,8 +16,8 @@ module Statesman
       @callback = callback
     end
 
-    def call
-      callback.call
+    def call(*args)
+      callback.call(*args)
     end
 
     def applies_to?(from: nil, to: nil)

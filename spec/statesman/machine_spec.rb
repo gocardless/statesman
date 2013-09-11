@@ -275,10 +275,21 @@ describe Statesman::Machine do
       end
 
       context "with a guard" do
-        before { machine.guard_transition(from: :x, to: :y) { result } }
-        context "which passes" do
-          let(:result) { true }
+        let(:result) { true }
+        let(:guard_cb) { -> (*args) { result } }
+        before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
 
+        context "and an object to act on" do
+          let(:my_model) { Class.new { attr_accessor :current_state }.new }
+          let(:instance) { machine.new(object: my_model) }
+
+          it "passes the object to the guard" do
+            guard_cb.should_receive(:call).once.with(my_model).and_return(true)
+            instance.transition_to!(:y)
+          end
+        end
+
+        context "which passes" do
           it "changes state" do
             instance.transition_to!(:y)
             expect(instance.current_state).to eq(:y)
@@ -298,7 +309,7 @@ describe Statesman::Machine do
 
       context "with a before callback" do
         let(:spy) { double.as_null_object }
-        let(:callback) { -> { spy.call } }
+        let(:callback) { -> (*args) { spy.call } }
         before { machine.before_transition(from: :x, to: :y, &callback) }
 
         it "is called before the state transition" do

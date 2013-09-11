@@ -126,13 +126,21 @@ module Statesman
     def transition_to!(new_state)
       validate_transition(from: current_state, to: new_state)
 
-      guards_for(from: current_state, to: new_state).each(&:call)
-      before_callbacks_for(from: current_state, to: new_state).each(&:call)
+      guards_for(from: current_state, to: new_state).each do |guard|
+        guard.call(@object)
+      end
+
+      before_callbacks_for(from: current_state, to: new_state).each do |cb|
+        cb.call(@object)
+      end
 
       @storage_adapter.create(current_state, new_state)
       @object.send("#{@state_attr}=", current_state) unless @object.nil?
 
-      after_callbacks_for(from: current_state, to: new_state).each(&:call)
+      after_callbacks_for(from: current_state, to: new_state).each do |cb|
+        cb.call(@object)
+      end
+
       current_state
     end
 
