@@ -6,4 +6,4 @@ test:
     - bundle exec rubocop
 database:
   override:
-    -
+    - echo ""
