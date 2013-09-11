@@ -9,8 +9,11 @@ module Statesman
         @parent_model = parent_model
       end
 
-      def create(from, to)
-        transitions_for_parent.create(from: from, to: to)
+      def create(from, to, metadata = nil)
+        transition = transitions_for_parent.create(from: from, to: to)
+        conditionally_set_metadata(transition, metadata)
+        transition.save!
+        transition
       end
 
       def history
@@ -25,6 +28,12 @@ module Statesman
 
       def transitions_for_parent
         @parent_model.send(@transition_class.table_name)
+      end
+
+      def conditionally_set_metadata(transition, metadata)
+        if transition.respond_to?(:metadata=)
+          transition.metadata = metadata.to_json unless metadata.nil?
+        end
       end
     end
   end

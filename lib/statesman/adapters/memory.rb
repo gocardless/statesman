@@ -11,14 +11,21 @@ module Statesman
         @parent_model = parent_model
       end
 
-      def create(from, to)
-        new_transistion = transition_class.new(from, to)
+      def create(from, to, metadata = nil)
+        metadata = metadata_to_json(metadata)
+        new_transistion = transition_class.new(from, to, metadata)
         @history << new_transistion
         new_transistion
       end
 
       def last
         @history.sort_by(&:created_at).last
+      end
+
+      private
+
+      def metadata_to_json(metadata)
+        metadata.to_json unless metadata.nil?
       end
     end
   end

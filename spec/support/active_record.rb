@@ -19,13 +19,14 @@ class CreateMyModelMigration < ActiveRecord::Migration
   end
 end
 
-# TODO: make this a module we can extend from the app
+# TODO: make this a module we can extend from the app?
 class CreateMyModelTransitionMigration < ActiveRecord::Migration
   def change
     create_table :my_model_transitions do |t|
       t.string  :from
       t.string  :to
       t.integer :my_model_id
+      t.text    :metadata
       t.timestamps
     end
   end

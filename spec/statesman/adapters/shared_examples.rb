@@ -28,10 +28,16 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
     it { should change(adapter.history, :count).by(1) }
 
     context "the new transition" do
-      let(:subject) { create }
+      subject { create }
       it { should be_a(transition_class) }
       its(:from) { should be(from) }
       its(:to) { should be(to) }
+    end
+
+    context "with metadata" do
+      let(:metadata) { { some: :hash } }
+      subject { adapter.create(from, to, metadata) }
+      its(:metadata) { should eq(metadata.to_json) }
     end
   end
 
