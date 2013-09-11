@@ -250,6 +250,12 @@ describe Statesman::Machine do
         expect(instance.history.first.to).to be(:y)
       end
 
+      it "sends metadata to the transition object" do
+        meta = { my: :hash }
+        instance.transition_to!(:y, meta)
+        expect(instance.history.first.metadata).to eq(meta.to_json)
+      end
+
       it "returns the new state" do
         expect(instance.transition_to!(:y)).to be(:y)
       end
@@ -338,10 +344,14 @@ describe Statesman::Machine do
 
   describe "#transition_to" do
     let(:instance) { machine.new }
-    subject { instance.transition_to(:some_state) }
+    let(:metadata) { { some: :metadata } }
+    subject { instance.transition_to(:some_state, metadata) }
 
     context "when it is succesful" do
-      before { instance.stub(:transition_to!).and_return(:some_state) }
+      before do
+        instance.should_receive(:transition_to!).once
+          .with(:some_state, metadata).and_return(:some_state)
+      end
       it { should be(:some_state) }
     end
 
