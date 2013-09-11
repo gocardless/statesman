@@ -5,7 +5,8 @@ require "spec_helper"
 #   transition_class: Returns the transition class object passed to initialize.
 #   parent_model:     Returns the model class object passed to initialize.
 #   create:           Accepts from, to and optional metadata. Creates a new
-#                     transition class
+#                     transition class and transforms metadata to a JSON
+#                     string.
 #   history:          Returns the full transition history
 #   last:             Returns the latest transition history item
 #
