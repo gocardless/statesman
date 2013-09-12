@@ -303,8 +303,7 @@ describe Statesman::Machine do
         end.to change(instance.history, :count).by(1)
 
         expect(instance.history.first).to be_a(Statesman::Transition)
-        expect(instance.history.first.from).to be(:x)
-        expect(instance.history.first.to).to be(:y)
+        expect(instance.history.first.to_state).to be(:y)
       end
 
       it "sends metadata to the transition object" do

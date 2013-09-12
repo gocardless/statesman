@@ -119,7 +119,7 @@ module Statesman
 
     def current_state
       last_action = @storage_adapter.last
-      last_action ? last_action.to : self.class.initial_state
+      last_action ? last_action.to_state : self.class.initial_state
     end
 
     def can_transition_to?(new_state)
@@ -144,7 +144,7 @@ module Statesman
         cb.call(@object)
       end
 
-      @storage_adapter.create(current_state, new_state, metadata)
+      @storage_adapter.create(new_state, metadata)
 
       after_callbacks_for(from: current_state, to: new_state).each do |cb|
         cb.call(@object)

@@ -5,7 +5,7 @@ require "spec_helper"
 #   transition_class: Returns the transition class object passed to initialize.
 #   parent_model:     Returns the model class object passed to initialize.
 #   state_attr:       Returns the state attribute to set on the parent.
-#   create:           Accepts from, to and optional metadata. Creates a new
+#   create:           Accepts to_state and optional metadata. Creates a new
 #                     transition class and transforms metadata to a JSON
 #                     string.
 #   history:          Returns the full transition history
@@ -23,9 +23,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
   end
 
   describe "#create" do
-    let(:from) { :x }
     let(:to) { :y }
-    let(:create) { adapter.create(from, to) }
+    let(:create) { adapter.create(to) }
     subject { -> { create } }
 
     it { should change(adapter.history, :count).by(1) }
@@ -33,18 +32,17 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
     context "the new transition" do
       subject { create }
       it { should be_a(transition_class) }
-      its(:from) { should be(from) }
-      its(:to) { should be(to) }
+      its(:to_state) { should be(to) }
     end
 
     context "with metadata" do
       let(:metadata) { { some: :hash } }
-      subject { adapter.create(from, to, metadata) }
+      subject { adapter.create(to, metadata) }
       its(:metadata) { should eq(metadata.to_json) }
     end
 
     context "with a parent_model and state_attr" do
-      before { adapter.create(from, to) }
+      before { adapter.create(to) }
       subject { model.current_state }
       it { should eq(to) }
     end
@@ -55,20 +53,19 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
     it { should eq([]) }
 
     context "with transitions" do
-      let!(:transition) { adapter.create(:x, :y) }
+      let!(:transition) { adapter.create(:y) }
       it { should eq([transition]) }
     end
   end
 
   describe "#last" do
     before do
-      adapter.create(:x, :y)
-      adapter.create(:y, :z)
+      adapter.create(:y)
+      adapter.create(:z)
     end
     subject { adapter.last }
 
     it { should be_a(transition_class) }
-    specify { expect(adapter.last.from.to_sym).to eq(:y) }
-    specify { expect(adapter.last.to.to_sym).to eq(:z) }
+    specify { expect(adapter.last.to_state.to_sym).to eq(:z) }
   end
 end

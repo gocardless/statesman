@@ -13,9 +13,9 @@ module Statesman
         @state_attr = state_attr
       end
 
-      def create(from, to, metadata = nil)
+      def create(to, metadata = nil)
         metadata = metadata_to_json(metadata)
-        new_transistion = transition_class.new(from, to, metadata)
+        new_transistion = transition_class.new(to, metadata)
         @history << new_transistion
         set_model_state(to)
         new_transistion

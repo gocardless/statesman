@@ -13,8 +13,8 @@ module Statesman
         @state_attr = state_attr
       end
 
-      def create(from, to, metadata = nil)
-        transition = transitions_for_parent.create(from: from, to: to)
+      def create(to, metadata = nil)
+        transition = transitions_for_parent.create(to_state: to)
         conditionally_set_metadata(transition, metadata)
 
         parent_model.send("#{state_attr}=", to)

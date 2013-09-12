@@ -19,13 +19,13 @@ class CreateMyModelMigration < ActiveRecord::Migration
   end
 end
 
-# TODO: make this a module we can extend from the app?
+# TODO: make this a module we can extend from the app? Or a generator?
 class CreateMyModelTransitionMigration < ActiveRecord::Migration
   def change
     create_table :my_model_transitions do |t|
-      t.string  :from
-      t.string  :to
+      t.string  :to_state
       t.integer :my_model_id
+      t.integer :order
       t.text    :metadata
       t.timestamps
     end
