@@ -178,7 +178,8 @@ module Statesman
     end
 
     def validate_transition(from: nil, to: nil)
-      unless self.class.successors[from].include?(to)
+      successors = self.class.successors[from] || []
+      unless successors.include?(to)
         raise InvalidTransitionError,
               "Cannot transition from '#{from}' to '#{to}'"
       end

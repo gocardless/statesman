@@ -260,11 +260,19 @@ describe Statesman::Machine do
     subject { instance.can_transition_to?(new_state) }
 
     context "when the transition is invalid" do
-      let(:new_state) { :x }
-      it { should be_false }
+      context "with an initial to state" do
+        let(:new_state) { :x }
+        it { should be_false }
+      end
+
+      context "with a terminal from state" do
+        before { instance.transition_to!(:y) }
+        let(:new_state) { :y }
+        it { should be_false }
+      end
     end
 
-    context "when the transition invalid" do
+    context "when the transition valid" do
       let(:new_state) { :y }
       it { should be_true }
     end
