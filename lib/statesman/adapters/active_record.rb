@@ -14,7 +14,8 @@ module Statesman
       end
 
       def create(to, metadata = nil)
-        transition = transitions_for_parent.create(to_state: to)
+        transition = transitions_for_parent.create(to_state: to,
+                                                   sort_key: next_sort_key)
         conditionally_set_metadata(transition, metadata)
 
         parent_model.send("#{state_attr}=", to)
@@ -28,7 +29,7 @@ module Statesman
       end
 
       def last
-        transitions_for_parent.order(:created_at).last
+        transitions_for_parent.order(:sort_key).last
       end
 
       private
@@ -45,6 +46,10 @@ module Statesman
         if transition.respond_to?(:metadata=)
           transition.metadata = metadata.to_json unless metadata.nil?
         end
+      end
+
+      def next_sort_key
+        (last && last.sort_key + 10) || 0
       end
     end
   end

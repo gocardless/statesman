@@ -15,14 +15,14 @@ module Statesman
 
       def create(to, metadata = nil)
         metadata = metadata_to_json(metadata)
-        new_transistion = transition_class.new(to, metadata)
+        new_transistion = transition_class.new(to, next_sort_key, metadata)
         @history << new_transistion
         set_model_state(to)
         new_transistion
       end
 
       def last
-        @history.sort_by(&:created_at).last
+        @history.sort_by(&:sort_key).last
       end
 
       private
@@ -35,6 +35,10 @@ module Statesman
 
       def metadata_to_json(metadata)
         metadata.to_json unless metadata.nil?
+      end
+
+      def next_sort_key
+        (last && last.sort_key + 10) || 0
       end
     end
   end

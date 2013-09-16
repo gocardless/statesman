@@ -33,6 +33,15 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
       subject { create }
       it { should be_a(transition_class) }
       its(:to_state) { should be(to) }
+
+      context "with no previous transition" do
+        its(:sort_key) { should be(0) }
+      end
+
+      context "with a previous transition" do
+        before { adapter.create(:x, 0) }
+        its(:sort_key) { should be(10) }
+      end
     end
 
     context "with metadata" do

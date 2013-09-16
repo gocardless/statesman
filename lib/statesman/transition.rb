@@ -2,11 +2,13 @@ module Statesman
   class Transition
     attr_accessor :created_at
     attr_accessor :to_state
+    attr_accessor :sort_key
     attr_accessor :metadata
 
-    def initialize(to, metadata = nil)
+    def initialize(to, sort_key, metadata = nil)
       @created_at = Time.now
       @to_state = to
+      @sort_key = sort_key
       @metadata = metadata
     end
   end

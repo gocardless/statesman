@@ -25,9 +25,11 @@ class CreateMyModelTransitionMigration < ActiveRecord::Migration
     create_table :my_model_transitions do |t|
       t.string  :to_state
       t.integer :my_model_id
-      t.integer :order
+      t.integer :sort_key
       t.text    :metadata
       t.timestamps
     end
+
+    add_index :my_model_transitions, :sort_key, unique: true
   end
 end
