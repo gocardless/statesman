@@ -119,7 +119,7 @@ module Statesman
 
     def current_state
       last_action = @storage_adapter.last
-      last_action ? last_action.to_state : self.class.initial_state
+      (last_action ? last_action.to_state : self.class.initial_state).to_sym
     end
 
     def can_transition_to?(new_state)
