@@ -1,3 +1,5 @@
+require "json"
+
 module Statesman
   module Adapters
     class Memory

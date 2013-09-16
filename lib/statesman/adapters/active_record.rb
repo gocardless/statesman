@@ -1,3 +1,4 @@
+require "json"
 require "active_record"
 
 module Statesman
