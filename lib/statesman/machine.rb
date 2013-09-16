@@ -175,7 +175,6 @@ module Statesman
 
     def validate_transition(from: nil, to: nil)
       # Call all guards, they raise exceptions if they fail
-      # p guards_for(from: from, to: to)
       guards_for(from: from, to: to).each { |guard| guard.call(@object) }
 
       successors = self.class.successors[from] || []
