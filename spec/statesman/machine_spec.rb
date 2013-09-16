@@ -275,6 +275,11 @@ describe Statesman::Machine do
     context "when the transition valid" do
       let(:new_state) { :y }
       it { should be_true }
+
+      context "but it has a failing guard" do
+        before { machine.guard_transition(to: :y) { false } }
+        it { should be_false }
+      end
     end
   end
 

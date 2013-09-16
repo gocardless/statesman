@@ -125,7 +125,7 @@ module Statesman
     def can_transition_to?(new_state)
       validate_transition(from: current_state, to: new_state)
       true
-    rescue InvalidTransitionError
+    rescue InvalidTransitionError, GuardFailedError
       false
     end
 
@@ -135,10 +135,6 @@ module Statesman
 
     def transition_to!(new_state, metadata = nil)
       validate_transition(from: current_state, to: new_state)
-
-      guards_for(from: current_state, to: new_state).each do |guard|
-        guard.call(@object)
-      end
 
       before_callbacks_for(from: current_state, to: new_state).each do |cb|
         cb.call(@object)
@@ -178,6 +174,10 @@ module Statesman
     end
 
     def validate_transition(from: nil, to: nil)
+      # Call all guards, they raise exceptions if they fail
+      # p guards_for(from: from, to: to)
+      guards_for(from: from, to: to).each { |guard| guard.call(@object) }
+
       successors = self.class.successors[from] || []
       unless successors.include?(to)
         raise InvalidTransitionError,
