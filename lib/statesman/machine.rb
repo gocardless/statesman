@@ -134,15 +134,16 @@ module Statesman
     end
 
     def transition_to!(new_state, metadata = nil)
-      validate_transition(from: current_state, to: new_state)
+      initial_state = current_state
+      validate_transition(from: initial_state, to: new_state)
 
-      before_callbacks_for(from: current_state, to: new_state).each do |cb|
+      before_callbacks_for(from: initial_state, to: new_state).each do |cb|
         cb.call(@object)
       end
 
       @storage_adapter.create(new_state, metadata)
 
-      after_callbacks_for(from: current_state, to: new_state).each do |cb|
+      after_callbacks_for(from: initial_state, to: new_state).each do |cb|
         cb.call(@object)
       end
 

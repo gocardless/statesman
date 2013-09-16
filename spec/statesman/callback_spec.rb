@@ -94,13 +94,13 @@ describe Statesman::Callback do
       end
     end
 
-    context "with allowed 'form' and 'to' values" do
+    context "with allowed 'from' and 'to' values" do
       let(:from) { :x }
       let(:to) { :y }
       it { should be_true }
     end
 
-    context "with disallowed 'form' and 'to' values" do
+    context "with disallowed 'from' and 'to' values" do
       let(:from) { :a }
       let(:to) { :b }
       it { should be_false }
