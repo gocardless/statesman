@@ -23,7 +23,9 @@ module Statesman
     def applies_to?(from: nil, to: nil)
       # rubocop:disable RedundantSelf
       (from.nil? && to == self.to) ||
+      (self.from.nil? && to == self.to) ||
       (from == self.from && to.nil?) ||
+      (from == self.from && self.to.nil?) ||
       (from == self.from && to == self.to)
       # rubocop:enable RedundantSelf
     end

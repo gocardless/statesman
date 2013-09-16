@@ -60,6 +60,40 @@ describe Statesman::Callback do
       end
     end
 
+    context "with any from value on the callback" do
+      let(:callback) do
+        Statesman::Callback.new(to: :y, callback: cb_lambda)
+      end
+      let(:from) { :x }
+
+      context "and an allowed to value" do
+        let(:to) { :y }
+        it { should be_true }
+      end
+
+      context "and a disallowed to value" do
+        let(:to) { :a }
+        it { should be_false }
+      end
+    end
+
+    context "with any to value on the callback" do
+      let(:callback) do
+        Statesman::Callback.new(from: :x, callback: cb_lambda)
+      end
+      let(:to) { :y }
+
+      context "and an allowed to value" do
+        let(:from) { :x }
+        it { should be_true }
+      end
+
+      context "and a disallowed to value" do
+        let(:from) { :a }
+        it { should be_false }
+      end
+    end
+
     context "with allowed 'form' and 'to' values" do
       let(:from) { :x }
       let(:to) { :y }
