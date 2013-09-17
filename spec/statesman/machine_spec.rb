@@ -396,7 +396,7 @@ describe Statesman::Machine do
 
       context "with an after callback" do
         let(:spy) { double.as_null_object }
-        let(:callback) { -> { spy.call } }
+        let(:callback) { -> (*args) { spy.call } }
         before { machine.after_transition(from: :x, to: :y, &callback) }
 
         it "is called after the state transition" do
