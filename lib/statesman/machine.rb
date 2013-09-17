@@ -46,10 +46,9 @@ module Statesman
 
       def transition(from: nil, to: nil)
         from = to_s_or_nil(from)
-        to   = to_s_or_nil(to)
+        to = Array(to).map { |item| to_s_or_nil(item) }
 
         successors[from] ||= []
-        to = Array(to)
 
         ([from] + to).each { |state| validate_state(state) }
 
