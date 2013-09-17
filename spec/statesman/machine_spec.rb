@@ -7,11 +7,11 @@ describe Statesman::Machine do
   describe ".state" do
     before { machine.state(:x) }
     before { machine.state(:y) }
-    specify { expect(machine.states).to eq([:x, :y]) }
+    specify { expect(machine.states).to eq(%w(x y)) }
 
     context "initial" do
       before { machine.state(:x, initial: true) }
-      specify { expect(machine.initial_state).to be(:x) }
+      specify { expect(machine.initial_state).to eq("x") }
 
       context "when an initial state is already defined" do
         it "raises an error" do
@@ -60,7 +60,7 @@ describe Statesman::Machine do
       it "records the transition" do
         machine.transition(from: :x, to: :y)
         machine.transition(from: :x, to: :z)
-        expect(machine.successors).to eq(x: [:y, :z])
+        expect(machine.successors).to eq("x" => %w(y z))
       end
     end
   end
@@ -222,7 +222,7 @@ describe Statesman::Machine do
     subject { instance.current_state }
 
     context "with no transitions" do
-      it { should be(machine.initial_state) }
+      it { should eq(machine.initial_state) }
     end
 
     context "with multiple transitions" do
@@ -231,7 +231,7 @@ describe Statesman::Machine do
         instance.transition_to!(:z)
       end
 
-      it { should be(:z) }
+      it { should eq("z") }
     end
   end
 
@@ -295,7 +295,7 @@ describe Statesman::Machine do
     context "when the state can be transitioned to" do
       it "changes state" do
         instance.transition_to!(:y)
-        expect(instance.current_state).to eq(:y)
+        expect(instance.current_state).to eq("y")
       end
 
       it "creates a new transition object" do
@@ -304,7 +304,7 @@ describe Statesman::Machine do
         end.to change(instance.history, :count).by(1)
 
         expect(instance.history.first).to be_a(Statesman::Transition)
-        expect(instance.history.first.to_state).to be(:y)
+        expect(instance.history.first.to_state).to eq("y")
       end
 
       it "sends metadata to the transition object" do
@@ -314,7 +314,7 @@ describe Statesman::Machine do
       end
 
       it "returns the new state" do
-        expect(instance.transition_to!(:y)).to be(:y)
+        expect(instance.transition_to!(:y)).to eq("y")
       end
 
       context "with a guard" do
@@ -334,7 +334,7 @@ describe Statesman::Machine do
         context "which passes" do
           it "changes state" do
             instance.transition_to!(:y)
-            expect(instance.current_state).to eq(:y)
+            expect(instance.current_state).to eq("y")
           end
         end
 
@@ -356,10 +356,10 @@ describe Statesman::Machine do
 
         it "is called before the state transition" do
           spy.should_recieve(:call).once do
-            expect(instance.current_state).to eq(:x)
+            expect(instance.current_state).to eq("x")
           end
           instance.transition_to!(:y)
-          expect(instance.current_state).to eq(:y)
+          expect(instance.current_state).to eq("y")
         end
       end
 
@@ -370,7 +370,7 @@ describe Statesman::Machine do
 
         it "is called after the state transition" do
           spy.should_recieve(:call).once do
-            expect(instance.current_state).to eq(:y)
+            expect(instance.current_state).to eq("y")
           end
           instance.transition_to!(:y)
         end
