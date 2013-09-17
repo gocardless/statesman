@@ -6,20 +6,17 @@ module Statesman
     class ActiveRecord
       attr_reader :transition_class
       attr_reader :parent_model
-      attr_reader :state_attr
 
-      def initialize(transition_class, parent_model, state_attr)
+      def initialize(transition_class, parent_model)
         @transition_class = transition_class
         @parent_model = parent_model
-        @state_attr = state_attr
       end
 
       def create(to, metadata = nil)
         transition = transitions_for_parent.create(to_state: to,
                                                    sort_key: next_sort_key)
-        conditionally_set_metadata(transition, metadata)
 
-        parent_model.send("#{state_attr}=", to)
+        conditionally_set_metadata(transition, metadata)
         save_in_transaction(transition, parent_model)
 
         transition

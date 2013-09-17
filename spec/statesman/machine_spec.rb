@@ -194,27 +194,15 @@ describe Statesman::Machine do
     context "transition class" do
       it "sets a default" do
         Statesman.storage_adapter.should_receive(:new).once
-          .with(Statesman::Transition, my_model, :current_state)
+          .with(Statesman::Transition, my_model)
         machine.new(my_model)
       end
 
       it "sets the passed class" do
         my_transition_class = Class.new
         Statesman.storage_adapter.should_receive(:new).once
-          .with(my_transition_class, my_model, :current_state)
+          .with(my_transition_class, my_model)
         machine.new(my_model, transition_class: my_transition_class)
-      end
-    end
-
-    context "state_attr" do
-      it "sets a default" do
-        my_machine = machine.new(my_model)
-        expect(my_machine.state_attr).to be(:current_state)
-      end
-
-      it "sets the passed value" do
-        my_machine = machine.new(my_model, state_attr: :beans)
-        expect(my_machine.state_attr).to be(:beans)
       end
     end
   end
@@ -327,25 +315,6 @@ describe Statesman::Machine do
 
       it "returns the new state" do
         expect(instance.transition_to!(:y)).to be(:y)
-      end
-
-      context "with an object" do
-        let(:instance) { machine.new(my_model) }
-
-        it "updates the object's state attr" do
-          instance.transition_to!(:y)
-          expect(my_model.current_state).to be(:y)
-        end
-
-        context "and a custom state attr" do
-          let(:my_model) { Class.new { attr_accessor :status }.new }
-          let(:instance) { machine.new(my_model, state_attr: :status) }
-
-          it "updates the object's state attr" do
-            instance.transition_to!(:y)
-            expect(my_model.status).to be(:y)
-          end
-        end
       end
 
       context "with a guard" do

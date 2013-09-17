@@ -12,13 +12,12 @@ require "spec_helper"
 #   last:             Returns the latest transition history item
 #
 shared_examples_for "an adapter" do |adapter_class, transition_class|
-  let(:adapter) { adapter_class.new(transition_class, model, :current_state) }
+  let(:adapter) { adapter_class.new(transition_class, model) }
 
   describe "#initialize" do
     subject { adapter }
     its(:transition_class) { should be(transition_class) }
     its(:parent_model) { should be(model) }
-    its(:state_attr) { should be(:current_state) }
     its(:history) { should eq([]) }
   end
 
@@ -48,12 +47,6 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
       let(:metadata) { { some: :hash } }
       subject { adapter.create(to, metadata) }
       its(:metadata) { should eq(metadata.to_json) }
-    end
-
-    context "with a parent_model and state_attr" do
-      before { adapter.create(to) }
-      subject { model.current_state }
-      it { should eq(to) }
     end
   end
 
