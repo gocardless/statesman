@@ -235,6 +235,17 @@ describe Statesman::Machine do
     end
   end
 
+  describe "#last_transition" do
+    let(:instance) { machine.new(my_model) }
+    let(:last_action) { "Whatever" }
+
+    it "delegates to the storage adapter" do
+      Statesman.storage_adapter.any_instance.should_receive(:last).once
+        .and_return(last_action)
+      expect(instance.last_transition).to be(last_action)
+    end
+  end
+
   describe "#can_transition_to?" do
     before do
       machine.class_eval do
