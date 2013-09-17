@@ -337,7 +337,8 @@ describe Statesman::Machine do
           let(:instance) { machine.new(my_model) }
 
           it "passes the object to the guard" do
-            guard_cb.should_receive(:call).once.with(my_model).and_return(true)
+            guard_cb.should_receive(:call).once
+              .with(my_model, instance.last_transition).and_return(true)
             instance.transition_to!(:y)
           end
         end
@@ -366,9 +367,9 @@ describe Statesman::Machine do
         before { machine.before_transition(from: :x, to: :y, &callback) }
 
         it "is called before the state transition" do
-          spy.should_recieve(:call).once do
+          spy.should_recieve(:call).with(my_model, instance.last_transition) do
             expect(instance.current_state).to eq("x")
-          end
+          end.once
           instance.transition_to!(:y)
           expect(instance.current_state).to eq("y")
         end
@@ -380,9 +381,9 @@ describe Statesman::Machine do
         before { machine.after_transition(from: :x, to: :y, &callback) }
 
         it "is called after the state transition" do
-          spy.should_recieve(:call).once do
+          spy.should_recieve(:call).with(my_model, instance.last_transition) do
             expect(instance.current_state).to eq("y")
-          end
+          end.once
           instance.transition_to!(:y)
         end
       end

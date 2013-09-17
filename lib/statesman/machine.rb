@@ -171,13 +171,13 @@ module Statesman
       validate_transition(from: initial_state, to: new_state)
 
       before_callbacks_for(from: initial_state, to: new_state).each do |cb|
-        cb.call(@object)
+        cb.call(@object, last_transition)
       end
 
       @storage_adapter.create(new_state, metadata)
 
       after_callbacks_for(from: initial_state, to: new_state).each do |cb|
-        cb.call(@object)
+        cb.call(@object, last_transition)
       end
 
       current_state
@@ -214,7 +214,9 @@ module Statesman
       to   = to_s_or_nil(to)
 
       # Call all guards, they raise exceptions if they fail
-      guards_for(from: from, to: to).each { |guard| guard.call(@object) }
+      guards_for(from: from, to: to).each do |guard|
+        guard.call(@object, last_transition)
+      end
 
       successors = self.class.successors[from] || []
       unless successors.include?(to)
