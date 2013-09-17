@@ -122,7 +122,7 @@ module Statesman
       private
 
       def validate_state(state)
-        unless states.include?(state)
+        unless states.include?(state.to_s)
           raise InvalidStateError, "Invalid state '#{state}'"
         end
       end
