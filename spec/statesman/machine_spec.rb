@@ -299,7 +299,7 @@ describe Statesman::Machine do
       it "raises an error" do
         expect do
           instance.transition_to!(:z)
-        end.to raise_error(Statesman::InvalidTransitionError)
+        end.to raise_error(Statesman::TransitionFailedError)
       end
     end
 

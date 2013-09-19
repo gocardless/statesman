@@ -3,4 +3,5 @@ module Statesman
   class InvalidTransitionError < StandardError; end
   class InvalidCallbackError < StandardError; end
   class GuardFailedError < StandardError; end
+  class TransitionFailedError < StandardError; end
 end

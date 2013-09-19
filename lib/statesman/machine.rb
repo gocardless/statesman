@@ -156,7 +156,7 @@ module Statesman
     def can_transition_to?(new_state)
       validate_transition(from: current_state, to: new_state)
       true
-    rescue InvalidTransitionError, GuardFailedError
+    rescue TransitionFailedError, GuardFailedError
       false
     end
 
@@ -220,7 +220,7 @@ module Statesman
 
       successors = self.class.successors[from] || []
       unless successors.include?(to)
-        raise InvalidTransitionError,
+        raise TransitionFailedError,
               "Cannot transition from '#{from}' to '#{to}'"
       end
     end
