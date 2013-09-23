@@ -170,15 +170,10 @@ module Statesman
 
       validate_transition(from: initial_state, to: new_state)
 
-      before_callbacks_for(from: initial_state, to: new_state).each do |cb|
-        cb.call(@object, last_transition)
-      end
+      before_cbs = before_callbacks_for(from: initial_state, to: new_state)
+      after_cbs = after_callbacks_for(from: initial_state, to: new_state)
 
-      @storage_adapter.create(new_state, metadata)
-
-      after_callbacks_for(from: initial_state, to: new_state).each do |cb|
-        cb.call(@object, last_transition)
-      end
+      @storage_adapter.create(new_state, before_cbs, after_cbs, metadata)
 
       true
     end

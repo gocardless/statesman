@@ -12,12 +12,16 @@ module Statesman
         @parent_model = parent_model
       end
 
-      def create(to, metadata = nil)
-        transition = transitions_for_parent.create(to_state: to,
-                                                   sort_key: next_sort_key)
-
+      def create(to, before_cbs, after_cbs, metadata = nil)
+        transition = transitions_for_parent.build(to_state: to,
+                                                  sort_key: next_sort_key)
         conditionally_set_metadata(transition, metadata)
-        save_in_transaction(transition, parent_model)
+
+        ::ActiveRecord::Base.transaction do
+          before_cbs.each { |cb| cb.call(@parent_model, transition) }
+          transition.save!
+          after_cbs.each { |cb| cb.call(@parent_model, transition) }
+        end
 
         transition
       end
@@ -31,10 +35,6 @@ module Statesman
       end
 
       private
-
-      def save_in_transaction(*args)
-        ::ActiveRecord::Base.transaction { args.each(&:save!) }
-      end
 
       def transitions_for_parent
         @parent_model.send(@transition_class.table_name)

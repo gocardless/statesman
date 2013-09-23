@@ -9,17 +9,21 @@ module Statesman
 
       # We only accept mode as a parameter to maintain a consistent interface
       # with other adapters which require it.
-      def initialize(transition_class, model)
+      def initialize(transition_class, parent_model)
         @history = []
         @transition_class = transition_class
-        @parent_model = model
+        @parent_model = parent_model
       end
 
-      def create(to, metadata = nil)
+      def create(to, before_cbs, after_cbs, metadata = nil)
         metadata = metadata_to_json(metadata)
-        new_transistion = transition_class.new(to, next_sort_key, metadata)
-        @history << new_transistion
-        new_transistion
+        transition = transition_class.new(to, next_sort_key, metadata)
+
+        before_cbs.each { |cb| cb.call(@parent_model, transition) }
+        @history << transition
+        after_cbs.each { |cb| cb.call(@parent_model, transition) }
+
+        transition
       end
 
       def last

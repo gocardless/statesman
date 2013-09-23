@@ -362,28 +362,23 @@ describe Statesman::Machine do
       end
 
       context "with a before callback" do
-        let(:spy) { double.as_null_object }
-        let(:callback) { -> (*args) { spy.call } }
-        before { machine.before_transition(from: :x, to: :y, &callback) }
+        let(:callbacks) { [] }
+        before { instance.stub(:before_callbacks_for).and_return(callbacks) }
 
-        it "is called before the state transition" do
-          spy.should_recieve(:call).with(my_model, instance.last_transition) do
-            expect(instance.current_state).to eq("x")
-          end.once
+        it "is passed to the adapter" do
+          Statesman::Adapters::Memory.any_instance.should_receive(:create)
+            .with("y", callbacks, anything, anything)
           instance.transition_to!(:y)
-          expect(instance.current_state).to eq("y")
         end
       end
 
       context "with an after callback" do
-        let(:spy) { double.as_null_object }
-        let(:callback) { -> (*args) { spy.call } }
-        before { machine.after_transition(from: :x, to: :y, &callback) }
+        let(:callbacks) { [] }
+        before { instance.stub(:after_callbacks_for).and_return(callbacks) }
 
-        it "is called after the state transition" do
-          spy.should_recieve(:call).with(my_model, instance.last_transition) do
-            expect(instance.current_state).to eq("y")
-          end.once
+        it "is passed to the adapter" do
+          Statesman::Adapters::Memory.any_instance.should_receive(:create)
+            .with("y", anything, callbacks, anything)
           instance.transition_to!(:y)
         end
       end
