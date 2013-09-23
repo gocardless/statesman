@@ -180,7 +180,7 @@ module Statesman
         cb.call(@object, last_transition)
       end
 
-      current_state
+      true
     end
 
     def transition_to(new_state, metadata = nil)

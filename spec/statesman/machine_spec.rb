@@ -324,8 +324,8 @@ describe Statesman::Machine do
         expect(instance.history.first.metadata).to eq(meta.to_json)
       end
 
-      it "returns the new state" do
-        expect(instance.transition_to!(:y)).to eq("y")
+      it "returns true" do
+        expect(instance.transition_to!(:y)).to be_true
       end
 
       context "with a guard" do
