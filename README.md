@@ -84,30 +84,36 @@ end
 and on machine initialization:
 
 ```ruby
-  my_state_machine = MyStateMachine.new(my_model_instance,
-                                        transition_class: MyTransition)
+MyStateMachine.new(my_model_instance, transition_class: MyTransition)
 ```
 
 ## Configuration
 
+#### `storage_adapter`
 
+```ruby
+Statesman.configure do
+  storage_adapter(Statesman::Adapters::ActiveRecord)
+end
+```
+Statesman defaults to storing transitions in memory. If you're using rails, you can instead configure it to persist transitions to the database by using the ActiveRecord adapter.
 
 ## Class methods
 
-### `Machine.state`
+#### `Machine.state`
 ```ruby
 Machine.state(:some_state, initial: true)
 Machine.state(:another_state)
 ```
 Define a new state and optionally mark as the initial state.
 
-### `Machine.transition`
+#### `Machine.transition`
 ```ruby
 Machine.transition(from: :some_state, to: :another_state)
 ```
 Define a transition rule. Both method parameters are required, `to` can also be an array of states (`.transition(from: :some_state, to: [:another_state, :some_other_state])`).
 
-### `Machine.guard_transition`
+#### `Machine.guard_transition`
 ```ruby
 Machine.guard_transition(from: :some_state, to: another_state) do |object|
   object.some_boolean?
@@ -115,7 +121,7 @@ end
 ```
 Define a guard. `to` and `from` parameters are optional, a nil parameter means guard all transitions. The passed block should evaluate to a boolean and must be idempotent as it could be called many times.
 
-### `Machine.before_transition`
+#### `Machine.before_transition`
 ```ruby
 Machine.before_transition(from: :some_state, to: another_state) do |object| 
   object.side_effect
@@ -123,7 +129,7 @@ end
 ```
 Define a callback to run before a transition. `to` and `from` parameters are optional, a nil parameter means run before all transitions. This callback can have side-effects as it will only be run once immediately before the transition.
 
-### `Machine.after_transition`
+#### `Machine.after_transition`
 ```ruby
 Machine.after_transition(from: :some_state, to: another_state) do |object, transition|
   object.side_effect
@@ -131,7 +137,7 @@ end
 ```
 Define a callback to run after a successful transition. `to` and `from` parameters are optional, a nil parameter means run after all transitions. The model object and transition object are passed as arguments to the callback. This callback can have side-effects as it will only be run once immediately after the transition.
 
-### `Machine.new`
+#### `Machine.new`
 ```ruby
 my_machine = Machine.new(my_model, transition_class: MyTransitionModel)
 ```
@@ -139,20 +145,20 @@ Initialize a new state machine instance. `my_model` is required. If using the Ac
 
 ## Instance methods
 
-### `Machine#current_state`
+#### `Machine#current_state`
 Returns the current state based on existing transition objects.
 
-### `Machine#history`
+#### `Machine#history`
 Returns a sorted array of all transition objects.
 
-### `Machine#last_transition`
+#### `Machine#last_transition`
 Returns the most recent transition object.
 
-### `Machine#can_transition_to?(:state)`
+#### `Machine#can_transition_to?(:state)`
 Returns true if the current state can transition to the passed state and all applicable guards pass.
 
-### `Machine#transition_to!(:state)`
+#### `Machine#transition_to!(:state)`
 Transition to the passed state, returning `true` on success. Raises `Statesman::GuardFailedError` or `Statesman::TransitionFailedError` on failure.
 
-### `Machine#transition_to(:state)`
+#### `Machine#transition_to(:state)`
 Transition to the passed state, returning `true` on success. Swallows all exceptions and returns false on failure.
