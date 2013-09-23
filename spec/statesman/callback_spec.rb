@@ -60,6 +60,16 @@ describe Statesman::Callback do
       end
     end
 
+    context "with any to and any from value on the callback" do
+      let(:callback) do
+        Statesman::Callback.new(callback: cb_lambda)
+      end
+      let(:from) { :x }
+      let(:to) { :y }
+
+      it { should be_true }
+    end
+
     context "with any from value on the callback" do
       let(:callback) do
         Statesman::Callback.new(to: :y, callback: cb_lambda)
