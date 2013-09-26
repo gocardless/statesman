@@ -78,6 +78,7 @@ end
 ```ruby
 class MyModel < ActiveRecord::Base
   has_many :my_transitions
+  serialize :metadata, JSON
 end
 ```
 
