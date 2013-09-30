@@ -1,5 +1,5 @@
-require "json"
 require "active_record"
+require "statesman/exceptions"
 
 module Statesman
   module Adapters
@@ -8,7 +8,10 @@ module Statesman
       attr_reader :parent_model
 
       def initialize(transition_class, parent_model)
-        transition_class.send(:serialize, :metadata, JSON)
+        unless transition_class.serialized_attributes.include?("metadata")
+          raise UnserializedMetadataError,
+                "#{transition_class.name}#metadata is not serialized"
+        end
         @transition_class = transition_class
         @parent_model = parent_model
       end
