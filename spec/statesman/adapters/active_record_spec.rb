@@ -22,7 +22,6 @@ describe Statesman::Adapters::ActiveRecord do
           described_class.new(MyModelTransition, MyModel)
         end.to raise_exception(Statesman::UnserializedMetadataError)
       end
-
     end
   end
 end
