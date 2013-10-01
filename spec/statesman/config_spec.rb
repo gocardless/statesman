@@ -23,4 +23,12 @@ describe Statesman::Config do
       expect(defined_adapter).to be(new_adapter)
     end
   end
+
+  describe "#transition_class" do
+    it "serializes metadata to JSON" do
+      klass = Class.new
+      klass.should_receive(:serialize).once.with(:metadata, JSON)
+      Statesman.configure { transition_class(klass) }
+    end
+  end
 end

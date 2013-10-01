@@ -319,9 +319,9 @@ describe Statesman::Machine do
       end
 
       it "sends metadata to the transition object" do
-        meta = { my: :hash }
+        meta = { "my" => "hash" }
         instance.transition_to!(:y, meta)
-        expect(instance.history.first.metadata).to eq(meta.to_json)
+        expect(instance.history.first.metadata).to eq(meta)
       end
 
       it "returns true" do

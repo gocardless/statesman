@@ -4,4 +4,5 @@ module Statesman
   class InvalidCallbackError < StandardError; end
   class GuardFailedError < StandardError; end
   class TransitionFailedError < StandardError; end
+  class UnserializedMetadataError < StandardError; end
 end

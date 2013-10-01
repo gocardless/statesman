@@ -1,5 +1,5 @@
-require "json"
 require "active_record"
+require "statesman/exceptions"
 
 module Statesman
   module Adapters
@@ -8,14 +8,18 @@ module Statesman
       attr_reader :parent_model
 
       def initialize(transition_class, parent_model)
+        unless transition_class.serialized_attributes.include?("metadata")
+          raise UnserializedMetadataError,
+                "#{transition_class.name}#metadata is not serialized"
+        end
         @transition_class = transition_class
         @parent_model = parent_model
       end
 
-      def create(to, before_cbs, after_cbs, metadata = nil)
+      def create(to, before_cbs, after_cbs, metadata = {})
         transition = transitions_for_parent.build(to_state: to,
-                                                  sort_key: next_sort_key)
-        conditionally_set_metadata(transition, metadata)
+                                                  sort_key: next_sort_key,
+                                                  metadata: metadata)
 
         ::ActiveRecord::Base.transaction do
           before_cbs.each { |cb| cb.call(@parent_model, transition) }
@@ -38,12 +42,6 @@ module Statesman
 
       def transitions_for_parent
         @parent_model.send(@transition_class.table_name)
-      end
-
-      def conditionally_set_metadata(transition, metadata)
-        if transition.respond_to?(:metadata=)
-          transition.metadata = metadata.to_json unless metadata.nil?
-        end
       end
 
       def next_sort_key
