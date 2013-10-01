@@ -154,7 +154,9 @@ module Statesman
     end
 
     def can_transition_to?(new_state, metadata = nil)
-      validate_transition(from: current_state, to: new_state, metadata: metadata)
+      validate_transition(from: current_state,
+                          to: new_state,
+                          metadata: metadata)
       true
     rescue TransitionFailedError, GuardFailedError
       false
@@ -168,7 +170,9 @@ module Statesman
       initial_state = current_state
       new_state = new_state.to_s
 
-      validate_transition(from: initial_state, to: new_state, metadata: metadata)
+      validate_transition(from: initial_state,
+                          to: new_state,
+                          metadata: metadata)
 
       before_cbs = before_callbacks_for(from: initial_state, to: new_state)
       after_cbs = after_callbacks_for(from: initial_state, to: new_state)
