@@ -15,8 +15,7 @@ module Statesman
         @parent_model = parent_model
       end
 
-      def create(to, before_cbs, after_cbs, metadata = nil)
-        metadata = metadata_to_json(metadata)
+      def create(to, before_cbs, after_cbs, metadata = {})
         transition = transition_class.new(to, next_sort_key, metadata)
 
         before_cbs.each { |cb| cb.call(@parent_model, transition) }
@@ -31,10 +30,6 @@ module Statesman
       end
 
       private
-
-      def metadata_to_json(metadata)
-        metadata.to_json unless metadata.nil?
-      end
 
       def next_sort_key
         (last && last.sort_key + 10) || 0
