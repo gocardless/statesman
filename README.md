@@ -55,6 +55,7 @@ ActiveRecord within rails:
 ```ruby
 Statesman.configure do
   storage_adapter(Statesman::Adapters::ActiveRecord)
+  transition_class(MyTransition, MyOtherTransition)
 end
 ```
 
@@ -98,6 +99,15 @@ Statesman.configure do
 end
 ```
 Statesman defaults to storing transitions in memory. If you're using rails, you can instead configure it to persist transitions to the database by using the ActiveRecord adapter.
+
+#### `transition_class`
+```ruby
+Statesman.configure do
+  transition_class(MyTransition)
+end
+```
+Configure the transition model. For now that means serializing metadata to JSON.
+
 
 ## Class methods
 
