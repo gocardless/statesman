@@ -7,7 +7,7 @@ require "spec_helper"
 #   state_attr:       Returns the state attribute to set on the parent.
 #   create:           Accepts to_state, before callbacks, after callbacks and
 #                     optional metadata. Creates a new transition class
-#                     instance and transforms metadata to a JSON string.
+#                     instance and saves metadata to it.
 #   history:          Returns the full transition history
 #   last:             Returns the latest transition history item
 #
@@ -75,9 +75,9 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
     end
 
     context "with metadata" do
-      let(:metadata) { { some: :hash } }
+      let(:metadata) { { "some" => "hash" } }
       subject { adapter.create(to, before_cbs, after_cbs, metadata) }
-      its(:metadata) { should eq(metadata.to_json) }
+      its(:metadata) { should eq(metadata) }
     end
   end
 
