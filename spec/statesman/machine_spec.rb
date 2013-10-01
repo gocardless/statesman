@@ -338,7 +338,7 @@ describe Statesman::Machine do
 
           it "passes the object to the guard" do
             guard_cb.should_receive(:call).once
-              .with(my_model, instance.last_transition).and_return(true)
+              .with(my_model, instance.last_transition, nil).and_return(true)
             instance.transition_to!(:y)
           end
         end
