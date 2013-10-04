@@ -59,19 +59,10 @@ Statesman.configure do
 end
 ```
 
-`db/migrate/create_my_transitions_migration.rb`:
+Generate a migration:
 
-```ruby
-class CreateMyTransitionsMigration < ActiveRecord::Migration
-  def change
-    create_table :my_transitions do |t|
-      t.string  :to_state
-      t.integer :my_model_id
-      t.text    :metadata
-      t.timestamps
-    end
-  end
-end  
+```bash
+$ rails g statesman:migration MyModel MyTransition
 ```
 
 `app/models/my_transition.rb`:
@@ -79,7 +70,6 @@ end
 ```ruby
 class MyModel < ActiveRecord::Base
   has_many :my_transitions
-  serialize :metadata, JSON
 end
 ```
 
