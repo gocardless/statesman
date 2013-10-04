@@ -10,7 +10,7 @@ module Statesman
     source_root File.expand_path('../templates', __FILE__)
 
     def create_model_file
-      template("migration.rb", file_name)
+      template("migration.rb.erb", file_name)
     end
 
     private
