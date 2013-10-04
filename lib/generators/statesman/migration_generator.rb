@@ -4,7 +4,9 @@ module Statesman
   class MigrationGenerator < Rails::Generators::Base
     desc "Add the required Statesman attributes to your transition model"
 
+    argument :parent, type: :string, desc: "Your parent model name"
     argument :klass, type: :string, desc: "Your transition model name"
+
     source_root File.expand_path('../templates', __FILE__)
 
     def create_model_file
@@ -23,6 +25,10 @@ module Statesman
 
     def table_name
       klass.underscore.pluralize
+    end
+
+    def parent_id
+      parent.underscore + "_id"
     end
   end
 end
