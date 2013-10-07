@@ -153,8 +153,10 @@ module Statesman
       @storage_adapter.last
     end
 
-    def can_transition_to?(new_state)
-      validate_transition(from: current_state, to: new_state)
+    def can_transition_to?(new_state, metadata = nil)
+      validate_transition(from: current_state,
+                          to: new_state,
+                          metadata: metadata)
       true
     rescue TransitionFailedError, GuardFailedError
       false
@@ -168,7 +170,9 @@ module Statesman
       initial_state = current_state
       new_state = new_state.to_s
 
-      validate_transition(from: initial_state, to: new_state)
+      validate_transition(from: initial_state,
+                          to: new_state,
+                          metadata: metadata)
 
       before_cbs = before_callbacks_for(from: initial_state, to: new_state)
       after_cbs = after_callbacks_for(from: initial_state, to: new_state)
@@ -204,13 +208,13 @@ module Statesman
       callbacks.select { |callback| callback.applies_to?(from: from, to: to) }
     end
 
-    def validate_transition(from: nil, to: nil)
+    def validate_transition(from: nil, to: nil, metadata: nil)
       from = to_s_or_nil(from)
       to   = to_s_or_nil(to)
 
       # Call all guards, they raise exceptions if they fail
       guards_for(from: from, to: to).each do |guard|
-        guard.call(@object, last_transition)
+        guard.call(@object, last_transition, metadata)
       end
 
       successors = self.class.successors[from] || []
