@@ -31,7 +31,7 @@ module Statesman
       end
 
       def history
-        transitions_for_parent.order(:created_at)
+        transitions_for_parent.order(:sort_key)
       end
 
       def last

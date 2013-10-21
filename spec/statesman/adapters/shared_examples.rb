@@ -88,6 +88,13 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
     context "with transitions" do
       let!(:transition) { adapter.create(:y, before_cbs, after_cbs) }
       it { should eq([transition]) }
+
+      context "sorting" do
+        let!(:transition) { adapter.create(:y, before_cbs, after_cbs) }
+        let!(:transition2) { adapter.create(:y, before_cbs, after_cbs) }
+        subject { adapter.history }
+        it { should eq(adapter.history.sort_by(&:sort_key)) }
+      end
     end
   end
 
