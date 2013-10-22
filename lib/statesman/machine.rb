@@ -188,6 +188,8 @@ module Statesman
       false
     end
 
+    private
+
     def guards_for(from: nil, to: nil)
       select_callbacks_for(self.class.guards, from: from, to: to)
     end
@@ -199,8 +201,6 @@ module Statesman
     def after_callbacks_for(from: nil, to: nil)
       select_callbacks_for(self.class.after_callbacks, from: from, to: to)
     end
-
-    private
 
     def select_callbacks_for(callbacks, from: nil, to: nil)
       from = to_s_or_nil(from)
