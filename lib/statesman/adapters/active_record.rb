@@ -25,6 +25,7 @@ module Statesman
           before_cbs.each { |cb| cb.call(@parent_model, transition) }
           transition.save!
           after_cbs.each { |cb| cb.call(@parent_model, transition) }
+          @last_transition = nil
         end
 
         transition
@@ -35,7 +36,7 @@ module Statesman
       end
 
       def last
-        transitions_for_parent.order(:sort_key).last
+        @last_transition ||= transitions_for_parent.order(:sort_key).last
       end
 
       private

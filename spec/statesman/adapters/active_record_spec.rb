@@ -24,4 +24,27 @@ describe Statesman::Adapters::ActiveRecord do
       end
     end
   end
+
+  describe "#last" do
+    let(:adapter) { described_class.new(MyModelTransition, model) }
+
+    context "with a previously looked up transition" do
+      before do
+        adapter.create(:y, [], [])
+        adapter.last
+      end
+
+      it "caches the transition" do
+        MyModel.any_instance.should_receive(:my_model_transitions).never
+        adapter.last
+      end
+
+      context "and a new transition" do
+        before { adapter.create(:z, [], []) }
+        it "retrieves the new transition from the database" do
+          expect(adapter.last.to_state).to eq("z")
+        end
+      end
+    end
+  end
 end
