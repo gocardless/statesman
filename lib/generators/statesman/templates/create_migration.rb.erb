@@ -1,0 +1,13 @@
+class Create<%= klass.pluralize %> < ActiveRecord::Migration
+  def change
+    create_table :<%= table_name %> do |t|
+      t.string :to_state
+      t.text :metadata, default: "{}"
+      t.integer :sort_key
+      t.integer :<%= parent_id %>
+    end
+
+    add_index :<%= table_name %>, :<%= parent_id %>
+    add_index :<%= table_name %>, [:sort_key, :<%= parent_id %>], unique: true
+  end
+end
