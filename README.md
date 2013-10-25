@@ -1,4 +1,4 @@
-# Statesman
+![Statesman](http://cl.ly/S9LR)
 
 A statesmanlike state machine library for Ruby 2.0.
 
