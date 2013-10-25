@@ -1,82 +1,110 @@
 # Statesman
 
-A statesmanlike state machine library.
+A statesmanlike state machine library for Ruby 2.0.
 
+Statesman is a little different from other state machine libraries which tack state behaviour directly onto a model. A statesman state machine is defined as a separate class which is instantiated with the model to which it should apply. State transitions are also modelled as a class which can optionally be persisted to the database for a full audit history, including JSON metadata which can be set during a transition.
 
-## Usage
+This data model allows for interesting things like using a different state machine depending on the value of a model attribute.
+
+## TL;DR Usage
 
 ```ruby
-class PaymentStateMachine
-  include Statesman
+class OrderStateMachine
+  include Statesman::Machine
 
-  state :created, initial: true
-  state :submitted
-  state :paid
-  state :paid_out
+  state :pending, initial: true
+  state :checking_out
+  state :purchased
+  state :shipped
+  state :cancelled
   state :failed
   state :refunded
 
-  transition from: :created, to: :submitted
-  transition from: :submitted, to: [:paid, :failed]
-  transition from: :paid, to: [:paid_out, :refunded]
-  transition from: :paid_out, to: :refunded
-  transition from: :failed, to: :submitted
+  transition from: :created,      to: [:checking_out, :cancelled]
+  transition from: :checking_out, to: [:purchased, :cancelled]
+  transition from: :purchased,    to: [:shipped, :failed]
+  transition from: :shipped,      to: :refunded
 
-  guard_transition(to: :submitted) { payment.mandate.active? }
-
-  before_transition(to: :submitted) do |payment|
-    PaymentSubmissionService.new(payment).submit
+  guard_transition(to: :checking_out) do |order|
+    order.products_in_stock?
   end
 
-  after_transition(to: :paid) do |payment|
-    MailerService.payment_paid_email(payment).deliver
+  before_transition(from: :checking_out, to: :cancelled) do |order, transition|
+    order.reallocate_stock
   end
 
-  after_transition(to: :failed) do |payment|
-    MailerService.payment_failed_email(payment).deliver
+  before_transition(to: :purchased) do |order, transition|
+    PaymentService.new(order).submit
   end
 
-  guard_transition(to: :paid_out) { |payment| payment.payout.present? }
-
-  after_transition(to: :paid_out) do |payment|
-    MailerService.payment_paid_out_email(payment).deliver
+  after_transition(to: :purchased) do |order, transition|
+    MailerService.order_confirmation(order).deliver
   end
 end
+
+class Order < ActiveRecord::Base
+  has_many :order_transitions
+
+  def state_machine
+    OrderStateMachine.new(self, transition_class: OrderTransition)
+  end
+end
+
+class OrderTransition < ActiveRecord::Base
+  belongs_to :order, inverse_of: :order_transitions
+end
+
+Order.first.state_machine.current_state
+# => "created"
+
+Order.first.state_machine.can_transition_to?(:cancelled)
+# => true/false
+
+Order.first.state_machine.transition_to(:cancelled, optional: :metadata)
+# => true/false
+
+Order.first.state_machine.transition_to!(:cancelled)
+# => true/exception
 ```
 
 ## Persistence
 
 By default Statesman stores transition history in memory only. It can be
 persisted by configuring Statesman to use a different adapter. For example,
-ActiveRecord within rails:
+ActiveRecord within Rails:
   
 `config/initializers/statesman.rb`:
 
 ```ruby
 Statesman.configure do
   storage_adapter(Statesman::Adapters::ActiveRecord)
-  transition_class(MyTransition, MyOtherTransition)
+  transition_class(OrderTransition)
 end
 ```
 
-Generate a migration:
+Generate the transition model:
 
 ```bash
-$ rails g statesman:migration MyModel MyTransition
+$ rails g statesman:transition Order OrderTransition
 ```
 
-`app/models/my_transition.rb`:
+And add an association from the parent model:
+
+`app/models/order.rb`:
 
 ```ruby
-class MyModel < ActiveRecord::Base
-  has_many :my_transitions
+class Order < ActiveRecord::Base
+  has_many :order_transitions
+
+  # Initialize the state machine
+  def state_machine
+    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
+  end
+
+  # Optionally delegate some methods
+  delegate :can_transition_to?, :transition_to!, :transition_to, :current_state,
+           to: :state_machine
 end
-```
-
-and on machine initialization:
-
-```ruby
-MyStateMachine.new(my_model_instance, transition_class: MyTransition)
 ```
 
 ## Configuration
@@ -93,7 +121,7 @@ Statesman defaults to storing transitions in memory. If you're using rails, you 
 #### `transition_class`
 ```ruby
 Statesman.configure do
-  transition_class(MyTransition)
+  transition_class(OrderTransition)
 end
 ```
 Configure the transition model. For now that means serializing metadata to JSON.
