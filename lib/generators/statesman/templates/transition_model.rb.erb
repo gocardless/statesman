@@ -1,4 +1,5 @@
 class <%= klass %> < ActiveRecord::Base
   attr_accessible :to_state, :metadata, :sort_key
   belongs_to :<%= parent.underscore %>, inverse_of: :<%= table_name %>
+  serialize :metadata
 end
