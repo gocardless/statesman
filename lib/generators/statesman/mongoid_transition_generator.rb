@@ -1,0 +1,1 @@
+mongoid_transition_generator.rb

@@ -7,6 +7,7 @@ module Statesman
   autoload :Version,    'statesman/version'
   require "statesman/adapters/memory"
   require "statesman/adapters/active_record"
+  require "statesman/adapters/mongoid"
 
   # Example:
   #   Statesman.configure do
