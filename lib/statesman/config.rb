@@ -14,10 +14,5 @@ module Statesman
       @adapter_class = adapter_class
     end
     # rubocop:enable TrivialAccessors
-
-    def transition_class(*args)
-      args.each { |klass| klass.serialize(:metadata, JSON) }
-    end
-
   end
 end
