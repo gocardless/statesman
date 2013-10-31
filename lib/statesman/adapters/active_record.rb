@@ -1,4 +1,3 @@
-require "active_record"
 require "statesman/exceptions"
 
 module Statesman
@@ -8,6 +7,7 @@ module Statesman
       attr_reader :parent_model
 
       def initialize(transition_class, parent_model)
+        require "active_record"
         unless transition_class.serialized_attributes.include?("metadata")
           raise UnserializedMetadataError,
                 "#{transition_class.name}#metadata is not serialized"
