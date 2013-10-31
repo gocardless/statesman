@@ -8,25 +8,26 @@ describe Statesman::Adapters::ActiveRecord do
     prepare_transitions_table
   end
 
-  before { MyModelTransition.serialize(:metadata, JSON) }
+  before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
 
-  let(:model) { MyModel.create(current_state: :pending) }
-  it_behaves_like "an adapter", described_class, MyModelTransition
+  let(:model) { MyActiveRecordModel.create(current_state: :pending) }
+  it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
 
   describe "#initialize" do
     context "with unserialized metadata" do
-      before { MyModelTransition.stub(serialized_attributes: {}) }
+      before { MyActiveRecordModelTransition.stub(serialized_attributes: {}) }
 
       it "raises an exception if metadata is not serialized" do
         expect do
-          described_class.new(MyModelTransition, MyModel)
+          described_class.new(MyActiveRecordModelTransition,
+                              MyActiveRecordModel)
         end.to raise_exception(Statesman::UnserializedMetadataError)
       end
     end
   end
 
   describe "#last" do
-    let(:adapter) { described_class.new(MyModelTransition, model) }
+    let(:adapter) { described_class.new(MyActiveRecordModelTransition, model) }
 
     context "with a previously looked up transition" do
       before do
@@ -35,7 +36,8 @@ describe Statesman::Adapters::ActiveRecord do
       end
 
       it "caches the transition" do
-        MyModel.any_instance.should_receive(:my_model_transitions).never
+        MyActiveRecordModel.any_instance
+          .should_receive(:my_active_record_model_transitions).never
         adapter.last
       end
 
