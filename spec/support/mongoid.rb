@@ -22,4 +22,5 @@ class MyMongoidModelTransition
   belongs_to :my_mongoid_model, index: true
 
   alias_method :metadata, :statesman_metadata
+  alias_method :metadata=, :statesman_metadata=
 end
