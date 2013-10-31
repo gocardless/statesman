@@ -6,6 +6,7 @@ module Statesman
   autoload :Version,    'statesman/version'
   require "statesman/adapters/memory"
   require "statesman/adapters/active_record"
+  require "statesman/adapters/active_record_transition"
 
   # Example:
   #   Statesman.configure do
