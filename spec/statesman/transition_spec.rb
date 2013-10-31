@@ -1,10 +1,10 @@
 require "spec_helper"
 
-describe Statesman::Transition do
+describe Statesman::Adapters::MemoryTransition do
   describe "#initialize" do
     let(:to) { :y }
     let(:sort_key) { 0 }
-    let(:create) { Statesman::Transition.new(to, sort_key) }
+    let(:create) { described_class.new(to, sort_key) }
 
     specify { expect(create.to_state).to equal(to) }
     specify { expect(create.created_at).to be_a(Time) }
@@ -12,7 +12,7 @@ describe Statesman::Transition do
 
     context "with metadata passed" do
       let(:metadata) { { some: :hash } }
-      let(:create) { Statesman::Transition.new(to, sort_key, metadata) }
+      let(:create) { described_class.new(to, sort_key, metadata) }
 
       specify { expect(create.metadata).to eq(metadata) }
     end

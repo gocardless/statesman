@@ -194,7 +194,7 @@ describe Statesman::Machine do
     context "transition class" do
       it "sets a default" do
         Statesman.storage_adapter.should_receive(:new).once
-          .with(Statesman::Transition, my_model)
+          .with(Statesman::Adapters::MemoryTransition, my_model)
         machine.new(my_model)
       end
 
@@ -314,7 +314,8 @@ describe Statesman::Machine do
           instance.transition_to!(:y)
         end.to change(instance.history, :count).by(1)
 
-        expect(instance.history.first).to be_a(Statesman::Transition)
+        expect(instance.history.first)
+          .to be_a(Statesman::Adapters::MemoryTransition)
         expect(instance.history.first.to_state).to eq("y")
       end
 
