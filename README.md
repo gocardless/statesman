@@ -51,6 +51,8 @@ class Order < ActiveRecord::Base
 end
 
 class OrderTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
   belongs_to :order, inverse_of: :order_transitions
 end
 
@@ -78,7 +80,6 @@ ActiveRecord within Rails:
 ```ruby
 Statesman.configure do
   storage_adapter(Statesman::Adapters::ActiveRecord)
-  transition_class(OrderTransition)
 end
 ```
 
@@ -117,14 +118,6 @@ Statesman.configure do
 end
 ```
 Statesman defaults to storing transitions in memory. If you're using rails, you can instead configure it to persist transitions to the database by using the ActiveRecord adapter.
-
-#### `transition_class`
-```ruby
-Statesman.configure do
-  transition_class(OrderTransition)
-end
-```
-Configure the transition model. For now that means serializing metadata to JSON.
 
 
 ## Class methods
