@@ -2,6 +2,10 @@
 
 A statesmanlike state machine library for Ruby 2.0.
 
+[![Gem Version](https://badge.fury.io/rb/statesman.png)](http://badge.fury.io/rb/statesman)
+[![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
+[![Code Climate](https://codeclimate.com/github/gocardless/statesman.png)](https://codeclimate.com/github/gocardless/statesman)
+
 Statesman is a little different from other state machine libraries which tack state behaviour directly onto a model. A statesman state machine is defined as a separate class which is instantiated with the model to which it should apply. State transitions are also modelled as a class which can optionally be persisted to the database for a full audit history, including JSON metadata which can be set during a transition.
 
 This data model allows for interesting things like using a different state machine depending on the value of a model attribute.
@@ -191,3 +195,7 @@ Transition to the passed state, returning `true` on success. Raises `Statesman::
 
 #### `Machine#transition_to(:state)`
 Transition to the passed state, returning `true` on success. Swallows all exceptions and returns false on failure.
+
+---
+
+GoCardless ♥ open source. If you do to, come [join us](https://gocardless.com/jobs/backend_developer).
