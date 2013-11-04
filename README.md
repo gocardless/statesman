@@ -89,7 +89,7 @@ end
 Generate the transition model:
 
 ```bash
-$ rails g statesman:transition Order OrderTransition
+$ rails g statesman:active_record_transition Order OrderTransition
 ```
 
 And add an association from the parent model:
@@ -118,9 +118,11 @@ end
 ```ruby
 Statesman.configure do
   storage_adapter(Statesman::Adapters::ActiveRecord)
+  # ...or
+  storage_adapter(Statesman::Adapters::Mongoid)
 end
 ```
-Statesman defaults to storing transitions in memory. If you're using rails, you can instead configure it to persist transitions to the database by using the ActiveRecord adapter.
+Statesman defaults to storing transitions in memory. If you're using rails, you can instead configure it to persist transitions to the database by using the ActiveRecord or Mongoid adapter.
 
 #### `transition_class`
 ```ruby
