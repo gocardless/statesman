@@ -198,4 +198,4 @@ Transition to the passed state, returning `true` on success. Swallows all except
 
 ---
 
-GoCardless ♥ open source. If you do to, come [join us](https://gocardless.com/jobs/backend_developer).
+GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/jobs/backend_developer).
