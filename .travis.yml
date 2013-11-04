@@ -1,3 +1,6 @@
 rvm:
   - 2.0.0
 services: mongodb
+scripts:
+ - bundle exec rubocop
+ - bundle exec rake
