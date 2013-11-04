@@ -1,7 +1,7 @@
 require "rails/generators"
 
 module Statesman
-  class TransitionGenerator < Rails::Generators::Base
+  class MongoidTransitionGenerator < Rails::Generators::Base
     desc "Create a Mongoid-based transition model with the required attributes"
 
     argument :parent, type: :string, desc: "Your parent model name"
