@@ -2,6 +2,10 @@
 
 A statesmanlike state machine library for Ruby 2.0.
 
+[![Gem Version](https://badge.fury.io/rb/statesman.png)](http://badge.fury.io/rb/statesman)
+[![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
+[![Code Climate](https://codeclimate.com/github/gocardless/statesman.png)](https://codeclimate.com/github/gocardless/statesman)
+
 Statesman is a little different from other state machine libraries which tack state behaviour directly onto a model. A statesman state machine is defined as a separate class which is instantiated with the model to which it should apply. State transitions are also modelled as a class which can optionally be persisted to the database for a full audit history, including JSON metadata which can be set during a transition.
 
 This data model allows for interesting things like using a different state machine depending on the value of a model attribute.
@@ -86,7 +90,7 @@ end
 Generate the transition model:
 
 ```bash
-$ rails g statesman:transition Order OrderTransition
+$ rails g statesman:active_record_transition Order OrderTransition
 ```
 
 And add an association from the parent model:
@@ -115,9 +119,11 @@ end
 ```ruby
 Statesman.configure do
   storage_adapter(Statesman::Adapters::ActiveRecord)
+  # ...or
+  storage_adapter(Statesman::Adapters::Mongoid)
 end
 ```
-Statesman defaults to storing transitions in memory. If you're using rails, you can instead configure it to persist transitions to the database by using the ActiveRecord adapter.
+Statesman defaults to storing transitions in memory. If you're using rails, you can instead configure it to persist transitions to the database by using the ActiveRecord or Mongoid adapter.
 
 
 ## Class methods
@@ -184,3 +190,7 @@ Transition to the passed state, returning `true` on success. Raises `Statesman::
 
 #### `Machine#transition_to(:state)`
 Transition to the passed state, returning `true` on success. Swallows all exceptions and returns false on failure.
+
+---
+
+GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/jobs/backend_developer).

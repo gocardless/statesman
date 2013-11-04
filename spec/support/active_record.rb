@@ -2,17 +2,17 @@ require "support/active_record"
 
 DB = Pathname.new("test.sqlite3")
 
-class MyModel < ActiveRecord::Base
-  has_many :my_model_transitions
+class MyActiveRecordModel < ActiveRecord::Base
+  has_many :my_active_record_model_transitions
 end
 
-class MyModelTransition < ActiveRecord::Base
-  belongs_to :my_model
+class MyActiveRecordModelTransition < ActiveRecord::Base
+  belongs_to :my_active_record_model
 end
 
-class CreateMyModelMigration < ActiveRecord::Migration
+class CreateMyActiveRecordModelMigration < ActiveRecord::Migration
   def change
-    create_table :my_models do |t|
+    create_table :my_active_record_models do |t|
       t.string :current_state
       t.timestamps
     end
@@ -20,16 +20,16 @@ class CreateMyModelMigration < ActiveRecord::Migration
 end
 
 # TODO: make this a module we can extend from the app? Or a generator?
-class CreateMyModelTransitionMigration < ActiveRecord::Migration
+class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
   def change
-    create_table :my_model_transitions do |t|
+    create_table :my_active_record_model_transitions do |t|
       t.string  :to_state
-      t.integer :my_model_id
+      t.integer :my_active_record_model_id
       t.integer :sort_key
       t.text    :metadata
       t.timestamps
     end
 
-    add_index :my_model_transitions, :sort_key, unique: true
+    add_index :my_active_record_model_transitions, :sort_key, unique: true
   end
 end

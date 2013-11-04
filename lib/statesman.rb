@@ -4,9 +4,13 @@ module Statesman
   autoload :Callback,   'statesman/callback'
   autoload :Guard,      'statesman/guard'
   autoload :Version,    'statesman/version'
-  require "statesman/adapters/memory"
-  require "statesman/adapters/active_record"
-  require "statesman/adapters/active_record_transition"
+  module Adapters
+    autoload :Memory,       "statesman/adapters/memory"
+    autoload :ActiveRecord, "statesman/adapters/active_record"
+    autoload :ActiveRecordTransition,
+             "statesman/adapters/active_record_transition"
+    autoload :Mongoid,      "statesman/adapters/mongoid"
+  end
 
   # Example:
   #   Statesman.configure do

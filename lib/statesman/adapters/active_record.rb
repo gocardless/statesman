@@ -1,4 +1,3 @@
-require "active_record"
 require "statesman/exceptions"
 
 module Statesman
