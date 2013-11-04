@@ -1,33 +1,34 @@
 require "spec_helper"
 require "statesman/adapters/shared_examples"
 require "statesman/exceptions"
+require "support/mongoid"
+require "mongoid"
 
-describe Statesman::Adapters::ActiveRecord do
-  before do
-    prepare_model_table
-    prepare_transitions_table
+describe Statesman::Adapters::Mongoid do
+
+  after do
+    Mongoid.purge!
   end
 
-  before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
-
-  let(:model) { MyActiveRecordModel.create(current_state: :pending) }
-  it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
+  let(:model) { MyMongoidModel.create(current_state: :pending) }
+  it_behaves_like "an adapter", described_class, MyMongoidModelTransition
 
   describe "#initialize" do
     context "with unserialized metadata" do
-      before { MyActiveRecordModelTransition.stub(serialized_attributes: {}) }
+      before do
+        described_class.any_instance.stub(transition_class_hash_fields: [])
+      end
 
       it "raises an exception if metadata is not serialized" do
         expect do
-          described_class.new(MyActiveRecordModelTransition,
-                              MyActiveRecordModel)
+          described_class.new(MyMongoidModelTransition, MyMongoidModel)
         end.to raise_exception(Statesman::UnserializedMetadataError)
       end
     end
   end
 
   describe "#last" do
-    let(:adapter) { described_class.new(MyActiveRecordModelTransition, model) }
+    let(:adapter) { described_class.new(MyMongoidModelTransition, model) }
 
     context "with a previously looked up transition" do
       before do
@@ -36,8 +37,8 @@ describe Statesman::Adapters::ActiveRecord do
       end
 
       it "caches the transition" do
-        MyActiveRecordModel.any_instance
-          .should_receive(:my_active_record_model_transitions).never
+        MyMongoidModel.any_instance
+          .should_receive(:my_mongoid_model_transitions).never
         adapter.last
       end
 

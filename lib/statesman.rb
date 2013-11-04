@@ -5,8 +5,11 @@ module Statesman
   autoload :Guard,      'statesman/guard'
   autoload :Transition, 'statesman/transition'
   autoload :Version,    'statesman/version'
-  require "statesman/adapters/memory"
-  require "statesman/adapters/active_record"
+  module Adapters
+    autoload :Memory,       "statesman/adapters/memory"
+    autoload :ActiveRecord, "statesman/adapters/active_record"
+    autoload :Mongoid,      "statesman/adapters/mongoid"
+  end
 
   # Example:
   #   Statesman.configure do
