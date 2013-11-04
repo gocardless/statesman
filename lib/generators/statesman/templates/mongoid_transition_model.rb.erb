@@ -1,5 +1,6 @@
 class <%= klass %>
   include Mongoid::Document
+  include Statesman::Adapters::MongoidTransition
 
   field :to_state, type: String
   field :sort_key, type: Integer
@@ -8,8 +9,5 @@ class <%= klass %>
   index({ sort_key: 1 })
 
   belongs_to :<%= parent.underscore %>, index: true
-
-  alias_method :metadata, :statesman_metadata
-  alias_method :metadata=, :statesman_metadata=
 
 end
