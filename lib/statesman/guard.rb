@@ -1,5 +1,5 @@
-require "statesman/callback"
-require "statesman/exceptions"
+require_relative "callback"
+require_relative "exceptions"
 
 module Statesman
   class Guard < Callback

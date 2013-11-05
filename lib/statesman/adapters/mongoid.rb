@@ -1,4 +1,4 @@
-require "statesman/exceptions"
+require_relative "../exceptions"
 
 module Statesman
   module Adapters

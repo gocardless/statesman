@@ -1,5 +1,5 @@
 require "json"
-require "statesman/exceptions"
+require_relative "exceptions"
 
 module Statesman
   class Config
