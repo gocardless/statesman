@@ -1,0 +1,13 @@
+class <%= klass %>
+  include Mongoid::Document
+  include Statesman::Adapters::MongoidTransition
+
+  field :to_state, type: String
+  field :sort_key, type: Integer
+  field :statesman_metadata, type: Hash
+
+  index({ sort_key: 1 })
+
+  belongs_to :<%= parent.underscore %>, index: true
+
+end

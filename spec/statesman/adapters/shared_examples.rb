@@ -33,7 +33,10 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
     context "the new transition" do
       subject { create }
       it { should be_a(transition_class) }
-      its(:to_state) { should be(to) }
+
+      it "should have the initial state" do
+        expect(subject.to_state.to_sym).to eq(to)
+      end
 
       context "with no previous transition" do
         its(:sort_key) { should be(0) }

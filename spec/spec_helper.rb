@@ -21,11 +21,15 @@ RSpec.configure do |config|
     end
 
     def prepare_model_table
-      silence_stream(STDOUT) { CreateMyModelMigration.migrate(:up) }
+      silence_stream(STDOUT) do
+        CreateMyActiveRecordModelMigration.migrate(:up)
+      end
     end
 
     def prepare_transitions_table
-      silence_stream(STDOUT) { CreateMyModelTransitionMigration.migrate(:up) }
+      silence_stream(STDOUT) do
+        CreateMyActiveRecordModelTransitionMigration.migrate(:up)
+      end
     end
   end
 
