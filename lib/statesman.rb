@@ -3,11 +3,12 @@ module Statesman
   autoload :Machine,    'statesman/machine'
   autoload :Callback,   'statesman/callback'
   autoload :Guard,      'statesman/guard'
-  autoload :Transition, 'statesman/transition'
   autoload :Version,    'statesman/version'
   module Adapters
     autoload :Memory,       "statesman/adapters/memory"
     autoload :ActiveRecord, "statesman/adapters/active_record"
+    autoload :ActiveRecordTransition,
+             "statesman/adapters/active_record_transition"
     autoload :Mongoid,      "statesman/adapters/mongoid"
   end
 

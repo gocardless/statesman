@@ -2,7 +2,7 @@ require "statesman/version"
 require "statesman/exceptions"
 require "statesman/guard"
 require "statesman/callback"
-require "statesman/transition"
+require "statesman/adapters/memory_transition"
 
 module Statesman
   # The main module, that should be `extend`ed in to state machine classes.
@@ -138,7 +138,8 @@ module Statesman
       end
     end
 
-    def initialize(object, transition_class: Statesman::Transition)
+    def initialize(object,
+                   transition_class: Statesman::Adapters::MemoryTransition)
       @object = object
       @storage_adapter = Statesman.storage_adapter.new(transition_class,
                                                        object)
