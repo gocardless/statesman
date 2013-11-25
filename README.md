@@ -6,9 +6,15 @@ A statesmanlike state machine library for Ruby 2.0.
 [![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
 [![Code Climate](https://codeclimate.com/github/gocardless/statesman.png)](https://codeclimate.com/github/gocardless/statesman)
 
-Statesman is a little different from other state machine libraries which tack state behaviour directly onto a model. A statesman state machine is defined as a separate class which is instantiated with the model to which it should apply. State transitions are also modelled as a class which can optionally be persisted to the database for a full audit history, including JSON metadata which can be set during a transition.
+Statesman is a little different from other state machine libraries which tack
+state behaviour directly onto a model. A statesman state machine is defined as a
+separate class which is instantiated with the model to which it should
+apply. State transitions are also modelled as a class which can optionally be
+persisted to the database for a full audit history, including JSON metadata
+which can be set during a transition.
 
-This data model allows for interesting things like using a different state machine depending on the value of a model attribute.
+This data model allows for interesting things like using a different state
+machine depending on the value of a model attribute.
 
 ## TL;DR Usage
 
@@ -24,7 +30,7 @@ class OrderStateMachine
   state :failed
   state :refunded
 
-  transition from: :created,      to: [:checking_out, :cancelled]
+  transition from: :pending,      to: [:checking_out, :cancelled]
   transition from: :checking_out, to: [:purchased, :cancelled]
   transition from: :purchased,    to: [:shipped, :failed]
   transition from: :shipped,      to: :refunded
@@ -61,7 +67,7 @@ class OrderTransition < ActiveRecord::Base
 end
 
 Order.first.state_machine.current_state
-# => "created"
+# => "pending"
 
 Order.first.state_machine.can_transition_to?(:cancelled)
 # => true/false
@@ -78,7 +84,7 @@ Order.first.state_machine.transition_to!(:cancelled)
 By default Statesman stores transition history in memory only. It can be
 persisted by configuring Statesman to use a different adapter. For example,
 ActiveRecord within Rails:
-  
+
 `config/initializers/statesman.rb`:
 
 ```ruby
@@ -123,7 +129,9 @@ Statesman.configure do
   storage_adapter(Statesman::Adapters::Mongoid)
 end
 ```
-Statesman defaults to storing transitions in memory. If you're using rails, you can instead configure it to persist transitions to the database by using the ActiveRecord or Mongoid adapter.
+Statesman defaults to storing transitions in memory. If you're using rails, you
+can instead configure it to persist transitions to the database by using the
+ActiveRecord or Mongoid adapter.
 
 
 ## Class methods
@@ -139,7 +147,8 @@ Define a new state and optionally mark as the initial state.
 ```ruby
 Machine.transition(from: :some_state, to: :another_state)
 ```
-Define a transition rule. Both method parameters are required, `to` can also be an array of states (`.transition(from: :some_state, to: [:another_state, :some_other_state])`).
+Define a transition rule. Both method parameters are required, `to` can also be
+an array of states (`.transition(from: :some_state, to: [:another_state, :some_other_state])`).
 
 #### `Machine.guard_transition`
 ```ruby
@@ -147,15 +156,19 @@ Machine.guard_transition(from: :some_state, to: another_state) do |object|
   object.some_boolean?
 end
 ```
-Define a guard. `to` and `from` parameters are optional, a nil parameter means guard all transitions. The passed block should evaluate to a boolean and must be idempotent as it could be called many times.
+Define a guard. `to` and `from` parameters are optional, a nil parameter means
+guard all transitions. The passed block should evaluate to a boolean and must
+be idempotent as it could be called many times.
 
 #### `Machine.before_transition`
 ```ruby
-Machine.before_transition(from: :some_state, to: another_state) do |object| 
+Machine.before_transition(from: :some_state, to: another_state) do |object|
   object.side_effect
 end
 ```
-Define a callback to run before a transition. `to` and `from` parameters are optional, a nil parameter means run before all transitions. This callback can have side-effects as it will only be run once immediately before the transition.
+Define a callback to run before a transition. `to` and `from` parameters are
+optional, a nil parameter means run before all transitions. This callback can
+have side-effects as it will only be run once immediately before the transition.
 
 #### `Machine.after_transition`
 ```ruby
@@ -163,13 +176,19 @@ Machine.after_transition(from: :some_state, to: another_state) do |object, trans
   object.side_effect
 end
 ```
-Define a callback to run after a successful transition. `to` and `from` parameters are optional, a nil parameter means run after all transitions. The model object and transition object are passed as arguments to the callback. This callback can have side-effects as it will only be run once immediately after the transition.
+Define a callback to run after a successful transition. `to` and `from`
+parameters are optional, a nil parameter means run after all transitions. The
+model object and transition object are passed as arguments to the callback.
+This callback can have side-effects as it will only be run once immediately
+after the transition.
 
 #### `Machine.new`
 ```ruby
 my_machine = Machine.new(my_model, transition_class: MyTransitionModel)
 ```
-Initialize a new state machine instance. `my_model` is required. If using the ActiveRecord adapter `my_model` should have a `has_many` association with `MyTransitionModel`.
+Initialize a new state machine instance. `my_model` is required. If using the
+ActiveRecord adapter `my_model` should have a `has_many` association with
+`MyTransitionModel`.
 
 ## Instance methods
 
@@ -183,13 +202,16 @@ Returns a sorted array of all transition objects.
 Returns the most recent transition object.
 
 #### `Machine#can_transition_to?(:state)`
-Returns true if the current state can transition to the passed state and all applicable guards pass.
+Returns true if the current state can transition to the passed state and all
+applicable guards pass.
 
 #### `Machine#transition_to!(:state)`
-Transition to the passed state, returning `true` on success. Raises `Statesman::GuardFailedError` or `Statesman::TransitionFailedError` on failure.
+Transition to the passed state, returning `true` on success. Raises
+`Statesman::GuardFailedError` or `Statesman::TransitionFailedError` on failure.
 
 #### `Machine#transition_to(:state)`
-Transition to the passed state, returning `true` on success. Swallows all exceptions and returns false on failure.
+Transition to the passed state, returning `true` on success. Swallows all
+exceptions and returns false on failure.
 
 ---
 
