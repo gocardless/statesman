@@ -331,7 +331,7 @@ describe Statesman::Machine do
 
       context "with a guard" do
         let(:result) { true }
-        let(:guard_cb) { -> (*args) { result } }
+        let(:guard_cb) { -> *args { result } }
         before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
 
         context "and an object to act on" do
