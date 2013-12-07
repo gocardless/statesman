@@ -139,10 +139,12 @@ module Statesman
     end
 
     def initialize(object,
-                   options = { transition_class: Statesman::Adapters::MemoryTransition })
+                      options = {
+                        transition_class: Statesman::Adapters::MemoryTransition
+                      })
       @object = object
-      @storage_adapter = Statesman.storage_adapter.new(options[:transition_class],
-                                                       object)
+      @storage_adapter = Statesman.storage_adapter.new(
+                                            options[:transition_class], object)
     end
 
     def current_state
