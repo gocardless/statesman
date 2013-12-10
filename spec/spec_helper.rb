@@ -13,9 +13,9 @@ RSpec.configure do |config|
 
   # Try a mongo connection at the start of the suite and raise if it fails
   begin
-    Mongoid.configure do |config|
-      config.connect_to("statesman_test")
-      config.sessions["default"]["options"]["max_retries"] = 2
+    Mongoid.configure do |mongo_config|
+      mongo_config.connect_to("statesman_test")
+      mongo_config.sessions["default"]["options"]["max_retries"] = 2
     end
     # Attempting a mongo operation will triger 2 retries then trow an exception
     # if mongo is not running.
