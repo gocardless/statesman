@@ -17,7 +17,7 @@ RSpec.configure do |config|
       mongo_config.connect_to("statesman_test")
       mongo_config.sessions["default"]["options"]["max_retries"] = 2
     end
-    # Attempting a mongo operation will triger 2 retries then trow an exception
+    # Attempting a mongo operation will trigger 2 retries then throw an exception
     # if mongo is not running.
     Mongoid.purge! unless config.exclusion_filter[:mongo]
   rescue Moped::Errors::ConnectionFailure => error
