@@ -1,3 +1,11 @@
+## v0.2.0, 16 December 2013
+*Additions*
+- Adds Ruby 1.9.3 support (patch by [@jakehow](https://github.com/jakehow))
+- All Mongo dependent tests are tagged so they can be excluded from test runs
+
+*Changes*
+- Specs now crash immediately if Mongo is not running
+
 ## v0.1.0, 5 November 2013
 
 *Additions*
