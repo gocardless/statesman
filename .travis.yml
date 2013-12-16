@@ -1,5 +1,6 @@
 rvm:
   - 2.0.0
+  - 1.9.3
 services: mongodb
 script:
  - bundle exec rubocop
