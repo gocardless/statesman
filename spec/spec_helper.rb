@@ -2,13 +2,29 @@ require "statesman"
 require "sqlite3"
 require "active_record"
 require "support/active_record"
+require "mongoid"
 
 RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
 
-  config.order = 'random'
+  config.order = "random"
+
+  # Try a mongo connection at the start of the suite and raise if it fails
+  begin
+    Mongoid.configure do |mongo_config|
+      mongo_config.connect_to("statesman_test")
+      mongo_config.sessions["default"]["options"]["max_retries"] = 2
+    end
+    # Attempting a mongo operation will trigger 2 retries then throw an
+    # exception if mongo is not running.
+    Mongoid.purge! unless config.exclusion_filter[:mongo]
+  rescue Moped::Errors::ConnectionFailure => error
+    puts "The spec suite requires MongoDB to be installed and running locally"
+    puts "Mongo dependent specs can be filtered with rspec --tag '~mongo'"
+    raise(error)
+  end
 
   config.before(:each) do
     # Connect to & cleanup test database
