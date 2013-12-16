@@ -6,21 +6,23 @@ module Statesman
     attr_reader :to
     attr_reader :callback
 
-    def initialize(from: nil, to: nil, callback: nil)
-      unless callback.respond_to?(:call)
+    def initialize(options = { from: nil, to: nil, callback: nil })
+      unless options[:callback].respond_to?(:call)
         raise InvalidCallbackError, "No callback passed"
       end
 
-      @from = from
-      @to = to
-      @callback = callback
+      @from = options[:from]
+      @to = options[:to]
+      @callback = options[:callback]
     end
 
     def call(*args)
       callback.call(*args)
     end
 
-    def applies_to?(from: nil, to: nil)
+    def applies_to?(options = { from: nil, to: nil })
+      from = options[:from]
+      to = options[:to]
       # rubocop:disable RedundantSelf
       (self.from.nil? && self.to.nil?) ||
       (from.nil? && to == self.to) ||

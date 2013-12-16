@@ -19,9 +19,9 @@ module Statesman
         @states ||= []
       end
 
-      def state(name, initial: false)
+      def state(name, options = { initial: false })
         name = name.to_s
-        if initial
+        if options[:initial]
           validate_initial_state(name)
           @initial_state = name
         end
@@ -44,9 +44,9 @@ module Statesman
         @guards ||= []
       end
 
-      def transition(from: nil, to: nil)
-        from = to_s_or_nil(from)
-        to = Array(to).map { |item| to_s_or_nil(item) }
+      def transition(options = { from: nil, to: nil })
+        from = to_s_or_nil(options[:from])
+        to = Array(options[:to]).map { |item| to_s_or_nil(item) }
 
         successors[from] ||= []
 
@@ -55,33 +55,33 @@ module Statesman
         successors[from] += to
       end
 
-      def before_transition(from: nil, to: nil, &block)
-        from = to_s_or_nil(from)
-        to   = to_s_or_nil(to)
+      def before_transition(options = { from: nil, to: nil }, &block)
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
         before_callbacks << Callback.new(from: from, to: to, callback: block)
       end
 
-      def after_transition(from: nil, to: nil, &block)
-        from = to_s_or_nil(from)
-        to   = to_s_or_nil(to)
+      def after_transition(options = { from: nil, to: nil }, &block)
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
         after_callbacks << Callback.new(from: from, to: to, callback: block)
       end
 
-      def guard_transition(from: nil, to: nil, &block)
-        from = to_s_or_nil(from)
-        to   = to_s_or_nil(to)
+      def guard_transition(options = { from: nil, to: nil }, &block)
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
         guards << Guard.new(from: from, to: to, callback: block)
       end
 
-      def validate_callback_condition(from: nil, to: nil)
-        from = to_s_or_nil(from)
-        to   = to_s_or_nil(to)
+      def validate_callback_condition(options = { from: nil, to: nil })
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
 
         [from, to].compact.each { |state| validate_state(state) }
         return if from.nil? && to.nil?
@@ -139,10 +139,12 @@ module Statesman
     end
 
     def initialize(object,
-                   transition_class: Statesman::Adapters::MemoryTransition)
+                      options = {
+                        transition_class: Statesman::Adapters::MemoryTransition
+                      })
       @object = object
-      @storage_adapter = Statesman.storage_adapter.new(transition_class,
-                                                       object)
+      @storage_adapter = Statesman.storage_adapter.new(
+                                            options[:transition_class], object)
     end
 
     def current_state
@@ -191,31 +193,31 @@ module Statesman
 
     private
 
-    def guards_for(from: nil, to: nil)
-      select_callbacks_for(self.class.guards, from: from, to: to)
+    def guards_for(options = { from: nil, to: nil })
+      select_callbacks_for(self.class.guards, options)
     end
 
-    def before_callbacks_for(from: nil, to: nil)
-      select_callbacks_for(self.class.before_callbacks, from: from, to: to)
+    def before_callbacks_for(options = { from: nil, to: nil })
+      select_callbacks_for(self.class.before_callbacks, options)
     end
 
-    def after_callbacks_for(from: nil, to: nil)
-      select_callbacks_for(self.class.after_callbacks, from: from, to: to)
+    def after_callbacks_for(options = { from: nil, to: nil })
+      select_callbacks_for(self.class.after_callbacks, options)
     end
 
-    def select_callbacks_for(callbacks, from: nil, to: nil)
-      from = to_s_or_nil(from)
-      to   = to_s_or_nil(to)
+    def select_callbacks_for(callbacks, options = { from: nil, to: nil })
+      from = to_s_or_nil(options[:from])
+      to   = to_s_or_nil(options[:to])
       callbacks.select { |callback| callback.applies_to?(from: from, to: to) }
     end
 
-    def validate_transition(from: nil, to: nil, metadata: nil)
-      from = to_s_or_nil(from)
-      to   = to_s_or_nil(to)
+    def validate_transition(options = { from: nil, to: nil, metadata: nil })
+      from = to_s_or_nil(options[:from])
+      to   = to_s_or_nil(options[:to])
 
       # Call all guards, they raise exceptions if they fail
       guards_for(from: from, to: to).each do |guard|
-        guard.call(@object, last_transition, metadata)
+        guard.call(@object, last_transition, options[:metadata])
       end
 
       successors = self.class.successors[from] || []
