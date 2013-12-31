@@ -1,6 +1,8 @@
 class <%= klass %> < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
+  <% unless rails_4? %>
   attr_accessible :to_state, :metadata, :sort_key
+  <% end %>
   belongs_to :<%= parent.underscore %>, inverse_of: :<%= table_name %>
 end
