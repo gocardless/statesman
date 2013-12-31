@@ -1,3 +1,7 @@
+## v0.2.1, 31 December 2013
+*Fixes*
+- Don't add attr_accessible to generated transition model if running in Rails 4
+
 ## v0.2.0, 16 December 2013
 *Additions*
 - Adds Ruby 1.9.3 support (patch by [@jakehow](https://github.com/jakehow))
