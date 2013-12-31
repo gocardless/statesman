@@ -36,5 +36,9 @@ module Statesman
     def parent_id
       parent.underscore + "_id"
     end
+
+    def rails_4?
+      Rails.version.split(".").map(&:to_i).first >= 4
+    end
   end
 end
