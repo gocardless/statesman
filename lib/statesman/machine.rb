@@ -98,7 +98,7 @@ module Statesman
       def validate_not_from_terminal_state(from)
         unless from.nil? || successors.keys.include?(from)
           raise InvalidTransitionError,
-                "Cannont transition away from terminal state '#{from}'"
+                "Cannot transition away from terminal state '#{from}'"
         end
       end
 
@@ -106,7 +106,7 @@ module Statesman
       def validate_not_to_initial_state(to)
         unless to.nil? || successors.values.flatten.include?(to)
           raise InvalidTransitionError,
-                "Cannont transition to initial state '#{to}'"
+                "Cannot transition to initial state '#{to}'"
         end
       end
 
