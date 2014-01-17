@@ -1,7 +1,7 @@
 class AddStatesmanTo<%= klass.pluralize %> < ActiveRecord::Migration
   def change
     add_column :<%= table_name %>, :to_state, :string
-    add_column :<%= table_name %>, :metadata, :text, default: "{}"
+    add_column :<%= table_name %>, :metadata, :text<%= ", default: \"{}\"" unless is_mysql? %>
     add_column :<%= table_name %>, :sort_key, :integer
     add_column :<%= table_name %>, :<%= parent_id %>, :integer
 

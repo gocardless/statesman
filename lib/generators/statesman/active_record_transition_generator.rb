@@ -1,7 +1,10 @@
 require "rails/generators"
+require_relative "helpers/generator_helpers"
 
 module Statesman
   class ActiveRecordTransitionGenerator < Rails::Generators::Base
+    include GeneratorHelpers
+
     desc "Create an ActiveRecord-based transition model" +
          "with the required attributes"
 

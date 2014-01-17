@@ -1,8 +1,11 @@
 require "rails/generators"
+require_relative "helpers/generator_helpers"
 
 # Add statesman attributes to a pre-existing transition class
 module Statesman
   class MigrationGenerator < Rails::Generators::Base
+    include GeneratorHelpers
+
     desc "Add the required Statesman attributes to your transition model"
 
     argument :parent, type: :string, desc: "Your parent model name"
