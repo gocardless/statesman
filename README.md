@@ -205,7 +205,7 @@ Returns a sorted array of all transition objects.
 Returns the most recent transition object.
 
 #### `Machine#applicable_states`
-Returns an array of states you can call `transition_to`. It does not check guards and callbacks.
+Returns an array of states you can call `transition_to` with. It does not check guards and callbacks.
 
 #### `Machine#can_transition_to?(:state)`
 Returns true if the current state can transition to the passed state and all
