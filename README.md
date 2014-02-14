@@ -69,6 +69,9 @@ end
 Order.first.state_machine.current_state
 # => "pending"
 
+Order.first.state_machine.applicable_states
+# => ["checking_out", "cancelled"]
+
 Order.first.state_machine.can_transition_to?(:cancelled)
 # => true/false
 
@@ -200,6 +203,9 @@ Returns a sorted array of all transition objects.
 
 #### `Machine#last_transition`
 Returns the most recent transition object.
+
+#### `Machine#applicable_states`
+Returns an array of states you can call `transition_to`. It does not check guards and callbacks.
 
 #### `Machine#can_transition_to?(:state)`
 Returns true if the current state can transition to the passed state and all

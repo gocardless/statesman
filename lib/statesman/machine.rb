@@ -152,6 +152,10 @@ module Statesman
       last_action ? last_action.to_state : self.class.initial_state
     end
 
+    def applicable_states
+      self.class.successors[current_state] || []
+    end
+
     def last_transition
       @storage_adapter.last
     end
