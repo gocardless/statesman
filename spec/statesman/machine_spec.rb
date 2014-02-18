@@ -235,7 +235,7 @@ describe Statesman::Machine do
     end
   end
 
-  describe "#applicable_states" do
+  describe "#allowed_transitions" do
     before do
       machine.class_eval do
         state :x, initial: true
@@ -247,7 +247,7 @@ describe Statesman::Machine do
     end
 
     let(:instance) { machine.new(my_model) }
-    subject { instance.applicable_states }
+    subject { instance.allowed_transitions }
 
     context "with multiple possible states" do
       it { should eq(['y','z']) }

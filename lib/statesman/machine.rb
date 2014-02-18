@@ -152,8 +152,12 @@ module Statesman
       last_action ? last_action.to_state : self.class.initial_state
     end
 
-    def applicable_states
-      self.class.successors[current_state] || []
+
+    def allowed_transitions
+      current = current_state
+      successors_for(current).select do |state|
+        can_transition_to?(state)
+      end
     end
 
     def last_transition
@@ -196,6 +200,11 @@ module Statesman
     end
 
     private
+
+    def successors_for(from)
+      self.class.successors[from] || []
+    end
+
 
     def guards_for(options = { from: nil, to: nil })
       select_callbacks_for(self.class.guards, options)
