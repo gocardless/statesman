@@ -1,3 +1,7 @@
+## v0.3.0, 20 February 2014
+*Additions*
+- Adds Machine#allowed_transitions method (patch by [@prikha](https://github.com/prikha))
+
 ## v0.2.1, 31 December 2013
 *Fixes*
 - Don't add attr_accessible to generated transition model if running in Rails 4
