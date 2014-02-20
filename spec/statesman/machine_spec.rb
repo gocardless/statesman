@@ -241,7 +241,7 @@ describe Statesman::Machine do
         state :x, initial: true
         state :y
         state :z
-        transition from: :x, to: [:y,:z]
+        transition from: :x, to: [:y, :z]
         transition from: :y, to: :z
       end
     end
@@ -250,7 +250,7 @@ describe Statesman::Machine do
     subject { instance.allowed_transitions }
 
     context "with multiple possible states" do
-      it { should eq(['y','z']) }
+      it { should eq(%w(y z)) }
     end
 
     context "with one possible state" do

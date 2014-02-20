@@ -203,7 +203,6 @@ module Statesman
       self.class.successors[from] || []
     end
 
-
     def guards_for(options = { from: nil, to: nil })
       select_callbacks_for(self.class.guards, options)
     end
