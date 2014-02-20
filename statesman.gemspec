@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake"
   spec.add_development_dependency "rspec", "~> 2.14.1"
   spec.add_development_dependency "guard-rspec", "~> 3.0.2"
-  spec.add_development_dependency "rubocop", "~> 0.12.0"
+  spec.add_development_dependency "rubocop", "~> 0.18.1"
   spec.add_development_dependency "guard-rubocop", "~> 0.2.2"
   spec.add_development_dependency "activerecord", "~> 3.2"
   spec.add_development_dependency "sqlite3", "~> 1.3.8"

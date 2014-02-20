@@ -17,7 +17,7 @@ class MyMongoidModelTransition
   field :sort_key, type: Integer
   field :statesman_metadata, type: Hash
 
-  index({ sort_key: 1 })
+  index(sort_key: 1)
 
   belongs_to :my_mongoid_model, index: true
 

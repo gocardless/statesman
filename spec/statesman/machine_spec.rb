@@ -235,6 +235,41 @@ describe Statesman::Machine do
     end
   end
 
+  describe "#allowed_transitions" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+        transition from: :x, to: [:y, :z]
+        transition from: :y, to: :z
+      end
+    end
+
+    let(:instance) { machine.new(my_model) }
+    subject { instance.allowed_transitions }
+
+    context "with multiple possible states" do
+      it { should eq(%w(y z)) }
+    end
+
+    context "with one possible state" do
+      before do
+        instance.transition_to!(:y)
+      end
+
+      it { should eq(['z']) }
+    end
+
+    context "with no possible transitions" do
+      before do
+        instance.transition_to!(:z)
+      end
+
+      it { should eq([]) }
+    end
+  end
+
   describe "#last_transition" do
     let(:instance) { machine.new(my_model) }
     let(:last_action) { "Whatever" }
