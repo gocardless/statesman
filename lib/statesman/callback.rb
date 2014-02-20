@@ -20,6 +20,7 @@ module Statesman
       callback.call(*args)
     end
 
+    # rubocop:disable CyclomaticComplexity
     def applies_to?(options = { from: nil, to: nil })
       from = options[:from]
       to = options[:to]
@@ -32,5 +33,6 @@ module Statesman
       (from == self.from && to == self.to)
       # rubocop:enable RedundantSelf
     end
+    # rubocop:enable CyclomaticComplexity
   end
 end

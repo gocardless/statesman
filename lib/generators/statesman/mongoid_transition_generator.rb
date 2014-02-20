@@ -26,6 +26,5 @@ module Statesman
     def parent_id
       parent.underscore + "_id"
     end
-
   end
 end
