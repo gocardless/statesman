@@ -20,19 +20,35 @@ module Statesman
       callback.call(*args)
     end
 
-    # rubocop:disable CyclomaticComplexity
     def applies_to?(options = { from: nil, to: nil })
       from = options[:from]
       to = options[:to]
-      # rubocop:disable RedundantSelf
-      (self.from.nil? && self.to.nil?) ||
-      (from.nil? && to == self.to) ||
-      (self.from.nil? && to == self.to) ||
-      (from == self.from && to.nil?) ||
-      (from == self.from && self.to.nil?) ||
-      (from == self.from && to == self.to)
-      # rubocop:enable RedundantSelf
+      matches from, to
     end
-    # rubocop:enable CyclomaticComplexity
+
+    private
+
+    def matches(from, to)
+      matches_all_transitions ||
+      matches_to_state(from, to) ||
+      matches_from_state(from, to) ||
+      matches_both_states(from, to)
+    end
+
+    def matches_all_transitions
+      from.nil? && to.nil?
+    end
+
+    def matches_from_state(from, to)
+      (from == self.from  && (to.nil? || self.to.nil?))
+    end
+
+    def matches_to_state(from, to)
+      ((from.nil? || self.from.nil?) && to == self.to)
+    end
+
+    def matches_both_states(from, to)
+      from == self.from && to == self.to
+    end
   end
 end
