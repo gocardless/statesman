@@ -152,10 +152,8 @@ module Statesman
       last_action ? last_action.to_state : self.class.initial_state
     end
 
-
     def allowed_transitions
-      current = current_state
-      successors_for(current).select do |state|
+      successors_for(current_state).select do |state|
         can_transition_to?(state)
       end
     end
