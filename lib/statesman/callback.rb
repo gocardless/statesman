@@ -21,9 +21,7 @@ module Statesman
     end
 
     def applies_to?(options = { from: nil, to: nil })
-      from = options[:from]
-      to = options[:to]
-      matches from, to
+      matches(options[:from], options[:to])
     end
 
     private
