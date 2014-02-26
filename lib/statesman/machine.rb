@@ -60,8 +60,8 @@ module Statesman
         callbacks[:before] << Callback.new(from: from, to: to, callback: block)
       end
 
-      def after_transition(options = { from: nil, to: nil, after_commit: false },
-          &block)
+      def after_transition(options = { from: nil, to: nil,
+                                       after_commit: false }, &block)
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
 
@@ -189,7 +189,7 @@ module Statesman
     end
 
     def execute(phase, initial_state, new_state, transition)
-      callbacks = callbacks_for(phase, { from: initial_state, to: new_state })
+      callbacks = callbacks_for(phase, from: initial_state, to: new_state)
       callbacks.each { |cb| cb.call(@object, transition) }
     end
 

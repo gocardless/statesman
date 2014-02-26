@@ -10,9 +10,9 @@ describe Statesman::Adapters::Mongoid, mongo: true do
     Mongoid.purge!
   end
   let(:observer) do
-    d = double
-    d.stub(:execute)
-    d
+    result = double(Statesman::Machine)
+    result.stub(:execute)
+    result
   end
   let(:model) { MyMongoidModel.create(current_state: :pending) }
   it_behaves_like "an adapter", described_class, MyMongoidModelTransition
@@ -25,7 +25,8 @@ describe Statesman::Adapters::Mongoid, mongo: true do
 
       it "raises an exception if metadata is not serialized" do
         expect do
-          described_class.new(MyMongoidModelTransition, MyMongoidModel, observer)
+          described_class.new(MyMongoidModelTransition, MyMongoidModel,
+                              observer)
         end.to raise_exception(Statesman::UnserializedMetadataError)
       end
     end

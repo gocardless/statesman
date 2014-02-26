@@ -10,9 +10,9 @@ describe Statesman::Adapters::ActiveRecord do
 
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
   let(:observer) do
-    d = double
-    d.stub(:execute)
-    d
+    result = double(Statesman::Machine)
+    result.stub(:execute)
+    result
   end
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition

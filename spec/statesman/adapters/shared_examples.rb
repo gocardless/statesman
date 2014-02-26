@@ -13,9 +13,9 @@ require "spec_helper"
 #
 shared_examples_for "an adapter" do |adapter_class, transition_class|
   let(:observer) do
-    d = double
-    d.stub(:execute)
-    d
+    result = double(Statesman::Machine)
+    result.stub(:execute)
+    result
   end
   let(:adapter) { adapter_class.new(transition_class, model, observer) }
 
@@ -54,7 +54,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
 
     context "with before callbacks" do
       it "is called before the state transition" do
-        observer.should_receive(:execute).with do |phase, from_state, to_state, transition|
+        observer.should_receive(:execute).with do
+            |phase, from_state, to_state, transition|
           expect(adapter.history.length).to eq(0) if phase == :before
         end.once
         adapter.create(from, to)
@@ -64,7 +65,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
 
     context "with after callbacks" do
       it "is called after the state transition" do
-        observer.should_receive(:execute).with do |phase, from_state, to_state, transition|
+        observer.should_receive(:execute).with do
+            |phase, from_state, to_state, transition|
           expect(adapter.last).to eq(transition) if phase == :after
         end.once
         adapter.create(from, to)
