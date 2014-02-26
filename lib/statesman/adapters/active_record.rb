@@ -6,26 +6,28 @@ module Statesman
       attr_reader :transition_class
       attr_reader :parent_model
 
-      def initialize(transition_class, parent_model)
+      def initialize(transition_class, parent_model, observer)
         unless transition_class.serialized_attributes.include?("metadata")
           raise UnserializedMetadataError,
                 "#{transition_class.name}#metadata is not serialized"
         end
         @transition_class = transition_class
         @parent_model = parent_model
+        @observer = observer
       end
 
-      def create(to, before_cbs, after_cbs, metadata = {})
+      def create(from, to, metadata = {})
         transition = transitions_for_parent.build(to_state: to,
                                                   sort_key: next_sort_key,
                                                   metadata: metadata)
 
         ::ActiveRecord::Base.transaction do
-          before_cbs.each { |cb| cb.call(@parent_model, transition) }
+          @observer.execute(:before, from, to, transition)
           transition.save!
-          after_cbs.each { |cb| cb.call(@parent_model, transition) }
+          @observer.execute(:after, from, to, transition)
           @last_transition = nil
         end
+        @observer.execute(:after_commit, from, to, transition)
 
         transition
       end

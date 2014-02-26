@@ -32,16 +32,13 @@ module Statesman
         @successors ||= {}
       end
 
-      def before_callbacks
-        @before_callbacks ||= []
-      end
-
-      def after_callbacks
-        @after_callbacks ||= []
-      end
-
-      def guards
-        @guards ||= []
+      def callbacks
+        @callbacks ||= {
+          before:       [],
+          after:        [],
+          after_commit: [],
+          guards:       []
+        }
       end
 
       def transition(options = { from: nil, to: nil })
@@ -60,15 +57,17 @@ module Statesman
         to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
-        before_callbacks << Callback.new(from: from, to: to, callback: block)
+        callbacks[:before] << Callback.new(from: from, to: to, callback: block)
       end
 
-      def after_transition(options = { from: nil, to: nil }, &block)
+      def after_transition(options = { from: nil, to: nil, after_commit: false },
+          &block)
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
-        after_callbacks << Callback.new(from: from, to: to, callback: block)
+        phase = options[:after_commit] ? :after_commit : :after
+        callbacks[phase] << Callback.new(from: from, to: to, callback: block)
       end
 
       def guard_transition(options = { from: nil, to: nil }, &block)
@@ -76,7 +75,7 @@ module Statesman
         to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
-        guards << Guard.new(from: from, to: to, callback: block)
+        callbacks[:guards] << Guard.new(from: from, to: to, callback: block)
       end
 
       def validate_callback_condition(options = { from: nil, to: nil })
@@ -143,8 +142,9 @@ module Statesman
                         transition_class: Statesman::Adapters::MemoryTransition
                       })
       @object = object
+      @transition_class = options[:transition_class]
       @storage_adapter = Statesman.storage_adapter.new(
-                                            options[:transition_class], object)
+                                            @transition_class, object, self)
     end
 
     def current_state
@@ -183,12 +183,14 @@ module Statesman
                           to: new_state,
                           metadata: metadata)
 
-      before_cbs = before_callbacks_for(from: initial_state, to: new_state)
-      after_cbs = after_callbacks_for(from: initial_state, to: new_state)
-
-      @storage_adapter.create(new_state, before_cbs, after_cbs, metadata)
+      @storage_adapter.create(initial_state, new_state, metadata)
 
       true
+    end
+
+    def execute(phase, initial_state, new_state, transition)
+      callbacks = callbacks_for(phase, { from: initial_state, to: new_state })
+      callbacks.each { |cb| cb.call(@object, transition) }
     end
 
     def transition_to(new_state, metadata = nil)
@@ -204,15 +206,11 @@ module Statesman
     end
 
     def guards_for(options = { from: nil, to: nil })
-      select_callbacks_for(self.class.guards, options)
+      select_callbacks_for(self.class.callbacks[:guards], options)
     end
 
-    def before_callbacks_for(options = { from: nil, to: nil })
-      select_callbacks_for(self.class.before_callbacks, options)
-    end
-
-    def after_callbacks_for(options = { from: nil, to: nil })
-      select_callbacks_for(self.class.after_callbacks, options)
+    def callbacks_for(phase, options = { from: nil, to: nil })
+      select_callbacks_for(self.class.callbacks[phase], options)
     end
 
     def select_callbacks_for(callbacks, options = { from: nil, to: nil })

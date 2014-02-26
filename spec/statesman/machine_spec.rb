@@ -127,13 +127,12 @@ describe Statesman::Machine do
     it "stores callbacks" do
       expect do
         machine.send(assignment_method) {}
-      end.to change(machine.send(callback_store), :count).by(1)
+      end.to change(machine.callbacks[callback_store], :count).by(1)
     end
 
     it "stores callback instances" do
       machine.send(assignment_method) {}
-
-      machine.send(callback_store).each do |callback|
+      machine.callbacks[callback_store].each do |callback|
         expect(callback).to be_a(Statesman::Callback)
       end
     end
@@ -174,11 +173,11 @@ describe Statesman::Machine do
   end
 
   describe ".before_transition" do
-    it_behaves_like "a callback store", :before_transition, :before_callbacks
+    it_behaves_like "a callback store", :before_transition, :before
   end
 
   describe ".after_transition" do
-    it_behaves_like "a callback store", :after_transition, :after_callbacks
+    it_behaves_like "a callback store", :after_transition, :after
   end
 
   describe ".guard_transition" do
@@ -194,14 +193,14 @@ describe Statesman::Machine do
     context "transition class" do
       it "sets a default" do
         Statesman.storage_adapter.should_receive(:new).once
-          .with(Statesman::Adapters::MemoryTransition, my_model)
+          .with(Statesman::Adapters::MemoryTransition, my_model, anything)
         machine.new(my_model)
       end
 
       it "sets the passed class" do
         my_transition_class = Class.new
         Statesman.storage_adapter.should_receive(:new).once
-          .with(my_transition_class, my_model)
+          .with(my_transition_class, my_model, anything)
         machine.new(my_model, transition_class: my_transition_class)
       end
     end
@@ -396,28 +395,6 @@ describe Statesman::Machine do
           end
         end
       end
-
-      context "with a before callback" do
-        let(:callbacks) { [] }
-        before { instance.stub(:before_callbacks_for).and_return(callbacks) }
-
-        it "is passed to the adapter" do
-          Statesman::Adapters::Memory.any_instance.should_receive(:create)
-            .with("y", callbacks, anything, anything)
-          instance.transition_to!(:y)
-        end
-      end
-
-      context "with an after callback" do
-        let(:callbacks) { [] }
-        before { instance.stub(:after_callbacks_for).and_return(callbacks) }
-
-        it "is passed to the adapter" do
-          Statesman::Adapters::Memory.any_instance.should_receive(:create)
-            .with("y", anything, callbacks, anything)
-          instance.transition_to!(:y)
-        end
-      end
     end
   end
 
@@ -442,7 +419,7 @@ describe Statesman::Machine do
     end
   end
 
-  shared_examples "a callback filter" do |definer, getter|
+  shared_examples "a callback filter" do |definer, phase|
     before do
       machine.class_eval do
         state :x
@@ -454,7 +431,7 @@ describe Statesman::Machine do
     end
 
     let(:instance) { machine.new(my_model) }
-    let(:callbacks) { instance.send(getter, from: :x, to: :y) }
+    let(:callbacks) { instance.send(:callbacks_for, phase, from: :x, to: :y) }
 
     context "with no defined callbacks" do
       specify { expect(callbacks).to eq([]) }
@@ -480,16 +457,16 @@ describe Statesman::Machine do
   end
 
   describe "#guards_for" do
-    it_behaves_like "a callback filter", :guard_transition, :guards_for
+    it_behaves_like "a callback filter", :guard_transition, :guards
   end
 
   describe "#before_callbacks_for" do
     it_behaves_like "a callback filter", :before_transition,
-                    :before_callbacks_for
+                    :before
   end
 
   describe "#after_callbacks_for" do
     it_behaves_like "a callback filter", :after_transition,
-                    :after_callbacks_for
+                    :after
   end
 end
