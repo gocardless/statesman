@@ -1,3 +1,8 @@
+## v0.4.0, 27 February 2014
+*Additions*
+- Adds after_commit flag to after_transition for callbacks to be executed after the transaction has been
+committed on the ActiveRecord adapter. These callbacks will still be executed on non transactional adapters.
+
 ## v0.3.0, 20 February 2014
 *Additions*
 - Adds Machine#allowed_transitions method (patch by [@prikha](https://github.com/prikha))
