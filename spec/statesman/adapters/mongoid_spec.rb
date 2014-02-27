@@ -9,7 +9,11 @@ describe Statesman::Adapters::Mongoid, mongo: true do
   after do
     Mongoid.purge!
   end
-
+  let(:observer) do
+    result = double(Statesman::Machine)
+    result.stub(:execute)
+    result
+  end
   let(:model) { MyMongoidModel.create(current_state: :pending) }
   it_behaves_like "an adapter", described_class, MyMongoidModelTransition
 
@@ -21,18 +25,21 @@ describe Statesman::Adapters::Mongoid, mongo: true do
 
       it "raises an exception if metadata is not serialized" do
         expect do
-          described_class.new(MyMongoidModelTransition, MyMongoidModel)
+          described_class.new(MyMongoidModelTransition, MyMongoidModel,
+                              observer)
         end.to raise_exception(Statesman::UnserializedMetadataError)
       end
     end
   end
 
   describe "#last" do
-    let(:adapter) { described_class.new(MyMongoidModelTransition, model) }
+    let(:adapter) do
+      described_class.new(MyMongoidModelTransition, model, observer)
+    end
 
     context "with a previously looked up transition" do
       before do
-        adapter.create(:y, [], [])
+        adapter.create(:x, :y)
         adapter.last
       end
 
@@ -43,7 +50,7 @@ describe Statesman::Adapters::Mongoid, mongo: true do
       end
 
       context "and a new transition" do
-        before { adapter.create(:z, [], []) }
+        before { adapter.create(:y, :z) }
         it "retrieves the new transition from the database" do
           expect(adapter.last.to_state).to eq("z")
         end

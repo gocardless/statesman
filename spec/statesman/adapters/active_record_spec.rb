@@ -9,7 +9,11 @@ describe Statesman::Adapters::ActiveRecord do
   end
 
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
-
+  let(:observer) do
+    result = double(Statesman::Machine)
+    result.stub(:execute)
+    result
+  end
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
 
@@ -20,18 +24,20 @@ describe Statesman::Adapters::ActiveRecord do
       it "raises an exception if metadata is not serialized" do
         expect do
           described_class.new(MyActiveRecordModelTransition,
-                              MyActiveRecordModel)
+                              MyActiveRecordModel, observer)
         end.to raise_exception(Statesman::UnserializedMetadataError)
       end
     end
   end
 
   describe "#last" do
-    let(:adapter) { described_class.new(MyActiveRecordModelTransition, model) }
+    let(:adapter) do
+      described_class.new(MyActiveRecordModelTransition, model, observer)
+    end
 
     context "with a previously looked up transition" do
       before do
-        adapter.create(:y, [], [])
+        adapter.create(:x, :y)
         adapter.last
       end
 
@@ -42,7 +48,7 @@ describe Statesman::Adapters::ActiveRecord do
       end
 
       context "and a new transition" do
-        before { adapter.create(:z, [], []) }
+        before { adapter.create(:y, :z, []) }
         it "retrieves the new transition from the database" do
           expect(adapter.last.to_state).to eq("z")
         end
