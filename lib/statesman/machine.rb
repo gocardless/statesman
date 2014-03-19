@@ -145,6 +145,7 @@ module Statesman
       @transition_class = options[:transition_class]
       @storage_adapter = Statesman.storage_adapter.new(
                                             @transition_class, object, self)
+      send(:after_initialize) if respond_to? :after_initialize
     end
 
     def current_state

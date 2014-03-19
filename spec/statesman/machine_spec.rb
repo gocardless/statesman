@@ -206,6 +206,16 @@ describe Statesman::Machine do
     end
   end
 
+  describe "#after_initialize" do
+    it "is called after initialize" do
+      machine.class_eval do
+        def after_initialize; end
+      end
+      expect_any_instance_of(machine).to receive :after_initialize
+      machine.new(my_model)
+    end
+  end
+
   describe "#current_state" do
     before do
       machine.class_eval do
