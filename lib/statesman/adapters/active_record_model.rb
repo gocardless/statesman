@@ -10,6 +10,14 @@ module Statesman
             .where("transition2.id" => nil)
       end
 
+      def without_states(*states)
+        states = Array(states)
+        self.joins(transition_name)
+            .joins(transition_join)
+            .where("#{transition_name}.to_state NOT IN (?)", states)
+            .where("transition2.id" => nil)
+      end
+
       private
 
       def transition_class

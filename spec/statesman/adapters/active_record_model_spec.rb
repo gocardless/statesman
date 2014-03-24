@@ -15,13 +15,19 @@ describe Statesman::Adapters::ActiveRecordModel do
     end
   end
 
-  describe ".with_states" do
-    let(:model) do
-      model = MyActiveRecordModel.create
-      model.my_active_record_model_transitions.create(to_state: :state_a)
-      model
-    end
+  let!(:model) do
+    model = MyActiveRecordModel.create
+    model.my_active_record_model_transitions.create(to_state: :state_a)
+    model
+  end
 
+  let!(:other_model) do
+    model = MyActiveRecordModel.create
+    model.my_active_record_model_transitions.create(to_state: :state_b)
+    model
+  end
+
+  describe ".with_states" do
     context "given a single state" do
       subject { MyActiveRecordModel.with_states(:state_a) }
 
@@ -31,15 +37,21 @@ describe Statesman::Adapters::ActiveRecordModel do
     context "given multiple states" do
       subject { MyActiveRecordModel.with_states(:state_a, :state_b) }
 
-      let(:other_model) do
-        model = MyActiveRecordModel.create
-        model.my_active_record_model_transitions.create(to_state: :state_b)
-        model
-      end
-
       it { should include model }
       it { should include other_model }
     end
   end
 
+  describe ".without_states" do
+    context "given a single state" do
+      subject { MyActiveRecordModel.without_states(:state_b) }
+      it { should include model }
+      it { should_not include other_model }
+    end
+
+    context "given multiple states" do
+      subject { MyActiveRecordModel.without_states(:state_a, :state_b) }
+      it { should == [] }
+    end
+  end
 end
