@@ -7,7 +7,7 @@ describe Statesman::Adapters::ActiveRecordModel do
   end
 
   before do
-    MyActiveRecordModel.send(:extend, Statesman::Adapters::ActiveRecordModel)
+    MyActiveRecordModel.send(:include, Statesman::Adapters::ActiveRecordModel)
     MyActiveRecordModel.class_eval do
       def self.transition_class
         MyActiveRecordModelTransition
