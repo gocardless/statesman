@@ -1,4 +1,5 @@
 require "support/active_record"
+require "json"
 
 DB = Pathname.new("test.sqlite3")
 
@@ -8,6 +9,7 @@ end
 
 class MyActiveRecordModelTransition < ActiveRecord::Base
   belongs_to :my_active_record_model
+  serialize :metadata, JSON
 end
 
 class CreateMyActiveRecordModelMigration < ActiveRecord::Migration
