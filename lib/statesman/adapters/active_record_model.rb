@@ -7,7 +7,6 @@ module Statesman
 
       module ClassMethods
         def with_states(*states)
-          states = Array(states)
           joins(transition_name)
             .joins(transition_join)
             .where("#{transition_name}.to_state" => states)
@@ -15,7 +14,6 @@ module Statesman
         end
 
         def without_states(*states)
-          states = Array(states)
           joins(transition_name)
             .joins(transition_join)
             .where("#{transition_name}.to_state NOT IN (?)", states)
