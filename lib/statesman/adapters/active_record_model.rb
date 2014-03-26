@@ -6,14 +6,14 @@ module Statesman
       end
 
       module ClassMethods
-        def with_states(*states)
+        def in_state(*states)
           joins(transition_name)
             .joins(transition_join)
             .where("#{transition_name}.to_state" => states)
             .where("transition2.id" => nil)
         end
 
-        def without_states(*states)
+        def not_in_state(*states)
           joins(transition_name)
             .joins(transition_join)
             .where("#{transition_name}.to_state NOT IN (?)", states)

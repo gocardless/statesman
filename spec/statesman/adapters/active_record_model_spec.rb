@@ -27,30 +27,30 @@ describe Statesman::Adapters::ActiveRecordModel do
     model
   end
 
-  describe ".with_states" do
+  describe ".in_state" do
     context "given a single state" do
-      subject { MyActiveRecordModel.with_states(:state_a) }
+      subject { MyActiveRecordModel.in_state(:state_a) }
 
       it { should include model }
     end
 
     context "given multiple states" do
-      subject { MyActiveRecordModel.with_states(:state_a, :state_b) }
+      subject { MyActiveRecordModel.in_state(:state_a, :state_b) }
 
       it { should include model }
       it { should include other_model }
     end
   end
 
-  describe ".without_states" do
+  describe ".not_in_state" do
     context "given a single state" do
-      subject { MyActiveRecordModel.without_states(:state_b) }
+      subject { MyActiveRecordModel.not_in_state(:state_b) }
       it { should include model }
       it { should_not include other_model }
     end
 
     context "given multiple states" do
-      subject { MyActiveRecordModel.without_states(:state_a, :state_b) }
+      subject { MyActiveRecordModel.not_in_state(:state_a, :state_b) }
       it { should == [] }
     end
   end
