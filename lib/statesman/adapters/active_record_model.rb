@@ -23,8 +23,8 @@ module Statesman
         private
 
         def transition_class
-          raise NotImplementedError, "A transition_class method should be \
-                                      defined on the model"
+          raise NotImplementedError, "A transition_class method should be " +
+                                     "defined on the model"
         end
 
         def transition_name
