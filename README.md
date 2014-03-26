@@ -53,10 +53,18 @@ class OrderStateMachine
 end
 
 class Order < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordModel
+
   has_many :order_transitions
 
   def state_machine
     OrderStateMachine.new(self, transition_class: OrderTransition)
+  end
+
+  private
+
+  def transition_class
+    OrderTransition
   end
 end
 
@@ -77,6 +85,12 @@ Order.first.state_machine.can_transition_to?(:cancelled)
 
 Order.first.state_machine.transition_to(:cancelled, optional: :metadata)
 # => true/false
+
+Order.in_state(:cancelled)
+# => [#<Order id: "123">]
+
+Order.not_in_state(:checking_out)
+# => [#<Order id: "123">]
 
 Order.first.state_machine.transition_to!(:cancelled)
 # => true/exception
@@ -218,6 +232,30 @@ Transition to the passed state, returning `true` on success. Raises
 #### `Machine#transition_to(:state)`
 Transition to the passed state, returning `true` on success. Swallows all
 exceptions and returns false on failure.
+
+## Model scopes
+
+A mixin is provided for the ActiveRecord adapter which adds scopes to easily
+find all models currently in (or not in) a given state. Include it into your
+model and define a `transition_class` method.
+
+```ruby
+class Order < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordModel
+  
+  private
+
+  def transition_class
+    OrderTransition
+  end
+end
+```
+
+#### `Model.in_state(:state_1, :state_2, etc)`
+Returns all models currently in any of the supplied states.
+
+#### `Model.not_in_state(:state_1, :state_2, etc)`
+Returns all models not currently in any of the supplied states.
 
 ---
 
