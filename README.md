@@ -63,7 +63,7 @@ class Order < ActiveRecord::Base
 
   private
 
-  def transition_class
+  def self.transition_class
     OrderTransition
   end
 end
@@ -245,7 +245,7 @@ class Order < ActiveRecord::Base
   
   private
 
-  def transition_class
+  def self.transition_class
     OrderTransition
   end
 end
