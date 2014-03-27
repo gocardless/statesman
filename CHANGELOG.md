@@ -1,3 +1,11 @@
+## v0.5.0, 27 March 2014
+*Additions*
+- Scope methods. Adds a module which can be mixed in to an ActiveRecord model to provide `.in_state` and `.not_in_state` query scopes.
+- Adds `Machine#after_initialize` hook (patch by [@att14](https://github.com/att14))
+
+*Fixes*
+- Added MongoidTransition to the autoload statements, fixing [#29](https://github.com/gocardless/statesman/issues/29) (patch by [@tomclose](https://github.com/tomclose))
+
 ## v0.4.0, 27 February 2014
 *Additions*
 - Adds after_commit flag to after_transition for callbacks to be executed after the transaction has been
