@@ -35,9 +35,12 @@ describe Statesman::Adapters::ActiveRecord do
       described_class.new(MyActiveRecordModelTransition, model, observer)
     end
 
+    before do
+      adapter.create(:x, :y)
+    end
+
     context "with a previously looked up transition" do
       before do
-        adapter.create(:x, :y)
         adapter.last
       end
 
@@ -52,6 +55,18 @@ describe Statesman::Adapters::ActiveRecord do
         it "retrieves the new transition from the database" do
           expect(adapter.last.to_state).to eq("z")
         end
+      end
+    end
+
+    context "with a pre-fetched transition history" do
+      before do
+        # inspect the transitions to coerce a [pre-]load
+        model.my_active_record_model_transitions.inspect
+      end
+
+      it "doesn't query the database" do
+        MyActiveRecordModelTransition.should_not_receive(:connection)
+        expect(adapter.last.to_state).to eq("y")
       end
     end
   end

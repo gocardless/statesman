@@ -33,11 +33,15 @@ module Statesman
       end
 
       def history
-        transitions_for_parent.order(:sort_key)
+        if transitions_for_parent.loaded?
+          transitions_for_parent.sort_by(&:sort_key)
+        else
+          transitions_for_parent.order(:sort_key)
+        end
       end
 
       def last
-        @last_transition ||= transitions_for_parent.order(:sort_key).last
+        @last_transition ||= history.last
       end
 
       private
