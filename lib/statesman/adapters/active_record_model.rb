@@ -9,14 +9,14 @@ module Statesman
         def in_state(*states)
           joins(transition_name)
             .joins(transition_join)
-            .where("#{transition_name}.to_state" => states)
+            .where("#{transition_name}.to_state" => states.map(&:to_s))
             .where("transition2.id" => nil)
         end
 
         def not_in_state(*states)
           joins(transition_name)
             .joins(transition_join)
-            .where("#{transition_name}.to_state NOT IN (?)", states)
+            .where("#{transition_name}.to_state NOT IN (?)", states.map(&:to_s))
             .where("transition2.id" => nil)
         end
 
