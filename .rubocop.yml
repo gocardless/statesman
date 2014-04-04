@@ -27,3 +27,6 @@ MethodLength:
 # Don't require utf-8 encoding comment
 Encoding:
   Enabled: false
+
+LineLength:
+  Max: 80
