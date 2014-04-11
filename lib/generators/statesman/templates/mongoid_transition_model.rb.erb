@@ -1,5 +1,6 @@
 class <%= klass %>
   include Mongoid::Document
+  include Mongoid::Timestamps
   include Statesman::Adapters::MongoidTransition
 
   field :to_state, type: String
