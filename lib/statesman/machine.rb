@@ -143,8 +143,7 @@ module Statesman
                       })
       @object = object
       @transition_class = options[:transition_class]
-      @storage_adapter = Statesman.storage_adapter.new(
-                                            @transition_class, object, self)
+      @storage_adapter = (options[:storage_adpater_class] || Statesman.storage_adapter).new(@transition_class, object, self)
       send(:after_initialize) if respond_to? :after_initialize
     end
 
