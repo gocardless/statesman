@@ -5,6 +5,7 @@ class Create<%= klass.pluralize %> < ActiveRecord::Migration
       t.text :metadata, default: "{}"
       t.integer :sort_key
       t.integer :<%= parent_id %>
+      t.timestamps
     end
 
     add_index :<%= table_name %>, :<%= parent_id %>

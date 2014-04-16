@@ -9,6 +9,7 @@ describe Statesman::Adapters::MemoryTransition do
 
     specify { expect(create.to_state).to equal(to) }
     specify { expect(create.created_at).to be_a(Time) }
+    specify { expect(create.updated_at).to be_a(Time) }
     specify { expect(create.sort_key).to be(sort_key) }
 
     context "with metadata passed" do
