@@ -224,15 +224,15 @@ module Statesman
       from = to_s_or_nil(options[:from])
       to   = to_s_or_nil(options[:to])
 
-      # Call all guards, they raise exceptions if they fail
-      guards_for(from: from, to: to).each do |guard|
-        guard.call(@object, last_transition, options[:metadata])
-      end
-
       successors = self.class.successors[from] || []
       unless successors.include?(to)
         raise TransitionFailedError,
               "Cannot transition from '#{from}' to '#{to}'"
+      end
+
+      # Call all guards, they raise exceptions if they fail
+      guards_for(from: from, to: to).each do |guard|
+        guard.call(@object, last_transition, options[:metadata])
       end
     end
 

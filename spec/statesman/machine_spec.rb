@@ -295,7 +295,9 @@ describe Statesman::Machine do
       machine.class_eval do
         state :x, initial: true
         state :y
+        state :z
         transition from: :x, to: :y
+        transition from: :y, to: :z
       end
     end
 
@@ -312,6 +314,17 @@ describe Statesman::Machine do
         before { instance.transition_to!(:y) }
         let(:new_state) { :y }
         it { should be_false }
+      end
+
+      context "and is guarded" do
+        let(:guard_cb) { -> { false } }
+        let(:new_state) { :z }
+        before { machine.guard_transition(to: new_state, &guard_cb) }
+
+        it "does not fire guard" do
+          guard_cb.should_not_receive(:call)
+          should be_false
+        end
       end
     end
 
