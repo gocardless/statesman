@@ -22,6 +22,5 @@ module Statesman
     def file_name
       "db/migrate/#{next_migration_number}_add_statesman_to_#{table_name}.rb"
     end
-  
   end
 end

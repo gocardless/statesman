@@ -1,8 +1,7 @@
 module Statesman
   module GeneratorHelpers
-
     def class_name_option
-      ", class_name: '#{parent}'" unless parent.underscore == parent_name 
+      ", class_name: '#{parent}'" unless parent.underscore == parent_name
     end
 
     def model_file_name
@@ -10,7 +9,7 @@ module Statesman
     end
 
     def migration_class_name
-      klass.gsub(%r[::],'').pluralize
+      klass.gsub(/::/, '').pluralize
     end
 
     def next_migration_number
@@ -28,6 +27,5 @@ module Statesman
     def table_name
       klass.demodulize.underscore.pluralize
     end
-
   end
 end

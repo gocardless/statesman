@@ -21,6 +21,5 @@ module Statesman
     def collection_name
       klass.underscore.pluralize
     end
-
   end
 end

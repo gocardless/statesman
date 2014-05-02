@@ -10,19 +10,23 @@ describe Statesman::MigrationGenerator, type: :generator do
 
   describe 'the model contains the correct words' do
     let(:migration_number) { '5678309' }
-    let(:mock_time) { double('Time', utc: double('UTCTime', strftime: migration_number)) }
 
-    subject { 
-      file("db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb") 
-    }
+    let(:mock_time) do
+      double('Time', utc: double('UTCTime', strftime: migration_number))
+    end
 
-    before { 
+    subject do
+      file(
+        "db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb"
+      )
+    end
+
+    before do
       Time.stub(:now).and_return(mock_time)
       run_generator %w[Yummy::Bacon Yummy::BaconTransition]
-    } 
+    end
 
-    it { should contain(%r[:bacon_transition]) }
-    it { should_not contain(%r[:yummy/bacon]) }
+    it { should contain(/:bacon_transition/) }
+    it { should_not contain(/:yummy\/bacon/) }
   end
-
 end

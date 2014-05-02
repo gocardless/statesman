@@ -8,21 +8,21 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     let(:migration_name) { 'db/migrate/create_bacon_transitions.rb' }
   end
 
-  describe 'the model contains the correct words' do
-    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] } 
+  describe 'properly adds class names' do
+    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
     subject { file('app/models/yummy/bacon_transition.rb') }
-    
-    it { should contain(%r[:bacon_transition]) }
-    it { should_not contain(%r[:yummy/bacon]) }
-    it { should contain(%r[class_name: 'Yummy::Bacon']) }
+
+    it { should contain(/:bacon_transition/) }
+    it { should_not contain(/:yummy\/bacon/) }
+    it { should contain(/class_name: 'Yummy::Bacon'/) }
   end
-  
-  describe 'the model contains the correct words' do
-    before { run_generator %w[Bacon BaconTransition] } 
+
+  describe 'properly formats without class names' do
+    before { run_generator %w[Bacon BaconTransition] }
     subject { file('app/models/bacon_transition.rb') }
 
-    it { should_not contain(%r[class_name:]) }
-    it { should contain(%r[class BaconTransition]) }
+    it { should_not contain(/class_name:/) }
+    it { should contain(/class BaconTransition/) }
   end
 
 end
