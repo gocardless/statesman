@@ -9,6 +9,6 @@ class <%= klass %>
 
   index({ sort_key: 1 })
 
-  belongs_to :<%= parent.underscore %>, index: true
+  belongs_to :<%= parent %><%= class_name_option %>, index: true
 
 end

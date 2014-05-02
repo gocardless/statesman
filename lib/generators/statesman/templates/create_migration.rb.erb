@@ -1,4 +1,4 @@
-class Create<%= klass.pluralize %> < ActiveRecord::Migration
+class Create<%= migration_class_name %> < ActiveRecord::Migration
   def change
     create_table :<%= table_name %> do |t|
       t.string :to_state

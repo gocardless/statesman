@@ -1,7 +1,10 @@
 require "rails/generators"
+require "generators/statesman/generator_helpers"
 
 module Statesman
   class MongoidTransitionGenerator < Rails::Generators::Base
+    include Statesman::GeneratorHelpers
+
     desc "Create a Mongoid-based transition model with the required attributes"
 
     argument :parent, type: :string, desc: "Your parent model name"
@@ -15,16 +18,9 @@ module Statesman
 
     private
 
-    def model_file_name
-      "app/models/#{klass.underscore}.rb"
-    end
-
     def collection_name
       klass.underscore.pluralize
     end
 
-    def parent_id
-      parent.underscore + "_id"
-    end
   end
 end

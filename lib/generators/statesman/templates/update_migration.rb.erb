@@ -1,4 +1,4 @@
-class AddStatesmanTo<%= klass.pluralize %> < ActiveRecord::Migration
+class AddStatesmanTo<%= migration_class_name %> < ActiveRecord::Migration
   def change
     add_column :<%= table_name %>, :to_state, :string
     add_column :<%= table_name %>, :metadata, :text, default: "{}"
