@@ -78,6 +78,27 @@ module Statesman
         callbacks[:guards] << Guard.new(from: from, to: to, callback: block)
       end
 
+      def after_revert(options = { from: nil, to: nil,
+                                       after_commit: false }, &block)
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
+
+        validate_revert_callback_condition(from: from, to: to)
+        callbacks[:after] << Callback.new(from: from, to: to, callback: block)
+      end
+
+
+      def validate_revert_callback_condition(options = { from: nil, to: nil })
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
+
+        [from, to].compact.each { |state| validate_state(state) }
+        return if from.nil? && to.nil?
+
+        #going backwards here!
+        validate_revert(from, to)
+      end
+
       def validate_callback_condition(options = { from: nil, to: nil })
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
@@ -109,6 +130,7 @@ module Statesman
         end
       end
 
+
       # Check that the transition is valid when 'from' and 'to' are given
       def validate_from_and_to_state(from, to)
         unless successors.fetch(from, []).include?(to)
@@ -117,6 +139,7 @@ module Statesman
         end
       end
 
+      
       private
 
       def validate_state(state)
@@ -132,6 +155,17 @@ module Statesman
         end
       end
 
+      # Check that the 'from' state is not the initial - reverting!
+      def validate_revert(from = nil, to = nil)
+        if !to.nil? && successors.keys.flatten.include?(to)
+          true
+        elsif !from.nil? && !successors.values.flatten.include?(from)
+          true
+        else
+          raise InvalidTransitionError,
+                "Cannot revert transition to '#{to}'"
+        end
+      end
       def to_s_or_nil(input)
         input.nil? ? input : input.to_s
       end
@@ -186,6 +220,12 @@ module Statesman
 
       @storage_adapter.create(initial_state, new_state, metadata)
 
+      true
+    end
+
+    def revert_to!(new_state, metadata = nil)
+
+      @storage_adapter.revert if @storage_adapter.respond_to?(:revert)
       true
     end
 
