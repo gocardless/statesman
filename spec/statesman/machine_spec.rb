@@ -115,32 +115,6 @@ describe Statesman::Machine do
     end
   end
 
-  describe ".validate_revert_callback_condition" do
-    before do
-      machine.class_eval do
-        state :x
-        state :y
-        state :z
-        transition from: :x, to: :y
-        transition from: :y, to: :z
-      end
-    end
-    context "wth invalid transiton" do
-      it "raises an exception" do
-        expect do
-          machine.validate_revert_callback_condition(from: :y, to: :z)
-        end.to raise_error(Statesman::InvalidTransitionError)
-      end
-    end
-    context "with valid transition" do
-      it "should not raise exception" do
-        expect do
-          machine.validate_revert_callback_condition(from: :y, to: :x)
-        end.to_not raise_error
-      end
-    end
-  end
-
   shared_examples "a callback store" do |assignment_method, callback_store|
     before do
       machine.class_eval do
@@ -209,7 +183,7 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :guard_transition, :guards
   end
 
-  describe ".after_revert" do
+  describe ".before_revert" do
     before do
       machine.class_eval do
         state :x, initial: true
@@ -220,13 +194,13 @@ describe Statesman::Machine do
 
     it "stores callbacks" do
       expect do
-        machine.send(:after_revert) {}
-      end.to change(machine.callbacks[:after], :count).by(1)
+        machine.send(:before_revert) {}
+      end.to change(machine.callbacks[:before], :count).by(1)
     end
 
     it "stores callback instances" do
-      machine.send(:after_revert) {}
-      machine.callbacks[:after].each do |callback|
+      machine.send(:before_revert) {}
+      machine.callbacks[:before].each do |callback|
         expect(callback).to be_a(Statesman::Callback)
       end
     end
@@ -559,7 +533,7 @@ describe Statesman::Machine do
   end
 
 
-  describe "revert_transition" do
+  describe "revert_to!" do
     before do
       machine.class_eval do
         state :x, initial: true
@@ -572,6 +546,21 @@ describe Statesman::Machine do
     end
 
     let(:instance) { machine.new(my_model) }
+
+    context "wth invalid transiton" do
+      it "raises an exception" do
+        expect do
+          instance.send(:validate_revert, { from: :y, to: :z } )
+        end.to raise_error(Statesman::InvalidTransitionError)
+      end
+    end
+    context "with valid transition" do
+      it "should not raise exception" do
+        expect do
+          instance.send(:validate_revert, {from: :y, to: :x } )
+        end.to_not raise_error
+      end
+    end
 
     it "should revert state of instance" do
       expect(instance.current_state).to eq("y")

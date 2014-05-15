@@ -75,7 +75,7 @@ describe Statesman::Adapters::ActiveRecord do
       let(:adapter) do
         described_class.new(MyActiveRecordModelTransition, model, observer)
       end
-      let(:revert) { adapter.revert }
+      let(:revert) { adapter.revert(:y, :x, {}) }
       subject { -> { revert } }
 
       before do

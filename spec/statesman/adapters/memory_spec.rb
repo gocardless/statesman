@@ -17,7 +17,7 @@ describe Statesman::Adapters::Memory do
   describe "#revert" do
     let(:from) { :x }
     let(:to) { :y }
-    let(:revert) { adapter.revert }
+    let(:revert) { adapter.revert(:x, :y, {}) }
     subject { -> { revert } }
 
     before do
