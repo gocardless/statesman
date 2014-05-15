@@ -78,13 +78,12 @@ module Statesman
         callbacks[:guards] << Guard.new(from: from, to: to, callback: block)
       end
 
-      def after_revert(options = { from: nil, to: nil,
-                                       after_commit: false }, &block)
+      def before_revert(options = { from: nil, to: nil }, &block)
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
 
         validate_revert_callback_condition(from: from, to: to)
-        callbacks[:after] << Callback.new(from: from, to: to, callback: block)
+        callbacks[:before] << Callback.new(from: from, to: to, callback: block)
       end
 
 
@@ -94,9 +93,6 @@ module Statesman
 
         [from, to].compact.each { |state| validate_state(state) }
         return if from.nil? && to.nil?
-
-        #going backwards here!
-        validate_revert(from, to)
       end
 
       def validate_callback_condition(options = { from: nil, to: nil })
@@ -155,20 +151,10 @@ module Statesman
         end
       end
 
-      # Check that the 'from' state is not the initial - reverting!
-      def validate_revert(from = nil, to = nil)
-        if !to.nil? && successors.keys.flatten.include?(to)
-          true
-        elsif !from.nil? && !successors.values.flatten.include?(from)
-          true
-        else
-          raise InvalidTransitionError,
-                "Cannot revert transition to '#{to}'"
-        end
-      end
       def to_s_or_nil(input)
         input.nil? ? input : input.to_s
       end
+
     end
 
     def initialize(object,
@@ -224,8 +210,13 @@ module Statesman
     end
 
     def revert_to!(new_state, metadata = nil)
+      initial_state = current_state.to_s
+      new_state = new_state.to_s
+      validate_revert( {from: initial_state,
+                          to: new_state,
+                          metadata: metadata } )
 
-      @storage_adapter.revert if @storage_adapter.respond_to?(:revert)
+      @storage_adapter.revert(initial_state, new_state, metadata) if @storage_adapter.respond_to?(:revert)
       true
     end
 
@@ -274,6 +265,36 @@ module Statesman
       guards_for(from: from, to: to).each do |guard|
         guard.call(@object, last_transition, options[:metadata])
       end
+    end
+
+    # Check that the 'from' state is not the initial - reverting!
+    def validate_revert(options)
+      from = to_s_or_nil(options[:from])
+      to   = to_s_or_nil(options[:to])
+
+      flat = self.class.successors.flatten.flatten.uniq
+
+      unless (from.nil? && can_revert_to(to, flat)) || (to.nil? && can_revert_from(from, flat)) || can_revert_from_to(from, to, flat)
+        raise InvalidTransitionError,
+              "Cannot revert transition to '#{to}'"
+      end
+    end
+
+    def can_revert_to(to, flat)
+      flat.include?(to) && flat.index(to) < flat.index(flat.max)
+    end
+
+    def can_revert_from(from, flat)
+      flat.include?(from) && flat.index(from) > 0
+    end
+
+    def can_revert_from_to(from, to, flat)
+      flat.index(to).to_i < flat.index(from).to_i
+    end
+
+    def is_reverse_order?(from, to)
+      flat = self.class.successors.flatten.flatten
+      flat.index(from) > flat.index(to)
     end
 
     def to_s_or_nil(input)
