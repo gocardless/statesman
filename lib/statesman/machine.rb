@@ -84,7 +84,6 @@ module Statesman
         to   = to_s_or_nil(options[:to])
 
         validate_revert_callback_condition(from: from, to: to)
-        block.call
         callbacks[:after] << Callback.new(from: from, to: to, callback: block)
       end
 
