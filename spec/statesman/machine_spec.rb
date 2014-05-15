@@ -115,6 +115,32 @@ describe Statesman::Machine do
     end
   end
 
+  describe ".validate_revert_callback_condition" do
+    before do
+      machine.class_eval do
+        state :x
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :y, to: :z
+      end
+    end
+    context "wth invalid transiton" do
+      it "raises an exception" do
+        expect do
+          machine.validate_revert_callback_condition(from: :y, to: :z)
+        end.to raise_error(Statesman::InvalidTransitionError)
+      end
+    end
+    context "with valid transition" do
+      it "should not raise exception" do
+        expect do
+          machine.validate_revert_callback_condition(from: :y, to: :x)
+        end.to_not raise_error
+      end
+    end
+  end
+
   shared_examples "a callback store" do |assignment_method, callback_store|
     before do
       machine.class_eval do
@@ -147,13 +173,13 @@ describe Statesman::Machine do
       it "raises an exception with a terminal from state and nil to state" do
         expect do
           machine.send(assignment_method, from: :y) {}
-        end.to raise_error(Statesman::InvalidTransitionError)
+        end.to raise_error(Statesman::InvalidTransitionError) 
       end
 
       it "raises an exception with an initial to state and nil from state" do
         expect do
           machine.send(assignment_method, to: :x) {}
-        end.to raise_error(Statesman::InvalidTransitionError)
+        end.to raise_error(Statesman::InvalidTransitionError) 
       end
     end
 
@@ -161,7 +187,7 @@ describe Statesman::Machine do
       it "allows a nil from state" do
         expect do
           machine.send(assignment_method, to: :y) {}
-        end.to_not raise_error
+        end.to_not raise_error 
       end
 
       it "allows a nil to state" do
@@ -179,9 +205,31 @@ describe Statesman::Machine do
   describe ".after_transition" do
     it_behaves_like "a callback store", :after_transition, :after
   end
-
   describe ".guard_transition" do
     it_behaves_like "a callback store", :guard_transition, :guards
+  end
+
+  describe ".after_revert" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        transition from: :x, to: :y
+      end
+    end
+
+    it "stores callbacks" do
+      expect do
+        machine.send(:after_revert) {}
+      end.to change(machine.callbacks[:after], :count).by(1)
+    end
+
+    it "stores callback instances" do
+      machine.send(:after_revert) {}
+      machine.callbacks[:after].each do |callback|
+        expect(callback).to be_a(Statesman::Callback)
+      end
+    end
   end
 
   describe "#initialize" do

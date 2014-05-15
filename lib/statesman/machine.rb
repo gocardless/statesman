@@ -78,6 +78,28 @@ module Statesman
         callbacks[:guards] << Guard.new(from: from, to: to, callback: block)
       end
 
+      def after_revert(options = { from: nil, to: nil,
+                                       after_commit: false }, &block)
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
+
+        validate_revert_callback_condition(from: from, to: to)
+        phase = options[:after_commit] ? :after_commit : :after
+        callbacks[phase] << Callback.new(from: from, to: to, callback: block)
+      end
+
+
+      def validate_revert_callback_condition(options = { from: nil, to: nil })
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
+
+        [from, to].compact.each { |state| validate_state(state) }
+        return if from.nil? && to.nil?
+
+        #going backwards here!
+        validate_revert(from, to)
+      end
+
       def validate_callback_condition(options = { from: nil, to: nil })
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
@@ -106,6 +128,18 @@ module Statesman
         unless to.nil? || successors.values.flatten.include?(to)
           raise InvalidTransitionError,
                 "Cannot transition to initial state '#{to}'"
+        end
+      end
+
+      # Check that the 'from' state is not the initial - reverting!
+      def validate_revert(from = nil, to = nil)
+        if !to.nil? && successors.keys.flatten.include?(to)
+          true
+        elsif !from.nil? && !successors.values.flatten.include?(from)
+          true
+        else
+          raise InvalidTransitionError,
+                "Cannot revert transition to '#{to}'"
         end
       end
 
@@ -168,6 +202,13 @@ module Statesman
       validate_transition(from: current_state,
                           to: new_state,
                           metadata: metadata)
+      true
+    rescue TransitionFailedError, GuardFailedError
+      false
+    end
+
+    def can_revert_to?(new_state)
+      validate_revert(new_state)
       true
     rescue TransitionFailedError, GuardFailedError
       false
