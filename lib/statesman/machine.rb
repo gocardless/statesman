@@ -130,17 +130,6 @@ module Statesman
         end
       end
 
-      # Check that the 'from' state is not the initial - reverting!
-      def validate_revert(from = nil, to = nil)
-        if !to.nil? && successors.keys.flatten.include?(to)
-          true
-        elsif !from.nil? && !successors.values.flatten.include?(from)
-          true
-        else
-          raise InvalidTransitionError,
-                "Cannot revert transition to '#{to}'"
-        end
-      end
 
       # Check that the transition is valid when 'from' and 'to' are given
       def validate_from_and_to_state(from, to)
@@ -166,6 +155,17 @@ module Statesman
         end
       end
 
+      # Check that the 'from' state is not the initial - reverting!
+      def validate_revert(from = nil, to = nil)
+        if !to.nil? && successors.keys.flatten.include?(to)
+          true
+        elsif !from.nil? && !successors.values.flatten.include?(from)
+          true
+        else
+          raise InvalidTransitionError,
+                "Cannot revert transition to '#{to}'"
+        end
+      end
       def to_s_or_nil(input)
         input.nil? ? input : input.to_s
       end
@@ -206,13 +206,6 @@ module Statesman
       false
     end
 
-    def can_revert_to?(new_state)
-      validate_revert(new_state)
-      true
-    rescue TransitionFailedError, GuardFailedError
-      false
-    end
-
     def history
       @storage_adapter.history
     end
@@ -230,13 +223,7 @@ module Statesman
       true
     end
 
-    def revert_transition!(new_state, metadata = nil)
-      initial_state = current_state
-      new_state = new_state.to_s
-
-      validate_revert(from: initial_state,
-                          to: new_state,
-                          metadata: metadata)
+    def revert_to!(new_state, metadata = nil)
 
       @storage_adapter.revert if @storage_adapter.respond_to?(:revert)
       true
