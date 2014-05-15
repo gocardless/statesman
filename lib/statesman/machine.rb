@@ -216,7 +216,7 @@ module Statesman
                           to: new_state,
                           metadata: metadata } )
 
-      @storage_adapter.revert(initial_state, new_state, metadata) if @storage_adapter.respond_to?(:revert)
+      @storage_adapter.create(initial_state, new_state, metadata)
       true
     end
 

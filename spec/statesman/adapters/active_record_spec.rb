@@ -70,19 +70,19 @@ describe Statesman::Adapters::ActiveRecord do
       end
     end
 
-    describe "#revert" do
+    describe "#reverse transition" do
 
       let(:adapter) do
         described_class.new(MyActiveRecordModelTransition, model, observer)
       end
-      let(:revert) { adapter.revert(:y, :x, {}) }
-      subject { -> { revert } }
 
       before do
-        adapter.create(:x, :y)
+        adapter.create(:y, :x, {})
       end
-      it { should change(adapter.history, :count).by(-1) }
-
+      it "should successfully transition in reverse" do
+        adapter.create(:x, :y, {})
+        expect(adapter.last.to_state).to eq("y")
+      end
     end
   end
 end
