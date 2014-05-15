@@ -84,8 +84,8 @@ module Statesman
         to   = to_s_or_nil(options[:to])
 
         validate_revert_callback_condition(from: from, to: to)
-        phase = options[:after_commit] ? :after_commit : :after
-        callbacks[phase] << Callback.new(from: from, to: to, callback: block)
+        block.call
+        callbacks[:after] << Callback.new(from: from, to: to, callback: block)
       end
 
 
@@ -231,13 +231,16 @@ module Statesman
       true
     end
 
-    def revert_transition!(callback = nil)
-      @storage_adapter.revert if @storage_adapter.respond_to?(:revert)
-      callback.call unless callback.nil?
-    end
+    def revert_transition!(new_state, metadata = nil)
+      initial_state = current_state
+      new_state = new_state.to_s
 
-    def revert_transition(callback = nil)
-      self.revert_transition!(callback)
+      validate_revert(from: initial_state,
+                          to: new_state,
+                          metadata: metadata)
+
+      @storage_adapter.revert if @storage_adapter.respond_to?(:revert)
+      true
     end
 
     def execute(phase, initial_state, new_state, transition)
