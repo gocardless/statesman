@@ -117,6 +117,7 @@ module Statesman
         end
       end
 
+      
       private
 
       def validate_state(state)
@@ -190,10 +191,12 @@ module Statesman
     end
 
     def revert_transition!(callback = nil)
-      if @storage_adapter.respond_to?(:revert)
-        @storage_adapter.revert
-        callback.call unless callback.nil?
-      end
+      @storage_adapter.revert if @storage_adapter.respond_to?(:revert)
+      callback.call unless callback.nil?
+    end
+
+    def revert_transition(callback = nil)
+      self.revert_transition!(callback)
     end
 
     def execute(phase, initial_state, new_state, transition)
