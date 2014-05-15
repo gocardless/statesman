@@ -44,6 +44,13 @@ module Statesman
         @last_transition ||= history.last
       end
 
+      def revert
+        transition = last
+        ::ActiveRecord::Base.transaction do
+          transition.delete
+        end
+      end
+
       private
 
       def transitions_for_parent

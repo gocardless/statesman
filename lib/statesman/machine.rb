@@ -189,6 +189,13 @@ module Statesman
       true
     end
 
+    def revert_transition!(callback = nil)
+      if @storage_adapter.respond_to?(:revert)
+        @storage_adapter.revert
+        callback.call unless callback.nil?
+      end
+    end
+
     def execute(phase, initial_state, new_state, transition)
       callbacks = callbacks_for(phase, from: initial_state, to: new_state)
       callbacks.each { |cb| cb.call(@object, transition) }

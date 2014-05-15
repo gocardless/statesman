@@ -509,4 +509,37 @@ describe Statesman::Machine do
     it_behaves_like "a callback filter", :after_transition,
                     :after
   end
+
+
+  describe "revert_transition" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :y, to: :z
+      end
+      instance.transition_to!(:y)
+    end
+
+    let(:instance) { machine.new(my_model) }
+
+    it "should revert state of instance" do
+      expect(instance.current_state).to eq("y")
+      instance.revert_transition!
+      expect(instance.current_state).to eq("x")
+    end
+
+    it "should only revert back one step" do
+      instance.transition_to!(:z)
+      instance.revert_transition!
+      expect(instance.current_state).to eq("y")
+    end
+
+    it "should run provided callbacks" do
+      callback = Proc.new { "hey there" }
+      expect(instance.revert_transition!(callback)).to eq("hey there")
+    end
+  end
 end
