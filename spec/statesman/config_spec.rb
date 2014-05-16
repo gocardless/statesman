@@ -6,6 +6,7 @@ describe Statesman::Config do
   after do
     # Don't leak global config changes into other specs
     Statesman.configure { storage_adapter(Statesman::Adapters::Memory) }
+    Statesman.configure { callback_level(nil) }
   end
 
   describe "#storage_adapter" do
@@ -22,5 +23,11 @@ describe Statesman::Config do
       Statesman.instance_eval { defined_adapter = @storage_adapter }
       expect(defined_adapter).to be(new_adapter)
     end
+  end
+
+  describe "#require_strict_callbacks" do
+    before { instance.callback_level('strict') }
+    subject { instance.require_strict_callbacks }
+    it { should be true}
   end
 end
