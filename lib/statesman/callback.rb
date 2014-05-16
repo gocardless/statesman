@@ -29,7 +29,7 @@ module Statesman
 
     def matches(from, to)
       if @require_strict_callbacks
-        matches_both_states(from, to)
+        !from.nil? && !to.nil? && matches_both_states(from, to)
       else
         matches_all_transitions ||
         matches_to_state(from, to) ||

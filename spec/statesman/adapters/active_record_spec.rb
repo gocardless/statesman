@@ -51,7 +51,7 @@ describe Statesman::Adapters::ActiveRecord do
       end
 
       context "and a new transition" do
-        before { adapter.create(:y, :z, []) }
+        before { adapter.create(:y, :z, {}) }
         it "retrieves the new transition from the database" do
           expect(adapter.last.to_state).to eq("z")
         end

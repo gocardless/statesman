@@ -539,8 +539,10 @@ describe Statesman::Machine do
         state :x, initial: true
         state :y
         state :z
+        state :a
         transition from: :x, to: :y
         transition from: :y, to: :z
+        transition from: :z, to: :a
       end
       instance.transition_to!(:y)
     end
@@ -560,6 +562,13 @@ describe Statesman::Machine do
           instance.send(:validate_revert, {from: :y, to: :x } )
         end.to_not raise_error
       end
+
+      it "should not raise exception on revert from terminal state" do
+        instance.transition_to!(:z)
+        expect do
+          instance.send(:validate_revert, {from: :z, to: :y} )
+        end.to_not raise_error
+      end
     end
 
     it "should revert state of instance" do
@@ -569,10 +578,10 @@ describe Statesman::Machine do
     end
 
     it "should not block a transition back" do
-      instance.revert_to!(:x)
-      expect(instance.current_state).to eq("x")
-      instance.transition_to!(:y)
-      expect(instance.current_state).to eq("y")
+      instance.transition_to!(:z)
+      instance.transition_to!(:a)
+      instance.revert_to!(:z)
+      expect(instance.current_state).to eq("z")
     end
   end
 end

@@ -116,12 +116,24 @@ describe Statesman::Callback do
       it { should be_false }
     end
 
-    context "with require_strict_callbacks" do
-
-      let(:callback) do
-        Statesman::Callback.new(from: :x, to: :y, callback: cb_lambda)
+    context "without require_strict_callbacks" do
+      before do
+        Statesman.configure do callback_level(nil) end
       end
-      subject { callback.applies_to?(from: from, to: to) }
+
+      it "should be configured" do
+        expect(Statesman.require_strict_callbacks).to be false
+      end
+
+      context "without a to value" do
+        let(:from) { :x }
+        let(:to) { nil }
+        it { should be_true }
+      end
+    end
+
+
+    context "with require_strict_callbacks" do
 
       before do
         Statesman.configure do callback_level('strict') end
@@ -150,6 +162,12 @@ describe Statesman::Callback do
         let(:from) { :x }
         let(:to) { :y }
         it { should be_true }
+      end
+
+      context "both but in wrong order" do
+        let(:from) { :y }
+        let(:to) { :x }
+        it { should be_false }
       end
     end
   end
