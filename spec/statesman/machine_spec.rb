@@ -448,8 +448,11 @@ describe Statesman::Machine do
       end
 
       it "should not rescue the exception" do
-        expect { instance.transition_to(:some_state, metadata) }.to
-          raise_error(RuntimeError, 'user defined exception')
+        expectation = expect do
+          instance.transition_to(:some_state, metadata)
+        end
+
+        expectation.to raise_error(RuntimeError, 'user defined exception')
       end
     end
   end
