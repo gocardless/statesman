@@ -217,8 +217,6 @@ module Statesman
                           to: new_state,
                           metadata: metadata } )
 
-      #always skip guard for reverts
-      metadata[:skip_guard] = true
       @storage_adapter.create(initial_state, new_state, metadata)
       true
     end
