@@ -443,13 +443,13 @@ describe Statesman::Machine do
 
     context "when a non statesman exception is raised" do
       before do
-        instance.stub(:transition_to!).and_raise(RuntimeError, 'user defined exception')
+        instance.stub(:transition_to!).and_raise(RuntimeError,
+                                                 'user defined exception')
       end
 
       it "should not rescue the exception" do
-        expect {
-          instance.transition_to(:some_state, metadata)
-        }.to raise_error(RuntimeError, 'user defined exception')
+        expect { instance.transition_to(:some_state, metadata) }.to
+          raise_error(RuntimeError, 'user defined exception')
       end
     end
   end
