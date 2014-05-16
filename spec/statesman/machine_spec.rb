@@ -446,7 +446,7 @@ describe Statesman::Machine do
         instance.stub(:transition_to!).and_raise(RuntimeError, 'user defined exception')
       end
 
-      it "should raised not rescue the exception" do
+      it "should not rescue the exception" do
         expect {
           instance.transition_to(:some_state, metadata)
         }.to raise_error(RuntimeError, 'user defined exception')
