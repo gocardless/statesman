@@ -551,12 +551,6 @@ describe Statesman::Machine do
       expect(instance.current_state).to eq("x")
     end
 
-    it "should only revert back one step" do
-      instance.transition_to!(:z)
-      instance.revert_to!(:y)
-      expect(instance.current_state).to eq("y")
-    end
-
     it "should not block a transition back" do
       instance.revert_to!(:x)
       expect(instance.current_state).to eq("x")

@@ -77,11 +77,18 @@ describe Statesman::Adapters::ActiveRecord do
       end
 
       before do
-        adapter.create(:y, :x, {})
+        adapter.create(:y, :x)
       end
+
       it "should successfully transition in reverse" do
-        adapter.create(:x, :y, {})
+        adapter.create(:x, :y)
         expect(adapter.last.to_state).to eq("y")
+      end
+
+      it "should successfully transition in reverse and back again" do
+        adapter.create(:x, :y)
+        adapter.create(:y, :x)
+        expect(adapter.last.to_state).to eq("x")
       end
     end
   end
