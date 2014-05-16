@@ -24,9 +24,14 @@ module Statesman
   def self.configure(&block)
     config = Config.new(block)
     @storage_adapter = config.adapter_class
+    @require_strict_callbacks = config.require_strict_callbacks
   end
 
   def self.storage_adapter
     @storage_adapter || Adapters::Memory
+  end
+
+  def self.require_strict_callbacks
+    @require_strict_callbacks || false
   end
 end
