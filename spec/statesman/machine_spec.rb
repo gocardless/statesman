@@ -195,12 +195,12 @@ describe Statesman::Machine do
     it "stores callbacks" do
       expect do
         machine.send(:before_revert) {}
-      end.to change(machine.callbacks[:before], :count).by(1)
+      end.to change(machine.callbacks[:before_revert], :count).by(1)
     end
 
     it "stores callback instances" do
       machine.send(:before_revert) {}
-      machine.callbacks[:before].each do |callback|
+      machine.callbacks[:before_revert].each do |callback|
         expect(callback).to be_a(Statesman::Callback)
       end
     end

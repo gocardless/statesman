@@ -34,10 +34,11 @@ module Statesman
 
       def callbacks
         @callbacks ||= {
-          before:       [],
-          after:        [],
-          after_commit: [],
-          guards:       []
+          before:         [],
+          before_revert:  [],
+          after:          [],
+          after_commit:   [],
+          guards:         []
         }
       end
 
@@ -83,7 +84,7 @@ module Statesman
         to   = to_s_or_nil(options[:to])
 
         validate_revert_callback_condition(from: from, to: to)
-        callbacks[:before] << Callback.new(from: from, to: to, callback: block)
+        callbacks[:before_revert] << Callback.new(from: from, to: to, callback: block)
       end
 
 
