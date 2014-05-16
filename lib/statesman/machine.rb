@@ -210,12 +210,15 @@ module Statesman
     end
 
     def revert_to!(new_state, metadata = nil)
+      metadata = metadata || {}
       initial_state = current_state.to_s
       new_state = new_state.to_s
       validate_revert( {from: initial_state,
                           to: new_state,
                           metadata: metadata } )
 
+      #always skip guard for reverts
+      metadata[:skip_guard] = true
       @storage_adapter.create(initial_state, new_state, metadata)
       true
     end
