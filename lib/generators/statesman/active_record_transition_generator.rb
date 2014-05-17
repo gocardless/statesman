@@ -33,6 +33,10 @@ module Statesman
       klass.underscore.pluralize
     end
 
+    def index_name(index_id)
+      "index_#{table_name}_#{index_id}"
+    end
+
     def parent_id
       parent.underscore + "_id"
     end
