@@ -28,6 +28,10 @@ module Statesman
       klass.demodulize.underscore.pluralize
     end
 
+    def index_name(index_id)
+      "index_#{table_name}_#{index_id}"
+    end
+
     def mysql?
       ActiveRecord::Base.configurations[Rails.env]
         .try(:[], "adapter").try(:match, /mysql/)
