@@ -196,7 +196,7 @@ module Statesman
 
     def transition_to(new_state, metadata = nil)
       self.transition_to!(new_state, metadata)
-    rescue
+    rescue TransitionFailedError, GuardFailedError
       false
     end
 

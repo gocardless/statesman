@@ -440,6 +440,21 @@ describe Statesman::Machine do
       end
       it { should be_false }
     end
+
+    context "when a non statesman exception is raised" do
+      before do
+        instance.stub(:transition_to!).and_raise(RuntimeError,
+                                                 'user defined exception')
+      end
+
+      it "should not rescue the exception" do
+        expectation = expect do
+          instance.transition_to(:some_state, metadata)
+        end
+
+        expectation.to raise_error(RuntimeError, 'user defined exception')
+      end
+    end
   end
 
   shared_examples "a callback filter" do |definer, phase|
