@@ -171,6 +171,17 @@ module Statesman
       end
     end
 
+    def allowed_reversions
+      previous_states = [self.class.initial_state]
+      self.history.each do 
+        |h| previous_states << h.to_state 
+      end
+      successors = (self.class.successors.keys & previous_states) << current_state
+      #raise "#{successors} "
+      #raise "solve #{successors.slice(0...successors.index(current_state))} successors #{successors} previous#{previous_states} combined #{self.class.successors.keys & previous_states}"
+      return successors.slice!(0...successors.index(current_state))
+    end
+
     def last_transition
       @storage_adapter.last
     end
@@ -266,24 +277,15 @@ module Statesman
       to   = to_s_or_nil(options[:to])
       from = to_s_or_nil(options[:from])
 
-      flat = self.class.successors
-      
-      unless can_revert_to(to) && can_revert_from(from)
+      unless allowed_reversions.include?(to) && can_revert_from(from)
         raise InvalidTransitionError,
-          "#{flat} Cannot revert transition to '#{to}' from '#{from}'"
+          "Cannot revert transition to '#{to}' from '#{from}'"
       end
     end
 
     #can only revert from your current state
     def can_revert_from(from)
       current_state == from 
-    end
-
-    #must revert to a historical state
-    def can_revert_to(to)
-      states = []
-      self.history.each do |h| states << h.to_state end
-      states.include?(to.to_s) || self.class.initial_state == to
     end
 
     def is_reverse_order?(from, to)
