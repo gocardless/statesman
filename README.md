@@ -231,7 +231,8 @@ Transition to the passed state, returning `true` on success. Raises
 
 #### `Machine#transition_to(:state)`
 Transition to the passed state, returning `true` on success. Swallows all
-exceptions and returns false on failure.
+Statesman exceptions and returns false on failure. (NB. if your guard or
+callback code throws an exception, it will not be caught.)
 
 ## Model scopes
 
