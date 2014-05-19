@@ -1,3 +1,10 @@
+## v0.6.0, 19 May 2014
+*Additions*
+- Generators now handle namespaced classes (patch by [@hrmrebecca](https://github.com/hrmrebecca))
+
+*Changes*
+- `Machine#transition_to` now only swallows Statesman generated errors. An exception in your guard or callback will no longer be caught by Statesman (patch by [@paulspringett](https://github.com/paulspringett))
+
 ## v0.5.0, 27 March 2014
 *Additions*
 - Scope methods. Adds a module which can be mixed in to an ActiveRecord model to provide `.in_state` and `.not_in_state` query scopes.
