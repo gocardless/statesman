@@ -171,6 +171,14 @@ module Statesman
       end
     end
 
+    def allowed_reversions
+      states = []
+      self.history.each do 
+        |h| states << h.to_state 
+      end
+      states
+    end
+
     def last_transition
       @storage_adapter.last
     end
@@ -268,11 +276,9 @@ module Statesman
       to   = to_s_or_nil(options[:to])
       from = to_s_or_nil(options[:from])
 
-      flat = self.class.successors
-      
       unless can_revert_to(to) && can_revert_from(from)
         raise InvalidTransitionError,
-          "#{flat} Cannot revert transition to '#{to}' from '#{from}'"
+          "Cannot revert transition to '#{to}' from '#{from}'"
       end
     end
 
