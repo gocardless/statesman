@@ -14,6 +14,7 @@ module Statesman
       @from = options[:from]
       @to = options[:to]
       @callback = options[:callback]
+      @require_strict_callbacks = Statesman.require_strict_callbacks
     end
 
     def call(*args)
@@ -27,10 +28,14 @@ module Statesman
     private
 
     def matches(from, to)
-      matches_all_transitions ||
-      matches_to_state(from, to) ||
-      matches_from_state(from, to) ||
-      matches_both_states(from, to)
+      if @require_strict_callbacks
+        !from.nil? && !to.nil? && matches_both_states(from, to)
+      else
+        matches_all_transitions ||
+        matches_to_state(from, to) ||
+        matches_from_state(from, to) ||
+        matches_both_states(from, to)
+      end
     end
 
     def matches_all_transitions

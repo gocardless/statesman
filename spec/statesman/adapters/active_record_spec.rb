@@ -51,22 +51,44 @@ describe Statesman::Adapters::ActiveRecord do
       end
 
       context "and a new transition" do
-        before { adapter.create(:y, :z, []) }
+        before { adapter.create(:y, :z, {}) }
         it "retrieves the new transition from the database" do
           expect(adapter.last.to_state).to eq("z")
         end
       end
+
+      context "with a pre-fetched transition history" do
+        before do
+            # inspect the transitions to coerce a [pre-]load
+          model.my_active_record_model_transitions.inspect
+        end
+
+        it "doesn't query the database" do
+          MyActiveRecordModelTransition.should_not_receive(:connection)
+          expect(adapter.last.to_state).to eq("y")
+        end
+      end
     end
 
-    context "with a pre-fetched transition history" do
-      before do
-        # inspect the transitions to coerce a [pre-]load
-        model.my_active_record_model_transitions.inspect
+    describe "#reverse transition" do
+
+      let(:adapter) do
+        described_class.new(MyActiveRecordModelTransition, model, observer)
       end
 
-      it "doesn't query the database" do
-        MyActiveRecordModelTransition.should_not_receive(:connection)
+      before do
+        adapter.create(:y, :x)
+      end
+
+      it "should successfully transition in reverse" do
+        adapter.create(:x, :y)
         expect(adapter.last.to_state).to eq("y")
+      end
+
+      it "should successfully transition in reverse and back again" do
+        adapter.create(:x, :y)
+        adapter.create(:y, :x)
+        expect(adapter.last.to_state).to eq("x")
       end
     end
   end

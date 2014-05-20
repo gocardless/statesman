@@ -147,13 +147,13 @@ describe Statesman::Machine do
       it "raises an exception with a terminal from state and nil to state" do
         expect do
           machine.send(assignment_method, from: :y) {}
-        end.to raise_error(Statesman::InvalidTransitionError)
+        end.to raise_error(Statesman::InvalidTransitionError) 
       end
 
       it "raises an exception with an initial to state and nil from state" do
         expect do
           machine.send(assignment_method, to: :x) {}
-        end.to raise_error(Statesman::InvalidTransitionError)
+        end.to raise_error(Statesman::InvalidTransitionError) 
       end
     end
 
@@ -161,7 +161,7 @@ describe Statesman::Machine do
       it "allows a nil from state" do
         expect do
           machine.send(assignment_method, to: :y) {}
-        end.to_not raise_error
+        end.to_not raise_error 
       end
 
       it "allows a nil to state" do
@@ -179,9 +179,31 @@ describe Statesman::Machine do
   describe ".after_transition" do
     it_behaves_like "a callback store", :after_transition, :after
   end
-
   describe ".guard_transition" do
     it_behaves_like "a callback store", :guard_transition, :guards
+  end
+
+  describe ".before_revert" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        transition from: :x, to: :y
+      end
+    end
+
+    it "stores callbacks" do
+      expect do
+        machine.send(:before_revert) {}
+      end.to change(machine.callbacks[:before_revert], :count).by(1)
+    end
+
+    it "stores callback instances" do
+      machine.send(:before_revert) {}
+      machine.callbacks[:before_revert].each do |callback|
+        expect(callback).to be_a(Statesman::Callback)
+      end
+    end
   end
 
   describe "#initialize" do
@@ -276,6 +298,63 @@ describe Statesman::Machine do
       end
 
       it { should eq([]) }
+    end
+  end
+
+  describe "#allowed reversions" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+        state :a
+        transition from: :x, to: [:y, :z]
+        transition from: :y, to: :z
+        transition from: :z, to: :a
+      end
+    end
+
+    let(:instance) { machine.new(my_model) }
+    subject { instance.allowed_reversions }
+
+    context "in initial state" do
+      it { should eq([]) }
+    end
+
+    context "after one transition" do
+      before do
+        instance.transition_to!(:y)
+      end
+
+      it { should eq(['x']) }
+    end
+
+    context "after transition on fork" do
+      before do
+        instance.transition_to!(:z)
+      end
+      it 'should not allow reversion to state on other fork' do
+        expect do
+          instance.revert_to!(:y)
+        end.to raise_error
+      end
+    end
+
+    context "after many transitions" do
+      before do
+        instance.transition_to!(:y)
+        instance.transition_to!(:z)
+        instance.transition_to!(:a)
+      end
+
+      it { should eq(['x','y', 'z']) }
+
+      context "and a reversion" do
+        before do
+          instance.revert_to!(:z)
+        end
+        it { should eq(['x','y']) }
+      end
     end
   end
 
@@ -417,6 +496,23 @@ describe Statesman::Machine do
             end.to raise_error(Statesman::GuardFailedError)
           end
         end
+
+        context "when passing skip_guard" do
+          let(:result) { false }
+
+          it "should not skip the guard if nil" do
+            expect do
+              instance.transition_to!(:y)
+            end.to raise_error(Statesman::GuardFailedError)
+          end
+
+          it "should skip the guard if true" do
+            expect do
+              instance.transition_to!(:y, { skip_guard: true } )
+            end.to_not raise_error
+            expect(instance.current_state).to eq("y")
+          end
+        end
       end
     end
   end
@@ -506,5 +602,58 @@ describe Statesman::Machine do
   describe "#after_callbacks_for" do
     it_behaves_like "a callback filter", :after_transition,
                     :after
+  end
+
+
+  describe "revert_to!" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+        state :a
+        transition from: :x, to: :y
+        transition from: :y, to: :z
+        transition from: :z, to: :a
+      end
+      instance.transition_to!(:y)
+    end
+
+    let(:instance) { machine.new(my_model) }
+
+    context "wth invalid transiton" do
+      it "raises an exception" do
+        expect do
+          instance.send(:validate_revert, { from: :y, to: :z } )
+        end.to raise_error(Statesman::InvalidTransitionError)
+      end
+    end
+    context "with valid transition" do
+      it "should not raise exception" do
+        expect do
+          instance.send(:validate_revert, {from: :y, to: :x } )
+        end.to_not raise_error
+      end
+
+      it "should not raise exception on revert from terminal state" do
+        instance.transition_to!(:z)
+        expect do
+          instance.send(:validate_revert, {from: :z, to: :y} )
+        end.to_not raise_error
+      end
+    end
+
+    it "should revert state of instance" do
+      expect(instance.current_state).to eq("y")
+      instance.revert_to!(:x)
+      expect(instance.current_state).to eq("x")
+    end
+
+    it "should not block a transition back" do
+      instance.transition_to!(:z)
+      instance.transition_to!(:a)
+      instance.revert_to!(:z)
+      expect(instance.current_state).to eq("z")
+    end
   end
 end
