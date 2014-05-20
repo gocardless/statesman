@@ -329,6 +329,17 @@ describe Statesman::Machine do
       it { should eq(['x']) }
     end
 
+    context "after transition on fork" do
+      before do
+        instance.transition_to!(:z)
+      end
+      it 'should not allow reversion to state on other fork' do
+        expect do
+          instance.revert_to!(:y)
+        end.to raise_error
+      end
+    end
+
     context "after many transitions" do
       before do
         instance.transition_to!(:y)

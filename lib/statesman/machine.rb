@@ -176,7 +176,9 @@ module Statesman
       self.history.each do 
         |h| previous_states << h.to_state 
       end
-      successors = self.class.successors.keys | previous_states
+      successors = (self.class.successors.keys & previous_states) << current_state
+      #raise "#{successors} "
+      #raise "solve #{successors.slice(0...successors.index(current_state))} successors #{successors} previous#{previous_states} combined #{self.class.successors.keys & previous_states}"
       return successors.slice!(0...successors.index(current_state))
     end
 
