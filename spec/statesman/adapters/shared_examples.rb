@@ -29,6 +29,7 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
   describe "#create" do
     let(:from) { :x }
     let(:to) { :y }
+    let(:there) { :z }
     let(:create) { adapter.create(from, to) }
     subject { -> { create } }
 
@@ -70,6 +71,16 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
           expect(adapter.last).to eq(transition) if phase == :after
         end.once
         adapter.create(from, to)
+      end
+
+      it "exposes the new transition for subsequent transitions" do
+        adapter.create(from, to)
+
+        observer.should_receive(:execute).with do
+            |phase, from_state, to_state, transition|
+          expect(adapter.last).to eq(transition) if phase == :after
+        end.once
+        adapter.create(to, there)
       end
     end
 

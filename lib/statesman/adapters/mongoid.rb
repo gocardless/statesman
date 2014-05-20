@@ -22,6 +22,7 @@ module Statesman
 
         @observer.execute(:before, from, to, transition)
         transition.save!
+        @last_transition = transition
         @observer.execute(:after, from, to, transition)
         @observer.execute(:after_commit, from, to, transition)
         @last_transition = nil

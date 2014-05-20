@@ -24,6 +24,7 @@ module Statesman
         ::ActiveRecord::Base.transaction do
           @observer.execute(:before, from, to, transition)
           transition.save!
+          @last_transition = transition
           @observer.execute(:after, from, to, transition)
           @last_transition = nil
         end
