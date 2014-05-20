@@ -172,11 +172,12 @@ module Statesman
     end
 
     def allowed_reversions
-      states = []
+      previous_states = [self.class.initial_state]
       self.history.each do 
-        |h| states << h.to_state 
+        |h| previous_states << h.to_state 
       end
-      states
+      successors = self.class.successors.keys | previous_states
+      return successors.slice!(0...successors.index(current_state))
     end
 
     def last_transition
@@ -276,7 +277,7 @@ module Statesman
       to   = to_s_or_nil(options[:to])
       from = to_s_or_nil(options[:from])
 
-      unless can_revert_to(to) && can_revert_from(from)
+      unless allowed_reversions.include?(to) && can_revert_from(from)
         raise InvalidTransitionError,
           "Cannot revert transition to '#{to}' from '#{from}'"
       end
@@ -285,13 +286,6 @@ module Statesman
     #can only revert from your current state
     def can_revert_from(from)
       current_state == from 
-    end
-
-    #must revert to a historical state
-    def can_revert_to(to)
-      states = []
-      self.history.each do |h| states << h.to_state end
-      states.include?(to.to_s) || self.class.initial_state == to
     end
 
     def is_reverse_order?(from, to)

@@ -301,6 +301,52 @@ describe Statesman::Machine do
     end
   end
 
+  describe "#allowed reversions" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+        state :a
+        transition from: :x, to: [:y, :z]
+        transition from: :y, to: :z
+        transition from: :z, to: :a
+      end
+    end
+
+    let(:instance) { machine.new(my_model) }
+    subject { instance.allowed_reversions }
+
+    context "in initial state" do
+      it { should eq([]) }
+    end
+
+    context "after one transition" do
+      before do
+        instance.transition_to!(:y)
+      end
+
+      it { should eq(['x']) }
+    end
+
+    context "after many transitions" do
+      before do
+        instance.transition_to!(:y)
+        instance.transition_to!(:z)
+        instance.transition_to!(:a)
+      end
+
+      it { should eq(['x','y', 'z']) }
+
+      context "and a reversion" do
+        before do
+          instance.revert_to!(:z)
+        end
+        it { should eq(['x','y']) }
+      end
+    end
+  end
+
   describe "#last_transition" do
     let(:instance) { machine.new(my_model) }
     let(:last_action) { "Whatever" }
