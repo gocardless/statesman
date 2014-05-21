@@ -1,3 +1,7 @@
+## v 0.6.1 21 May 2014
+*Fixes*
+- Fixes an issue where the wrong transition was passed to after_transition callbacks for the second and subsequent transition of a given state machine (patch by [@alan](https://github.com/alan))
+
 ## v0.6.0, 19 May 2014
 *Additions*
 - Generators now handle namespaced classes (patch by [@hrmrebecca](https://github.com/hrmrebecca))
