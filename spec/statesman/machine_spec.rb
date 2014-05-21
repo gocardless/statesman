@@ -429,7 +429,7 @@ describe Statesman::Machine do
 
           it "should skip the guard if true" do
             expect do
-              instance.transition_to!(:y, { skip_guard: true } )
+              instance.transition_to!(:y, skip_guard: true)
             end.to_not raise_error
             expect(instance.current_state).to eq("y")
           end
