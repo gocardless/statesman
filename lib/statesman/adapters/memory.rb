@@ -30,10 +30,6 @@ module Statesman
         @history.sort_by(&:sort_key).last
       end
 
-      def revert(from, to, metadata = {})
-        @history.pop
-      end
-
       private
 
       def next_sort_key
