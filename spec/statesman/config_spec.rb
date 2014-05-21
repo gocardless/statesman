@@ -28,6 +28,6 @@ describe Statesman::Config do
   describe "#require_strict_callbacks" do
     before { instance.callback_level('strict') }
     subject { instance.require_strict_callbacks }
-    it { should be true}
+    it { should be true }
   end
 end

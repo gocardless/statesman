@@ -124,10 +124,10 @@ describe Statesman::Callback do
       subject { callback.applies_to?(from: from, to: to) }
 
       before do
-        Statesman.configure do callback_level('strict') end
+        Statesman.configure { callback_level('strict') }
       end
       after do
-        Statesman.configure do callback_level(nil) end
+        Statesman.configure { callback_level(nil) }
       end
 
       it "should be configured" do
