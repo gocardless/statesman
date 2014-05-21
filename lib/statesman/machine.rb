@@ -34,10 +34,11 @@ module Statesman
 
       def callbacks
         @callbacks ||= {
-          before:       [],
-          after:        [],
-          after_commit: [],
-          guards:       []
+          before:         [],
+          before_revert:  [],
+          after:          [],
+          after_commit:   [],
+          guards:         []
         }
       end
 
@@ -82,18 +83,9 @@ module Statesman
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
 
-        validate_revert_callback_condition(from: from, to: to)
-        callbacks[:before] << Callback.new(from: from, to: to, callback: block)
+        callbacks[:before_revert] << Callback.new(from: from, to: to, callback: block)
       end
 
-
-      def validate_revert_callback_condition(options = { from: nil, to: nil })
-        from = to_s_or_nil(options[:from])
-        to   = to_s_or_nil(options[:to])
-
-        [from, to].compact.each { |state| validate_state(state) }
-        return if from.nil? && to.nil?
-      end
 
       def validate_callback_condition(options = { from: nil, to: nil })
         from = to_s_or_nil(options[:from])
@@ -211,6 +203,7 @@ module Statesman
 
     def revert_to!(new_state, metadata = nil)
       metadata = metadata || {}
+      metadata[:reversion] = true
       initial_state = current_state.to_s
       new_state = new_state.to_s
       validate_revert( {from: initial_state,
@@ -268,29 +261,29 @@ module Statesman
       end
     end
 
-    # Check that the 'from' state is not the initial - reverting!
+    # Reverting is always "to"
     def validate_revert(options)
-      from = to_s_or_nil(options[:from])
       to   = to_s_or_nil(options[:to])
+      from = to_s_or_nil(options[:from])
 
-      flat = self.class.successors.flatten.flatten.uniq
-
-      unless (from.nil? && can_revert_to(to, flat)) || (to.nil? && can_revert_from(from, flat)) || can_revert_from_to(from, to, flat)
+      flat = self.class.successors
+      
+      unless can_revert_to(to) && can_revert_from(from)
         raise InvalidTransitionError,
-              "Cannot revert transition to '#{to}'"
+          "#{flat} Cannot revert transition to '#{to}' from '#{from}'"
       end
     end
 
-    def can_revert_to(to, flat)
-      flat.include?(to) && flat.index(to) < flat.index(flat.max)
+    #can only revert from your current state
+    def can_revert_from(from)
+      current_state == from 
     end
 
-    def can_revert_from(from, flat)
-      flat.include?(from) && flat.index(from) > 0
-    end
-
-    def can_revert_from_to(from, to, flat)
-      flat.index(to).to_i < flat.index(from).to_i
+    #must revert to a historical state
+    def can_revert_to(to)
+      states = []
+      self.history.each do |h| states << h.to_state end
+      states.include?(to.to_s) || self.class.initial_state == to
     end
 
     def is_reverse_order?(from, to)
