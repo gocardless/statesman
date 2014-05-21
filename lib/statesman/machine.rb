@@ -83,9 +83,9 @@ module Statesman
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
 
-        callbacks[:before_revert] << Callback.new(from: from, to: to, callback: block)
+        callbacks[:before_revert] << Callback.new(
+          from: from, to: to, callback: block)
       end
-
 
       def validate_callback_condition(options = { from: nil, to: nil })
         from = to_s_or_nil(options[:from])
@@ -118,7 +118,6 @@ module Statesman
         end
       end
 
-
       # Check that the transition is valid when 'from' and 'to' are given
       def validate_from_and_to_state(from, to)
         unless successors.fetch(from, []).include?(to)
@@ -126,7 +125,6 @@ module Statesman
                 "Cannot transition from '#{from}' to '#{to}'"
         end
       end
-
       
       private
 
@@ -146,7 +144,6 @@ module Statesman
       def to_s_or_nil(input)
         input.nil? ? input : input.to_s
       end
-
     end
 
     def initialize(object,
@@ -173,13 +170,11 @@ module Statesman
 
     def allowed_reversions
       previous_states = [self.class.initial_state]
-      self.history.each do 
+      history.each do
         |h| previous_states << h.to_state 
       end
       successors = (self.class.successors.keys & previous_states) << current_state
-      #raise "#{successors} "
-      #raise "solve #{successors.slice(0...successors.index(current_state))} successors #{successors} previous#{previous_states} combined #{self.class.successors.keys & previous_states}"
-      return successors.slice!(0...successors.index(current_state))
+      successors.slice!(0...successors.index(current_state))
     end
 
     def last_transition
@@ -217,9 +212,9 @@ module Statesman
       metadata[:reversion] = true
       initial_state = current_state.to_s
       new_state = new_state.to_s
-      validate_revert( {from: initial_state,
-                          to: new_state,
-                          metadata: metadata } )
+      validate_revert(from: initial_state,
+                      to: new_state,
+                      metadata: metadata)
 
       @storage_adapter.create(initial_state, new_state, metadata)
       true
@@ -279,18 +274,13 @@ module Statesman
 
       unless allowed_reversions.include?(to) && can_revert_from(from)
         raise InvalidTransitionError,
-          "Cannot revert transition to '#{to}' from '#{from}'"
+              "Cannot revert transition to '#{to}' from '#{from}'"
       end
     end
 
-    #can only revert from your current state
+    # can only revert from your current state
     def can_revert_from(from)
-      current_state == from 
-    end
-
-    def is_reverse_order?(from, to)
-      flat = self.class.successors.flatten.flatten
-      flat.index(from) > flat.index(to)
+      current_state == from
     end
 
     def to_s_or_nil(input)

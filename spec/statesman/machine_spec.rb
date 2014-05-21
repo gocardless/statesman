@@ -147,13 +147,13 @@ describe Statesman::Machine do
       it "raises an exception with a terminal from state and nil to state" do
         expect do
           machine.send(assignment_method, from: :y) {}
-        end.to raise_error(Statesman::InvalidTransitionError) 
+        end.to raise_error(Statesman::InvalidTransitionError)
       end
 
       it "raises an exception with an initial to state and nil from state" do
         expect do
           machine.send(assignment_method, to: :x) {}
-        end.to raise_error(Statesman::InvalidTransitionError) 
+        end.to raise_error(Statesman::InvalidTransitionError)
       end
     end
 
@@ -347,13 +347,13 @@ describe Statesman::Machine do
         instance.transition_to!(:a)
       end
 
-      it { should eq(['x','y', 'z']) }
+      it { should eq(%w{ x y z }) }
 
       context "and a reversion" do
         before do
           instance.revert_to!(:z)
         end
-        it { should eq(['x','y']) }
+        it { should eq(%w{ x y }) }
       end
     end
   end
@@ -586,27 +586,26 @@ describe Statesman::Machine do
       end
       instance.transition_to!(:y)
     end
-
     let(:instance) { machine.new(my_model) }
 
     context "wth invalid transiton" do
       it "raises an exception" do
         expect do
-          instance.send(:validate_revert, { from: :y, to: :z } )
+          instance.send(:validate_revert, from: :y, to: :z)
         end.to raise_error(Statesman::InvalidTransitionError)
       end
     end
     context "with valid transition" do
       it "should not raise exception" do
         expect do
-          instance.send(:validate_revert, {from: :y, to: :x } )
+          instance.send(:validate_revert, from: :y, to: :x)
         end.to_not raise_error
       end
 
       it "should not raise exception on revert from terminal state" do
         instance.transition_to!(:z)
         expect do
-          instance.send(:validate_revert, {from: :z, to: :y} )
+          instance.send(:validate_revert, from: :z, to: :y)
         end.to_not raise_error
       end
     end
