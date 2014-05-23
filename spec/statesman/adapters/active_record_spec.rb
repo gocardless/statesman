@@ -18,14 +18,38 @@ describe Statesman::Adapters::ActiveRecord do
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
 
   describe "#initialize" do
-    context "with unserialized metadata" do
-      before { MyActiveRecordModelTransition.stub(serialized_attributes: {}) }
+    context "with unserialized metadata and non json column type" do
+      before do
+        metadata_column = double
+        metadata_column.stub(sql_type: '')
+        MyActiveRecordModelTransition.stub(columns_hash:
+                                           { 'metadata' => metadata_column })
+        MyActiveRecordModelTransition.stub(serialized_attributes: {})
+      end
 
-      it "raises an exception if metadata is not serialized" do
+      it "raises an exception" do
         expect do
           described_class.new(MyActiveRecordModelTransition,
                               MyActiveRecordModel, observer)
         end.to raise_exception(Statesman::UnserializedMetadataError)
+      end
+    end
+
+    context "with serialized metadata and json column type" do
+      before do
+        metadata_column = double
+        metadata_column.stub(sql_type: 'json')
+        MyActiveRecordModelTransition.stub(columns_hash:
+                                           { 'metadata' => metadata_column })
+        MyActiveRecordModelTransition.stub(serialized_attributes:
+                                           { 'metadata' => '' })
+      end
+
+      it "raises an exception" do
+        expect do
+          described_class.new(MyActiveRecordModelTransition,
+                              MyActiveRecordModel, observer)
+        end.to raise_exception(Statesman::IncompatibleSerializationError)
       end
     end
   end
