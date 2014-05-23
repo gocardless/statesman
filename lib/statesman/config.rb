@@ -9,9 +9,11 @@ module Statesman
       instance_eval(&block) unless block.nil?
     end
 
+    # rubocop:disable TrivialAccessors
     def storage_adapter(adapter_class)
       @adapter_class = adapter_class
     end
+    # rubocop:enable TrivialAccessors
 
     def callback_level(level = nil)
       @require_strict_callbacks = (level == 'strict')
