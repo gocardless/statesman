@@ -203,7 +203,7 @@ module Statesman
     private
 
     def adapter_class(transition_class)
-      if @transition_class == Statesman::Adapters::MemoryTransition
+      if transition_class == Statesman::Adapters::MemoryTransition
         Adapters::Memory
       else
         Statesman.storage_adapter
