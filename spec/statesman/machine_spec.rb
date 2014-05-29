@@ -203,6 +203,13 @@ describe Statesman::Machine do
           .with(my_transition_class, my_model, anything)
         machine.new(my_model, transition_class: my_transition_class)
       end
+
+      it "falls back to Memory without transaction_class" do
+        Statesman.stub(:storage_adapter).and_return(Class.new)
+        Statesman::Adapters::Memory.should_receive(:new).once
+          .with(Statesman::Adapters::MemoryTransition, my_model, anything)
+        machine.new(my_model)
+      end
     end
   end
 

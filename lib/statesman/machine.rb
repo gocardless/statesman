@@ -143,8 +143,8 @@ module Statesman
                       })
       @object = object
       @transition_class = options[:transition_class]
-      @storage_adapter = Statesman.storage_adapter.new(
-                                            @transition_class, object, self)
+      @storage_adapter = adapter_class(@transition_class)
+                          .new(@transition_class, object, self)
       send(:after_initialize) if respond_to? :after_initialize
     end
 
@@ -201,6 +201,14 @@ module Statesman
     end
 
     private
+
+    def adapter_class(transition_class)
+      if transition_class == Statesman::Adapters::MemoryTransition
+        Adapters::Memory
+      else
+        Statesman.storage_adapter
+      end
+    end
 
     def successors_for(from)
       self.class.successors[from] || []
