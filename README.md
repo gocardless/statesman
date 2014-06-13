@@ -262,4 +262,4 @@ Returns all models not currently in any of the supplied states.
 
 ---
 
-[GoCardless](https://gocardless.com) ♥ open source.
+GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/jobs#software-engineer).
