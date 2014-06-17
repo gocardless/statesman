@@ -34,10 +34,11 @@ module Statesman
 
       def callbacks
         @callbacks ||= {
-          before:       [],
-          after:        [],
-          after_commit: [],
-          guards:       []
+          before:         [],
+          before_revert:  [],
+          after:          [],
+          after_commit:   [],
+          guards:         []
         }
       end
 
@@ -78,6 +79,14 @@ module Statesman
         callbacks[:guards] << Guard.new(from: from, to: to, callback: block)
       end
 
+      def before_revert(options = { from: nil, to: nil }, &block)
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
+
+        callbacks[:before_revert] << Callback.new(
+          from: from, to: to, callback: block)
+      end
+
       def validate_callback_condition(options = { from: nil, to: nil })
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
@@ -116,7 +125,7 @@ module Statesman
                 "Cannot transition from '#{from}' to '#{to}'"
         end
       end
-
+      
       private
 
       def validate_state(state)
@@ -159,6 +168,15 @@ module Statesman
       end
     end
 
+    def allowed_reversions
+      previous_states = [self.class.initial_state]
+      history.each do
+        |h| previous_states << h.to_state 
+      end
+      successors = (self.class.successors.keys & previous_states) << current_state
+      successors.slice!(0...successors.index(current_state))
+    end
+
     def last_transition
       @storage_adapter.last
     end
@@ -186,6 +204,19 @@ module Statesman
 
       @storage_adapter.create(initial_state, new_state, metadata)
 
+      true
+    end
+
+    def revert_to!(new_state, metadata = nil)
+      metadata = metadata || {}
+      metadata[:reversion] = true
+      initial_state = current_state.to_s
+      new_state = new_state.to_s
+      validate_revert(from: initial_state,
+                      to: new_state,
+                      metadata: metadata)
+
+      @storage_adapter.create(initial_state, new_state, metadata)
       true
     end
 
@@ -242,6 +273,22 @@ module Statesman
       guards_for(from: from, to: to).each do |guard|
         guard.call(@object, last_transition, options[:metadata])
       end
+    end
+
+    # Reverting is always "to"
+    def validate_revert(options)
+      to   = to_s_or_nil(options[:to])
+      from = to_s_or_nil(options[:from])
+
+      unless allowed_reversions.include?(to) && can_revert_from(from)
+        raise InvalidTransitionError,
+              "Cannot revert transition to '#{to}' from '#{from}'"
+      end
+    end
+
+    # can only revert from your current state
+    def can_revert_from(from)
+      current_state == from
     end
 
     def to_s_or_nil(input)

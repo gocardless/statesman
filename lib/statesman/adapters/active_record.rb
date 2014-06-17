@@ -27,8 +27,10 @@ module Statesman
                                                   sort_key: next_sort_key,
                                                   metadata: metadata)
 
+        metadata = metadata || {}
         ::ActiveRecord::Base.transaction do
           @observer.execute(:before, from, to, transition)
+          @observer.execute(:before_revert, from, to, transition) unless !metadata[:reversion]
           transition.save!
           @last_transition = transition
           @observer.execute(:after, from, to, transition)
