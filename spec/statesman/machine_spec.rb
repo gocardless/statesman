@@ -514,4 +514,93 @@ describe Statesman::Machine do
     it_behaves_like "a callback filter", :after_transition,
                     :after
   end
+
+  describe "#event" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+
+        event :event_1 do
+          transition from: :x, to: :y
+        end
+
+        event :event_2 do
+          transition from: :y, to: :z
+        end
+      end
+    end
+
+    let(:instance) { machine.new(my_model) }
+
+    context "when the state cannot be transitioned to" do
+      it "raises an error" do
+        expect do
+          instance.trigger!(:event_2)
+        end.to raise_error(Statesman::TransitionFailedError)
+      end
+    end
+
+    context "when the state can be transitioned to" do
+      it "changes state" do
+        instance.trigger!(:event_1)
+        expect(instance.current_state).to eq("y")
+      end
+
+      it "creates a new transition object" do
+        expect do
+          instance.trigger!(:event_1)
+        end.to change(instance.history, :count).by(1)
+
+        expect(instance.history.first)
+          .to be_a(Statesman::Adapters::MemoryTransition)
+        expect(instance.history.first.to_state).to eq("y")
+      end
+
+      it "sends metadata to the transition object" do
+        meta = { "my" => "hash" }
+        instance.trigger!(:event_1, meta)
+        expect(instance.history.first.metadata).to eq(meta)
+      end
+
+      it "returns true" do
+        expect(instance.trigger!(:event_1)).to be_true
+      end
+
+      context "with a guard" do
+        let(:result) { true }
+        let(:guard_cb) { ->(*args) { result } }
+        before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
+
+        context "and an object to act on" do
+          let(:instance) { machine.new(my_model) }
+
+          it "passes the object to the guard" do
+            guard_cb.should_receive(:call).once
+              .with(my_model, instance.last_transition, nil).and_return(true)
+            instance.trigger!(:event_1)
+          end
+        end
+
+        context "which passes" do
+          it "changes state" do
+            instance.trigger!(:event_1)
+            expect(instance.current_state).to eq("y")
+          end
+        end
+
+        context "which fails" do
+          let(:result) { false }
+
+          it "raises an exception" do
+            expect do
+              instance.trigger!(:event_1)
+            end.to raise_error(Statesman::GuardFailedError)
+          end
+        end
+      end
+    end
+  end
+
 end
