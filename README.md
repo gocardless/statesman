@@ -105,7 +105,6 @@ class TaskStateMachine
   state :unstarted, initial: true
   state :started
   state :finished
-  state :shipped
   state :delivered
   state :accepted
   state :rejected
