@@ -96,6 +96,63 @@ Order.first.state_machine.transition_to!(:cancelled)
 # => true/exception
 ```
 
+## Events
+
+```ruby
+class TaskStateMachine
+  include Statesman::Machine
+
+  state :unstarted, initial: true
+  state :started
+  state :finished
+  state :shipped
+  state :delivered
+  state :accepted
+  state :rejected
+
+  event :start do
+    transition from: :unstarted,  to: :started
+  end
+
+  event :finish do
+    transition from: :started,    to: :finished
+  end
+
+  event :deliver do
+    transition from: :finished,   to: :delivered
+    transition from: :started,    to: :delivered
+  end
+
+  event :accept do
+    transition from: :delievered, to: :accepted
+  end
+
+  event :rejected do
+    transition from: :delievered, to: :rejected
+  end
+
+  event :restart do
+    transition from: :rejected,   to: :started
+  end
+
+end
+
+state_machine = TaskStateMachine.new
+
+state_machine.current_state
+# => "unstarted"
+
+state_machine.trigger!(:start)
+# => true/exception
+
+state_machine.current_state
+# => "started"
+
+state_machine.available_events
+# => [:finish, :deliver]
+
+```
+
 ## Persistence
 
 By default Statesman stores transition history in memory only. It can be
