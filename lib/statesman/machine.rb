@@ -19,6 +19,10 @@ module Statesman
         @states ||= []
       end
 
+      def events
+        @events ||= {}
+      end
+
       def state(name, options = { initial: false })
         name = name.to_s
         if options[:initial]
@@ -26,6 +30,24 @@ module Statesman
           @initial_state = name
         end
         states << name
+      end
+
+      def event(name, &block)
+        EventTransitions.new(self, name, &block)
+      end
+
+      class EventTransitions
+        attr_reader :machine, :event_name
+
+        def initialize(machine, event_name, &block)
+          @machine    = machine
+          @event_name = event_name
+          instance_eval(&block)
+        end
+
+        def transition(options = { from: nil, to: nil })
+          machine.transition(options, event_name)
+        end
       end
 
       def successors
@@ -41,7 +63,7 @@ module Statesman
         }
       end
 
-      def transition(options = { from: nil, to: nil })
+      def transition(options = { from: nil, to: nil }, event = nil)
         from = to_s_or_nil(options[:from])
         to = Array(options[:to]).map { |item| to_s_or_nil(item) }
 
@@ -50,6 +72,12 @@ module Statesman
         ([from] + to).each { |state| validate_state(state) }
 
         successors[from] += to
+
+        if event
+          events[event] ||= {}
+          events[event][from] ||= []
+          events[event][from]  += to
+        end
       end
 
       def before_transition(options = { from: nil, to: nil }, &block)
@@ -135,6 +163,7 @@ module Statesman
       def to_s_or_nil(input)
         input.nil? ? input : input.to_s
       end
+
     end
 
     def initialize(object,
@@ -189,6 +218,15 @@ module Statesman
       true
     end
 
+    def trigger!(event_name, metadata = nil)
+      transitions = self.class.events.fetch(event_name) { raise Statesman::TransitionFailedError }
+
+      new_state = transitions.fetch(current_state) { raise Statesman::TransitionFailedError }
+      transition_to!(new_state.first, metadata)
+
+      true
+    end
+
     def execute(phase, initial_state, new_state, transition)
       callbacks = callbacks_for(phase, from: initial_state, to: new_state)
       callbacks.each { |cb| cb.call(@object, transition) }
@@ -196,6 +234,12 @@ module Statesman
 
     def transition_to(new_state, metadata = nil)
       self.transition_to!(new_state, metadata)
+    rescue TransitionFailedError, GuardFailedError
+      false
+    end
+
+    def trigger(event_name, metadata = nil)
+      self.trigger!(event_name, metadata)
     rescue TransitionFailedError, GuardFailedError
       false
     end
