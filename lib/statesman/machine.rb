@@ -256,6 +256,12 @@ module Statesman
       false
     end
 
+    def available_events
+      self.class.events.find_all do |_, transitions|
+        transitions.has_key?(current_state)
+      end.map(&:first)
+    end
+
     private
 
     def adapter_class(transition_class)
