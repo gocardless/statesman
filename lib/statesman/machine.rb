@@ -163,7 +163,6 @@ module Statesman
       def to_s_or_nil(input)
         input.nil? ? input : input.to_s
       end
-
     end
 
     def initialize(object,
@@ -219,11 +218,15 @@ module Statesman
     end
 
     def trigger!(event_name, metadata = nil)
-      transitions = self.class.events.fetch(event_name) { raise Statesman::TransitionFailedError }
+      transitions = self.class.events.fetch(event_name) do
+        raise Statesman::TransitionFailedError
+      end
 
-      new_state = transitions.fetch(current_state) { raise Statesman::TransitionFailedError }
+      new_state = transitions.fetch(current_state) do
+        raise Statesman::TransitionFailedError
+      end
+
       transition_to!(new_state.first, metadata)
-
       true
     end
 
@@ -245,8 +248,8 @@ module Statesman
     end
 
     def available_events
-      self.class.events.find_all do |_, transitions|
-        transitions.has_key?(current_state)
+      self.class.events.select do |_, transitions|
+        transitions.key?(current_state)
       end.map(&:first)
     end
 
