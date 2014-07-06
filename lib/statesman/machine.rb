@@ -231,11 +231,13 @@ module Statesman
 
     def trigger!(event_name, metadata = nil)
       transitions = self.class.events.fetch(event_name) do
-        raise Statesman::TransitionFailedError
+        raise Statesman::TransitionFailedError,
+              "Event #{event_name} not found"
       end
 
       new_state = transitions.fetch(current_state) do
-        raise Statesman::TransitionFailedError
+        raise Statesman::TransitionFailedError,
+              "State #{current_state} not found for Event #{event_name}"
       end
 
       transition_to!(new_state.first, metadata)
