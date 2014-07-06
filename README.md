@@ -123,11 +123,11 @@ class TaskStateMachine
   end
 
   event :accept do
-    transition from: :delievered, to: :accepted
+    transition from: :delivered, to: :accepted
   end
 
   event :rejected do
-    transition from: :delievered, to: :rejected
+    transition from: :delivered, to: :rejected
   end
 
   event :restart do
@@ -136,18 +136,27 @@ class TaskStateMachine
 
 end
 
-state_machine = TaskStateMachine.new
+class Task < ActiveRecord::Base
+  delegate :current_state, :trigger!, :available_events, to: :state_machine
 
-state_machine.current_state
+  def state_machine
+    @state_machine ||= TaskStateMachine.new(self)
+  end
+
+end
+
+task = Task.new
+
+task.current_state
 # => "unstarted"
 
-state_machine.trigger!(:start)
+task.trigger!(:start)
 # => true/exception
 
-state_machine.current_state
+task.current_state
 # => "started"
 
-state_machine.available_events
+task.available_events
 # => [:finish, :deliver]
 
 ```
