@@ -64,13 +64,13 @@ describe Statesman::Adapters::ActiveRecord do
     subject { -> { create } }
 
     context "when there is a race" do
-      it "raises a RaceConditionError" do
+      it "raises a TransitionConflictError" do
         adapter2 = adapter.dup
         adapter2.create(:x, :y)
         adapter.last
         adapter2.create(:y, :z)
         expect { adapter.create(:y, :z) }
-          .to raise_exception(Statesman::RaceConditionError)
+          .to raise_exception(Statesman::TransitionConflictError)
       end
     end
 

@@ -27,7 +27,7 @@ module Statesman
       rescue ::ActiveRecord::RecordNotUnique => e
         if e.message.include?('sort_key') &&
           e.message.include?(@transition_class.table_name)
-          raise RaceConditionError, e.message
+          raise TransitionConflictError, e.message
         else raise
         end
       ensure

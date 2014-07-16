@@ -6,5 +6,5 @@ module Statesman
   class TransitionFailedError < StandardError; end
   class UnserializedMetadataError < StandardError; end
   class IncompatibleSerializationError < StandardError; end
-  class RaceConditionError < StandardError; end
+  class TransitionConflictError < StandardError; end
 end
