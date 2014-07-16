@@ -23,20 +23,15 @@ module Statesman
       end
 
       def create(from, to, metadata = {})
-        transition = transitions_for_parent.build(to_state: to,
-                                                  sort_key: next_sort_key,
-                                                  metadata: metadata)
-
-        ::ActiveRecord::Base.transaction do
-          @observer.execute(:before, from, to, transition)
-          transition.save!
-          @last_transition = transition
-          @observer.execute(:after, from, to, transition)
-          @last_transition = nil
+        create_transition(from, to, metadata)
+      rescue ::ActiveRecord::RecordNotUnique => e
+        if e.message.include?('sort_key') &&
+          e.message.include?(@transition_class.table_name)
+          raise TransitionConflictError, e.message
+        else raise
         end
-        @observer.execute(:after_commit, from, to, transition)
-
-        transition
+      ensure
+        @last_transition = nil
       end
 
       def history
@@ -52,6 +47,22 @@ module Statesman
       end
 
       private
+
+      def create_transition(from, to, metadata)
+        transition = transitions_for_parent.build(to_state: to,
+                                                  sort_key: next_sort_key,
+                                                  metadata: metadata)
+
+        ::ActiveRecord::Base.transaction do
+          @observer.execute(:before, from, to, transition)
+          transition.save!
+          @last_transition = transition
+          @observer.execute(:after, from, to, transition)
+        end
+        @observer.execute(:after_commit, from, to, transition)
+
+        transition
+      end
 
       def transitions_for_parent
         @parent_model.send(@transition_class.table_name)

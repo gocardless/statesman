@@ -54,6 +54,44 @@ describe Statesman::Adapters::ActiveRecord do
     end
   end
 
+  describe "#create" do
+    let(:adapter) do
+      described_class.new(MyActiveRecordModelTransition, model, observer)
+    end
+    let(:from) { :x }
+    let(:to) { :y }
+    let(:create) { adapter.create(from, to) }
+    subject { -> { create } }
+
+    context "when there is a race" do
+      it "raises a TransitionConflictError" do
+        adapter2 = adapter.dup
+        adapter2.create(:x, :y)
+        adapter.last
+        adapter2.create(:y, :z)
+        expect { adapter.create(:y, :z) }
+          .to raise_exception(Statesman::TransitionConflictError)
+      end
+    end
+
+    context "when other exceptions occur" do
+      before do
+        allow_any_instance_of(MyActiveRecordModelTransition)
+          .to receive(:save!).and_raise(error)
+      end
+
+      context "ActiveRecord::RecordNotUnique unrelated to this transition" do
+        let(:error) { ActiveRecord::RecordNotUnique.new("unrelated", nil) }
+        it { should raise_exception(ActiveRecord::RecordNotUnique) }
+      end
+
+      context "other errors" do
+        let(:error) { StandardError }
+        it { should raise_exception(StandardError) }
+      end
+    end
+  end
+
   describe "#last" do
     let(:adapter) do
       described_class.new(MyActiveRecordModelTransition, model, observer)
