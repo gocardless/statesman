@@ -1,4 +1,9 @@
-## v 0.6.1 21 May 2014
+## v0.7.0 25 June 2014
+*Additions*
+
+- `Adapters::ActiveRecord` now handles `ActiveRecord::RecordNotUnique` errors explicitly and re-raises with a `Statesman::TransitionConflictError` if it is due to duplicate sort_keys (patch by [@greysteil](https://github.com/greysteil))
+
+## v0.6.1 21 May 2014
 *Fixes*
 - Fixes an issue where the wrong transition was passed to after_transition callbacks for the second and subsequent transition of a given state machine (patch by [@alan](https://github.com/alan))
 
