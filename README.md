@@ -209,6 +209,15 @@ Initialize a new state machine instance. `my_model` is required. If using the
 ActiveRecord adapter `my_model` should have a `has_many` association with
 `MyTransitionModel`.
 
+#### `Machine.retry_conflicts`
+```ruby
+Machine.retry_conflicts { instance.transition_to(:new_state) }
+```
+Automatically retry the given block if a `TransitionConflictError` is raised.
+If you know you want to retry a transition if it fails due to a race condition
+call it from within this block. Takes an (optional) argument for the maximum
+number of retry attempts (defaults to 1).
+
 ## Instance methods
 
 #### `Machine#current_state`
@@ -245,7 +254,7 @@ model and define a `transition_class` method.
 ```ruby
 class Order < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordModel
-  
+
   private
 
   def self.transition_class

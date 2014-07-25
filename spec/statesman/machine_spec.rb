@@ -23,6 +23,80 @@ describe Statesman::Machine do
     end
   end
 
+  describe ".retry_conflicts" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :y, to: :z
+      end
+    end
+    let(:instance) { machine.new(my_model) }
+    let(:retry_attempts) { 2 }
+
+    subject(:transition_state) do
+      Statesman::Machine.retry_conflicts(retry_attempts) do
+        instance.transition_to(:y)
+      end
+    end
+
+    context "when no exception occurs" do
+      it "runs the transition once" do
+        expect(instance).to receive(:transition_to).once
+        transition_state
+      end
+    end
+
+    context "when an irrelevant exception occurs" do
+      it "runs the transition once" do
+        expect(instance)
+          .to receive(:transition_to).once
+          .and_raise(StandardError)
+        transition_state rescue nil # rubocop:disable RescueModifier
+      end
+
+      it "re-raises the exception" do
+        allow(instance).to receive(:transition_to).once
+          .and_raise(StandardError)
+        expect { transition_state }.to raise_error(StandardError)
+      end
+    end
+
+    context "when a TransitionConflictError occurs" do
+      context "and is resolved on the second attempt" do
+        it "runs the transition twice" do
+          expect(instance)
+            .to receive(:transition_to).once
+            .and_raise(Statesman::TransitionConflictError)
+            .ordered
+          expect(instance)
+            .to receive(:transition_to).once.ordered.and_call_original
+          transition_state
+        end
+      end
+
+      context "and keeps occurring" do
+        it "runs the transition `retry_attempts + 1` times" do
+          expect(instance)
+            .to receive(:transition_to)
+            .exactly(retry_attempts + 1).times
+            .and_raise(Statesman::TransitionConflictError)
+          transition_state rescue nil # rubocop:disable RescueModifier
+        end
+
+        it "re-raises the conflict" do
+          allow(instance)
+            .to receive(:transition_to)
+            .and_raise(Statesman::TransitionConflictError)
+          expect { transition_state }
+            .to raise_error(Statesman::TransitionConflictError)
+        end
+      end
+    end
+  end
+
   describe ".transition" do
     before do
       machine.class_eval do
