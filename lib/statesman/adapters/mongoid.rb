@@ -41,7 +41,7 @@ module Statesman
       private
 
       def transition_class_hash_fields
-        transition_class.fields.select { |k, v| v.type == Hash }.keys
+        transition_class.fields.select { |_, v| v.type == Hash }.keys
       end
 
       def metadata_field_error_message

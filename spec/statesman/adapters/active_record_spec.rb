@@ -11,7 +11,7 @@ describe Statesman::Adapters::ActiveRecord do
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
   let(:observer) do
     result = double(Statesman::Machine)
-    result.stub(:execute)
+    allow(result).to receive(:execute)
     result
   end
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
@@ -21,10 +21,11 @@ describe Statesman::Adapters::ActiveRecord do
     context "with unserialized metadata and non json column type" do
       before do
         metadata_column = double
-        metadata_column.stub(sql_type: '')
-        MyActiveRecordModelTransition.stub(columns_hash:
+        allow(metadata_column).to receive_messages(sql_type: '')
+        allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { 'metadata' => metadata_column })
-        MyActiveRecordModelTransition.stub(serialized_attributes: {})
+        allow(MyActiveRecordModelTransition)
+          .to receive_messages(serialized_attributes: {})
       end
 
       it "raises an exception" do
@@ -38,11 +39,11 @@ describe Statesman::Adapters::ActiveRecord do
     context "with serialized metadata and json column type" do
       before do
         metadata_column = double
-        metadata_column.stub(sql_type: 'json')
-        MyActiveRecordModelTransition.stub(columns_hash:
+        allow(metadata_column).to receive_messages(sql_type: 'json')
+        allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { 'metadata' => metadata_column })
-        MyActiveRecordModelTransition.stub(serialized_attributes:
-                                           { 'metadata' => '' })
+        allow(MyActiveRecordModelTransition)
+          .to receive_messages(serialized_attributes: { 'metadata' => '' })
       end
 
       it "raises an exception" do
@@ -82,12 +83,12 @@ describe Statesman::Adapters::ActiveRecord do
 
       context "ActiveRecord::RecordNotUnique unrelated to this transition" do
         let(:error) { ActiveRecord::RecordNotUnique.new("unrelated", nil) }
-        it { should raise_exception(ActiveRecord::RecordNotUnique) }
+        it { is_expected.to raise_exception(ActiveRecord::RecordNotUnique) }
       end
 
       context "other errors" do
         let(:error) { StandardError }
-        it { should raise_exception(StandardError) }
+        it { is_expected.to raise_exception(StandardError) }
       end
     end
   end
@@ -107,8 +108,8 @@ describe Statesman::Adapters::ActiveRecord do
       end
 
       it "caches the transition" do
-        MyActiveRecordModel.any_instance
-          .should_receive(:my_active_record_model_transitions).never
+        expect_any_instance_of(MyActiveRecordModel)
+          .to receive(:my_active_record_model_transitions).never
         adapter.last
       end
 
@@ -127,7 +128,7 @@ describe Statesman::Adapters::ActiveRecord do
       end
 
       it "doesn't query the database" do
-        MyActiveRecordModelTransition.should_not_receive(:connection)
+        expect(MyActiveRecordModelTransition).not_to receive(:connection)
         expect(adapter.last.to_state).to eq("y")
       end
     end

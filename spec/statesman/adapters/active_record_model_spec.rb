@@ -31,27 +31,27 @@ describe Statesman::Adapters::ActiveRecordModel do
     context "given a single state" do
       subject { MyActiveRecordModel.in_state(:state_a) }
 
-      it { should include model }
+      it { is_expected.to include model }
     end
 
     context "given multiple states" do
       subject { MyActiveRecordModel.in_state(:state_a, :state_b) }
 
-      it { should include model }
-      it { should include other_model }
+      it { is_expected.to include model }
+      it { is_expected.to include other_model }
     end
   end
 
   describe ".not_in_state" do
     context "given a single state" do
       subject { MyActiveRecordModel.not_in_state(:state_b) }
-      it { should include model }
-      it { should_not include other_model }
+      it { is_expected.to include model }
+      it { is_expected.not_to include other_model }
     end
 
     context "given multiple states" do
       subject { MyActiveRecordModel.not_in_state(:state_a, :state_b) }
-      it { should == [] }
+      it { is_expected.to eq([]) }
     end
   end
 end

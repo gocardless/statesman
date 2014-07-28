@@ -22,11 +22,11 @@ describe Statesman::MigrationGenerator, type: :generator do
     end
 
     before do
-      Time.stub(:now).and_return(mock_time)
-      run_generator %w[Yummy::Bacon Yummy::BaconTransition]
+      allow(Time).to receive(:now).and_return(mock_time)
+      run_generator %w(Yummy::Bacon Yummy::BaconTransition)
     end
 
-    it { should contain(/:bacon_transition/) }
-    it { should_not contain(/:yummy\/bacon/) }
+    it { is_expected.to contain(/:bacon_transition/) }
+    it { is_expected.not_to contain(/:yummy\/bacon/) }
   end
 end

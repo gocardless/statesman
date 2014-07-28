@@ -11,7 +11,7 @@ describe Statesman::Adapters::Mongoid, mongo: true do
   end
   let(:observer) do
     result = double(Statesman::Machine)
-    result.stub(:execute)
+    allow(result).to receive(:execute)
     result
   end
   let(:model) { MyMongoidModel.create(current_state: :pending) }
@@ -20,7 +20,8 @@ describe Statesman::Adapters::Mongoid, mongo: true do
   describe "#initialize" do
     context "with unserialized metadata" do
       before do
-        described_class.any_instance.stub(transition_class_hash_fields: [])
+        allow_any_instance_of(described_class)
+          .to receive_messages(transition_class_hash_fields: [])
       end
 
       it "raises an exception if metadata is not serialized" do
@@ -44,8 +45,8 @@ describe Statesman::Adapters::Mongoid, mongo: true do
       end
 
       it "caches the transition" do
-        MyMongoidModel.any_instance
-          .should_receive(:my_mongoid_model_transitions).never
+        expect_any_instance_of(MyMongoidModel)
+          .to receive(:my_mongoid_model_transitions).never
         adapter.last
       end
 
