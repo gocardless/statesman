@@ -1,3 +1,9 @@
+## v0.8.0 29 June 2014
+*Additions*
+
+- Events. Machines can now define events as a logical grouping of transitions (patch by [@iurimatias](https://github.com/iurimatias))
+- Retries. Individual transitions can be executed with a retry policy by wrapping the method call in a `Machine.retry_conflicts {}` block (patch by [@greysteil](https://github.com/greysteil))
+
 ## v0.7.0 25 June 2014
 *Additions*
 
