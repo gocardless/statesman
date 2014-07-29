@@ -640,7 +640,7 @@ describe Statesman::Machine do
       end
 
       it "returns true" do
-        expect(instance.trigger!(:event_1)).to be_true
+        expect(instance.trigger!(:event_1)).to eq(true)
       end
 
       context "with a guard" do
@@ -652,7 +652,7 @@ describe Statesman::Machine do
           let(:instance) { machine.new(my_model) }
 
           it "passes the object to the guard" do
-            guard_cb.should_receive(:call).once
+            expect(guard_cb).to receive(:call).once
               .with(my_model, instance.last_transition, nil).and_return(true)
             instance.trigger!(:event_1)
           end
