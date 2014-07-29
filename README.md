@@ -96,6 +96,71 @@ Order.first.state_machine.transition_to!(:cancelled)
 # => true/exception
 ```
 
+## Events
+
+```ruby
+class TaskStateMachine
+  include Statesman::Machine
+
+  state :unstarted, initial: true
+  state :started
+  state :finished
+  state :delivered
+  state :accepted
+  state :rejected
+
+  event :start do
+    transition from: :unstarted,  to: :started
+  end
+
+  event :finish do
+    transition from: :started,    to: :finished
+  end
+
+  event :deliver do
+    transition from: :finished,   to: :delivered
+    transition from: :started,    to: :delivered
+  end
+
+  event :accept do
+    transition from: :delivered, to: :accepted
+  end
+
+  event :rejected do
+    transition from: :delivered, to: :rejected
+  end
+
+  event :restart do
+    transition from: :rejected,   to: :started
+  end
+
+end
+
+class Task < ActiveRecord::Base
+  delegate :current_state, :trigger!, :available_events, to: :state_machine
+
+  def state_machine
+    @state_machine ||= TaskStateMachine.new(self)
+  end
+
+end
+
+task = Task.new
+
+task.current_state
+# => "unstarted"
+
+task.trigger!(:start)
+# => true/exception
+
+task.current_state
+# => "started"
+
+task.available_events
+# => [:finish, :deliver]
+
+```
+
 ## Persistence
 
 By default Statesman stores transition history in memory only. It can be
