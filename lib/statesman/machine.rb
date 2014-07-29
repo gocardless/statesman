@@ -12,6 +12,18 @@ module Statesman
       base.send(:attr_reader, :object)
     end
 
+    # Retry any transitions that fail due to a TransitionConflictError
+    def self.retry_conflicts(max_retries = 1)
+      retry_attempt = 0
+
+      begin
+        yield
+      rescue TransitionConflictError
+        retry_attempt += 1
+        retry_attempt <= max_retries ? retry : raise
+      end
+    end
+
     module ClassMethods
       attr_reader :initial_state
 
