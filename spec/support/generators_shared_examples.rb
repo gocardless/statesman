@@ -6,7 +6,7 @@ TMP_GENERATOR_PATH = File.expand_path('../generator-tmp', __FILE__)
 shared_examples 'a generator' do
   destination TMP_GENERATOR_PATH
   before { prepare_destination }
-  let(:gen) { generator %w[Yummy::Bacon Yummy::BaconTransition] }
+  let(:gen) { generator %w(Yummy::Bacon Yummy::BaconTransition) }
 
   it 'invokes create_model_file method' do
     expect(gen).to receive(:create_model_file)
@@ -15,11 +15,11 @@ shared_examples 'a generator' do
 
   describe 'it runs the generator and check things out' do
 
-    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
+    before { run_generator %w(Yummy::Bacon Yummy::BaconTransition) }
 
     describe 'it generates a correctly named file' do
       subject { file(migration_name) }
-      it { should be_a_migration }
+      it { is_expected.to be_a_migration }
     end
 
   end

@@ -192,21 +192,21 @@ describe Statesman::Machine do
 
     context "transition class" do
       it "sets a default" do
-        Statesman.storage_adapter.should_receive(:new).once
+        expect(Statesman.storage_adapter).to receive(:new).once
           .with(Statesman::Adapters::MemoryTransition, my_model, anything)
         machine.new(my_model)
       end
 
       it "sets the passed class" do
         my_transition_class = Class.new
-        Statesman.storage_adapter.should_receive(:new).once
+        expect(Statesman.storage_adapter).to receive(:new).once
           .with(my_transition_class, my_model, anything)
         machine.new(my_model, transition_class: my_transition_class)
       end
 
       it "falls back to Memory without transaction_class" do
-        Statesman.stub(:storage_adapter).and_return(Class.new)
-        Statesman::Adapters::Memory.should_receive(:new).once
+        allow(Statesman).to receive(:storage_adapter).and_return(Class.new)
+        expect(Statesman::Adapters::Memory).to receive(:new).once
           .with(Statesman::Adapters::MemoryTransition, my_model, anything)
         machine.new(my_model)
       end
@@ -238,7 +238,7 @@ describe Statesman::Machine do
     subject { instance.current_state }
 
     context "with no transitions" do
-      it { should eq(machine.initial_state) }
+      it { is_expected.to eq(machine.initial_state) }
     end
 
     context "with multiple transitions" do
@@ -247,7 +247,7 @@ describe Statesman::Machine do
         instance.transition_to!(:z)
       end
 
-      it { should eq("z") }
+      it { is_expected.to eq("z") }
     end
   end
 
@@ -266,7 +266,7 @@ describe Statesman::Machine do
     subject { instance.allowed_transitions }
 
     context "with multiple possible states" do
-      it { should eq(%w(y z)) }
+      it { is_expected.to eq(%w(y z)) }
     end
 
     context "with one possible state" do
@@ -274,7 +274,7 @@ describe Statesman::Machine do
         instance.transition_to!(:y)
       end
 
-      it { should eq(['z']) }
+      it { is_expected.to eq(['z']) }
     end
 
     context "with no possible transitions" do
@@ -282,7 +282,7 @@ describe Statesman::Machine do
         instance.transition_to!(:z)
       end
 
-      it { should eq([]) }
+      it { is_expected.to eq([]) }
     end
   end
 
@@ -291,7 +291,7 @@ describe Statesman::Machine do
     let(:last_action) { "Whatever" }
 
     it "delegates to the storage adapter" do
-      Statesman.storage_adapter.any_instance.should_receive(:last).once
+      expect_any_instance_of(Statesman.storage_adapter).to receive(:last).once
         .and_return(last_action)
       expect(instance.last_transition).to be(last_action)
     end
@@ -314,13 +314,13 @@ describe Statesman::Machine do
     context "when the transition is invalid" do
       context "with an initial to state" do
         let(:new_state) { :x }
-        it { should be_false }
+        it { is_expected.to be_falsey }
       end
 
       context "with a terminal from state" do
         before { instance.transition_to!(:y) }
         let(:new_state) { :y }
-        it { should be_false }
+        it { is_expected.to be_falsey }
       end
 
       context "and is guarded" do
@@ -329,19 +329,19 @@ describe Statesman::Machine do
         before { machine.guard_transition(to: new_state, &guard_cb) }
 
         it "does not fire guard" do
-          guard_cb.should_not_receive(:call)
-          should be_false
+          expect(guard_cb).not_to receive(:call)
+          is_expected.to be_falsey
         end
       end
     end
 
     context "when the transition valid" do
       let(:new_state) { :y }
-      it { should be_true }
+      it { is_expected.to be_truthy }
 
       context "but it has a failing guard" do
         before { machine.guard_transition(to: :y) { false } }
-        it { should be_false }
+        it { is_expected.to be_falsey }
       end
     end
   end
@@ -390,19 +390,19 @@ describe Statesman::Machine do
       end
 
       it "returns true" do
-        expect(instance.transition_to!(:y)).to be_true
+        expect(instance.transition_to!(:y)).to be_truthy
       end
 
       context "with a guard" do
         let(:result) { true }
-        let(:guard_cb) { ->(*args) { result } }
+        let(:guard_cb) { ->(*_args) { result } }
         before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
 
         context "and an object to act on" do
           let(:instance) { machine.new(my_model) }
 
           it "passes the object to the guard" do
-            guard_cb.should_receive(:call).once
+            expect(guard_cb).to receive(:call).once
               .with(my_model, instance.last_transition, nil).and_return(true)
             instance.transition_to!(:y)
           end
@@ -435,23 +435,24 @@ describe Statesman::Machine do
 
     context "when it is succesful" do
       before do
-        instance.should_receive(:transition_to!).once
+        expect(instance).to receive(:transition_to!).once
           .with(:some_state, metadata).and_return(:some_state)
       end
-      it { should be(:some_state) }
+      it { is_expected.to be(:some_state) }
     end
 
     context "when it is unsuccesful" do
       before do
-        instance.stub(:transition_to!).and_raise(Statesman::GuardFailedError)
+        allow(instance).to receive(:transition_to!)
+          .and_raise(Statesman::GuardFailedError)
       end
-      it { should be_false }
+      it { is_expected.to be_falsey }
     end
 
     context "when a non statesman exception is raised" do
       before do
-        instance.stub(:transition_to!).and_raise(RuntimeError,
-                                                 'user defined exception')
+        allow(instance).to receive(:transition_to!)
+          .and_raise(RuntimeError, 'user defined exception')
       end
 
       it "should not rescue the exception" do

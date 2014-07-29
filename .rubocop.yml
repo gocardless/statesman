@@ -1,10 +1,10 @@
 # For all options see https://github.com/bbatsov/rubocop/tree/master/config
 
 AllCops:
-  Includes:
+  Include:
     - Rakefile
     - statesman.gemfile
-  Excludes:
+  Exclude:
     - vendor/**
 
 StringLiterals:
@@ -30,3 +30,9 @@ Encoding:
 
 LineLength:
   Max: 80
+
+GuardClause:
+  Enabled: false
+
+SingleSpaceBeforeFirstArg:
+  Enabled: false

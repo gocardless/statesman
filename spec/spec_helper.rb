@@ -3,11 +3,11 @@ require "sqlite3"
 require "active_record"
 require "support/active_record"
 require "mongoid"
+require 'rspec/its'
 
 RSpec.configure do |config|
-  config.expect_with :rspec do |c|
-    c.syntax = :expect
-  end
+  config.raise_errors_for_deprecations!
+  config.mock_with(:rspec) { |mocks| mocks.verify_partial_doubles = true }
 
   config.order = "random"
 
