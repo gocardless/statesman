@@ -199,6 +199,23 @@ class Order < ActiveRecord::Base
            to: :state_machine
 end
 ```
+#### Using PostgreSQL JSON column
+
+By default, Statesman uses `serialize` to store the metadata in JSON format.
+It is also possible to use the PostgreSQL JSON column if you are using Rails 4. To do that
+
+* Change `metadata` column type in the transition model migration to `json`
+
+  ```ruby
+  # Before
+  t.text :metadata, default: "{}"
+  # After
+  t.json :metadata, default: "{}"
+  ```
+
+* Remove `include Statesman::Adapters::ActiveRecordTransition` statement from your
+  transition model
+
 
 ## Configuration
 
