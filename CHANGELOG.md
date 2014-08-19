@@ -1,3 +1,8 @@
+## v0.8.1 19 August 2014
+*Fixes*
+
+- Adds check in Machine#transition to make sure the 'to' state is not an empty array (patch by [@barisbalic](https://github.com/barisbalic))
+
 ## v0.8.0 29 June 2014
 *Additions*
 
