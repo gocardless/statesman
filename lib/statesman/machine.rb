@@ -66,6 +66,8 @@ module Statesman
         from = Array(options[:from]).map { |item| to_s_or_nil(item) }
         to = Array(options[:to]).map { |item| to_s_or_nil(item) }
 
+        # We need to be sure the from/to states are set, having default options
+        # make this less elegant
         validate_arguments(from, to)
 
         (from + to).each { |state| validate_state(state) }
