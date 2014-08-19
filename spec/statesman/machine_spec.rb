@@ -114,6 +114,30 @@ describe Statesman::Machine do
       end
     end
 
+    context "given no 'from' state and a valid 'to' state" do
+      it "raises an error" do
+        expect do
+          machine.transition from: nil, to: :x
+        end.to raise_error(Statesman::InvalidStateError)
+      end
+    end
+
+    context "given a valid 'from' state and a no 'to' state" do
+      it "raises an error" do
+        expect do
+          machine.transition from: :x, to: nil
+        end.to raise_error(Statesman::InvalidStateError)
+      end
+    end
+
+    context "given a valid 'from' state and an empty 'to' state array" do
+      it "raises an error" do
+        expect do
+          machine.transition from: :x, to: []
+        end.to raise_error(Statesman::InvalidStateError)
+      end
+    end
+
     context "given an invalid 'from' state" do
       it "raises an error" do
         expect do

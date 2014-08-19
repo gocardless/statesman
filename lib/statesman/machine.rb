@@ -66,6 +66,8 @@ module Statesman
         from = to_s_or_nil(options[:from])
         to = Array(options[:to]).map { |item| to_s_or_nil(item) }
 
+        raise InvalidStateError, "No to states provided." if to.empty?
+
         successors[from] ||= []
 
         ([from] + to).each { |state| validate_state(state) }
