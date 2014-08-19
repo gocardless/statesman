@@ -165,15 +165,15 @@ describe Statesman::Machine do
 
     context "multiple valid 'from' states and a valid 'to' state" do
       it "records the transition" do
-        machine.transition(from: [:x,:y], to: :z)
+        machine.transition(from: [:x, :y], to: :z)
         expect(machine.successors).to eq("x" => ["z"], "y" => ["z"])
       end
     end
 
     context "mutiple valid 'from' and 'to' states" do
       it "records the transition" do
-        machine.transition(from: [:x,:y], to: [:z, :a])
-        expect(machine.successors).to eq("x" => ["z", "a"], "y" => ["z", "a"])
+        machine.transition(from: [:x, :y], to: [:z, :a])
+        expect(machine.successors).to eq("x" => %w(z a), "y" => %w(z a))
       end
     end
   end

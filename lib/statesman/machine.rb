@@ -74,11 +74,11 @@ module Statesman
           successors[state] ||= []
           successors[state] += to
 
-          if event
-            events[event] ||= {}
-            events[event][state] ||= []
-            events[event][state]  += to
-          end
+          next unless event
+
+          events[event] ||= {}
+          events[event][state] ||= []
+          events[event][state]  += to
         end
       end
 
@@ -150,9 +150,11 @@ module Statesman
       private
 
       def validate_arguments(from, to)
-        raise InvalidStateError.new('No states were provided.') if (from + to).empty?
-        raise InvalidStateError.new('No from state was provided.') if from.empty?
-        raise InvalidStateError.new('No to state was provided.') if to.empty?
+        if (from + to).empty?
+          raise InvalidStateError, 'No states were provided.'
+        end
+        raise InvalidStateError, 'No from state was provided.' if from.empty?
+        raise InvalidStateError, 'No to state was provided.' if to.empty?
       end
 
       def validate_state(state)
