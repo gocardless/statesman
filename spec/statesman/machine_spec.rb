@@ -1,5 +1,5 @@
 require "spec_helper"
-
+require 'pry'
 describe Statesman::Machine do
   let(:machine) { Class.new { include Statesman::Machine } }
   let(:my_model) { Class.new { attr_accessor :current_state }.new }
@@ -103,6 +103,7 @@ describe Statesman::Machine do
         state :x
         state :y
         state :z
+        state :a
       end
     end
 
@@ -114,10 +115,34 @@ describe Statesman::Machine do
       end
     end
 
+    context "valid 'from' state and no 'to' state" do
+      it "raises an error" do
+        expect do
+          machine.transition(from: :x, to: nil)
+        end.to raise_error(Statesman::InvalidStateError)
+      end
+    end
+
+    context "no 'from' state and valid 'to' state" do
+      it "raises an error" do
+        expect do
+          machine.transition(from: [], to: :x)
+        end.to raise_error(Statesman::InvalidStateError)
+      end
+    end
+
+    context "given empty arrays of 'from' and 'to' states" do
+      it "raises an error" do
+        expect do
+          machine.transition from: [], to: []
+        end.to raise_error(Statesman::InvalidStateError)
+      end
+    end
+
     context "given an invalid 'from' state" do
       it "raises an error" do
         expect do
-          machine.transition(from: :a, to: :x)
+          machine.transition(from: :g, to: :x)
         end.to raise_error(Statesman::InvalidStateError)
       end
     end
@@ -125,7 +150,7 @@ describe Statesman::Machine do
     context "given an invalid 'to' state" do
       it "raises an error" do
         expect do
-          machine.transition(from: :x, to: :a)
+          machine.transition(from: :x, to: :g)
         end.to raise_error(Statesman::InvalidStateError)
       end
     end
@@ -135,6 +160,20 @@ describe Statesman::Machine do
         machine.transition(from: :x, to: :y)
         machine.transition(from: :x, to: :z)
         expect(machine.successors).to eq("x" => %w(y z))
+      end
+    end
+
+    context "multiple valid 'from' states and a valid 'to' state" do
+      it "records the transition" do
+        machine.transition(from: [:x, :y], to: :z)
+        expect(machine.successors).to eq("x" => ["z"], "y" => ["z"])
+      end
+    end
+
+    context "mutiple valid 'from' and 'to' states" do
+      it "records the transition" do
+        machine.transition(from: [:x, :y], to: [:z, :a])
+        expect(machine.successors).to eq("x" => %w(z a), "y" => %w(z a))
       end
     end
   end

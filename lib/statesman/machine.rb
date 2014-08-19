@@ -63,19 +63,24 @@ module Statesman
       end
 
       def transition(options = { from: nil, to: nil }, event = nil)
-        from = to_s_or_nil(options[:from])
+        from = Array(options[:from]).map { |item| to_s_or_nil(item) }
         to = Array(options[:to]).map { |item| to_s_or_nil(item) }
 
-        successors[from] ||= []
+        # We need to be sure the from/to states are set, having default options
+        # make this less elegant
+        validate_arguments(from, to)
 
-        ([from] + to).each { |state| validate_state(state) }
+        (from + to).each { |state| validate_state(state) }
 
-        successors[from] += to
+        from.each do |state|
+          successors[state] ||= []
+          successors[state] += to
 
-        if event
+          next unless event
+
           events[event] ||= {}
-          events[event][from] ||= []
-          events[event][from]  += to
+          events[event][state] ||= []
+          events[event][state]  += to
         end
       end
 
@@ -145,6 +150,14 @@ module Statesman
       end
 
       private
+
+      def validate_arguments(from, to)
+        if (from + to).empty?
+          raise InvalidStateError, 'No states were provided.'
+        end
+        raise InvalidStateError, 'No from state was provided.' if from.empty?
+        raise InvalidStateError, 'No to state was provided.' if to.empty?
+      end
 
       def validate_state(state)
         unless states.include?(state.to_s)

@@ -30,10 +30,11 @@ class OrderStateMachine
   state :failed
   state :refunded
 
-  transition from: :pending,      to: [:checking_out, :cancelled]
-  transition from: :checking_out, to: [:purchased, :cancelled]
-  transition from: :purchased,    to: [:shipped, :failed]
-  transition from: :shipped,      to: :refunded
+  transition from: :pending,                  to: :checking_out
+  transition from: :checking_out,             to: :purchased
+  transition from: [:pending, checking_out],  to: :cancelled
+  transition from: :purchased,                to: [:shipped, :failed]
+  transition from: :shipped,                  to: :refunded
 
   guard_transition(to: :checking_out) do |order|
     order.products_in_stock?
@@ -248,7 +249,7 @@ Define a new state and optionally mark as the initial state.
 ```ruby
 Machine.transition(from: :some_state, to: :another_state)
 ```
-Define a transition rule. Both method parameters are required, `to` can also be
+Define a transition rule. Both method parameters are required, and both/either can also be
 an array of states (`.transition(from: :some_state, to: [:another_state, :some_other_state])`).
 
 #### `Machine.guard_transition`
