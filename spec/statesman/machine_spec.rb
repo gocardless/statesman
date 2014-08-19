@@ -125,7 +125,7 @@ describe Statesman::Machine do
     context "given a valid 'from' state and a no 'to' state" do
       it "raises an error" do
         expect do
-          machine.transition from: :x, to: :nil
+          machine.transition from: :x, to: nil
         end.to raise_error(Statesman::InvalidStateError)
       end
     end
