@@ -2,7 +2,7 @@ class Create<%= migration_class_name %> < ActiveRecord::Migration
   def change
     create_table :<%= table_name %> do |t|
       t.string :to_state
-      t.text :metadata, default: "{}"
+      t.text :metadata<%= ", default: \"{}\"" unless mysql? %>
       t.integer :sort_key
       t.integer :<%= parent_id %>
       t.timestamps
