@@ -1,4 +1,9 @@
-## v0.8.2 19 August 2014
+## v0.8.3 2 September 2014
+*Fixes*
+
+- Optimisation for Machine#available_events (patch by [@pacso](https://github.com/pacso))
+
+## v0.8.2 2 September 2014
 *Fixes*
 
 - Stop generating a default value for the metadata column if using MySQL.
