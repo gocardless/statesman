@@ -1,10 +1,11 @@
-class Create<%= klass.pluralize %> < ActiveRecord::Migration
+class Create<%= migration_class_name %> < ActiveRecord::Migration
   def change
     create_table :<%= table_name %> do |t|
       t.string :to_state
       t.text :metadata<%= ", default: \"{}\"" unless is_mysql? %>
       t.integer :sort_key
       t.integer :<%= parent_id %>
+      t.timestamps
     end
 
     add_index :<%= table_name %>, :<%= parent_id %>

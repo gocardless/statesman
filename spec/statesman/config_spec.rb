@@ -12,7 +12,7 @@ describe Statesman::Config do
     let(:adapter) { Class.new }
     before  { instance.storage_adapter(adapter) }
     subject { instance.adapter_class }
-    it { should be(adapter) }
+    it { is_expected.to be(adapter) }
 
     it "is DSL configurable" do
       new_adapter = adapter

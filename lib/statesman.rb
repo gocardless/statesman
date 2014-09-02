@@ -9,7 +9,11 @@ module Statesman
     autoload :ActiveRecord, "statesman/adapters/active_record"
     autoload :ActiveRecordTransition,
              "statesman/adapters/active_record_transition"
+    autoload :ActiveRecordModel,
+             "statesman/adapters/active_record_model"
     autoload :Mongoid,      "statesman/adapters/mongoid"
+    autoload :MongoidTransition,
+             "statesman/adapters/mongoid_transition"
   end
 
   # Example:

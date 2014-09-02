@@ -1,9 +1,11 @@
-class AddStatesmanTo<%= klass.pluralize %> < ActiveRecord::Migration
+class AddStatesmanTo<%= migration_class_name %> < ActiveRecord::Migration
   def change
     add_column :<%= table_name %>, :to_state, :string
     add_column :<%= table_name %>, :metadata, :text<%= ", default: \"{}\"" unless is_mysql? %>
     add_column :<%= table_name %>, :sort_key, :integer
     add_column :<%= table_name %>, :<%= parent_id %>, :integer
+    add_column :<%= table_name %>, :created_at, :datetime
+    add_column :<%= table_name %>, :updated_at, :datetime
 
     add_index :<%= table_name %>, :<%= parent_id %>
     add_index :<%= table_name %>, [:sort_key, :<%= parent_id %>], unique: true

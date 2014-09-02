@@ -1,16 +1,22 @@
 # For all options see https://github.com/bbatsov/rubocop/tree/master/config
 
 AllCops:
-  Includes:
+  Include:
     - Rakefile
     - statesman.gemfile
-  Excludes:
+  Exclude:
     - vendor/**
 
 StringLiterals:
   Enabled: false
 
+LineEndConcatenation:
+  Enabled: false
+
 Documentation:
+  Enabled: false
+
+SignalException:
   Enabled: false
 
 # Avoid methods longer than 30 lines of code
@@ -20,4 +26,13 @@ MethodLength:
 
 # Don't require utf-8 encoding comment
 Encoding:
+  Enabled: false
+
+LineLength:
+  Max: 80
+
+GuardClause:
+  Enabled: false
+
+SingleSpaceBeforeFirstArg:
   Enabled: false

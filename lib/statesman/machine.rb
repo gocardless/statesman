@@ -2,6 +2,7 @@ require_relative "version"
 require_relative "exceptions"
 require_relative "guard"
 require_relative "callback"
+require_relative "event_transitions"
 require_relative "adapters/memory_transition"
 
 module Statesman
@@ -12,11 +13,27 @@ module Statesman
       base.send(:attr_reader, :object)
     end
 
+    # Retry any transitions that fail due to a TransitionConflictError
+    def self.retry_conflicts(max_retries = 1)
+      retry_attempt = 0
+
+      begin
+        yield
+      rescue TransitionConflictError
+        retry_attempt += 1
+        retry_attempt <= max_retries ? retry : raise
+      end
+    end
+
     module ClassMethods
       attr_reader :initial_state
 
       def states
         @states ||= []
+      end
+
+      def events
+        @events ||= {}
       end
 
       def state(name, options = { initial: false })
@@ -28,31 +45,40 @@ module Statesman
         states << name
       end
 
+      def event(name, &block)
+        EventTransitions.new(self, name, &block)
+      end
+
       def successors
         @successors ||= {}
       end
 
-      def before_callbacks
-        @before_callbacks ||= []
+      def callbacks
+        @callbacks ||= {
+          before:       [],
+          after:        [],
+          after_commit: [],
+          guards:       []
+        }
       end
 
-      def after_callbacks
-        @after_callbacks ||= []
-      end
-
-      def guards
-        @guards ||= []
-      end
-
-      def transition(options = { from: nil, to: nil })
+      def transition(options = { from: nil, to: nil }, event = nil)
         from = to_s_or_nil(options[:from])
         to = Array(options[:to]).map { |item| to_s_or_nil(item) }
+
+        raise InvalidStateError, "No to states provided." if to.empty?
 
         successors[from] ||= []
 
         ([from] + to).each { |state| validate_state(state) }
 
         successors[from] += to
+
+        if event
+          events[event] ||= {}
+          events[event][from] ||= []
+          events[event][from]  += to
+        end
       end
 
       def before_transition(options = { from: nil, to: nil }, &block)
@@ -60,15 +86,17 @@ module Statesman
         to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
-        before_callbacks << Callback.new(from: from, to: to, callback: block)
+        callbacks[:before] << Callback.new(from: from, to: to, callback: block)
       end
 
-      def after_transition(options = { from: nil, to: nil }, &block)
+      def after_transition(options = { from: nil, to: nil,
+                                       after_commit: false }, &block)
         from = to_s_or_nil(options[:from])
         to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
-        after_callbacks << Callback.new(from: from, to: to, callback: block)
+        phase = options[:after_commit] ? :after_commit : :after
+        callbacks[phase] << Callback.new(from: from, to: to, callback: block)
       end
 
       def guard_transition(options = { from: nil, to: nil }, &block)
@@ -76,7 +104,7 @@ module Statesman
         to   = to_s_or_nil(options[:to])
 
         validate_callback_condition(from: from, to: to)
-        guards << Guard.new(from: from, to: to, callback: block)
+        callbacks[:guards] << Guard.new(from: from, to: to, callback: block)
       end
 
       def validate_callback_condition(options = { from: nil, to: nil })
@@ -98,7 +126,7 @@ module Statesman
       def validate_not_from_terminal_state(from)
         unless from.nil? || successors.keys.include?(from)
           raise InvalidTransitionError,
-                "Cannont transition away from terminal state '#{from}'"
+                "Cannot transition away from terminal state '#{from}'"
         end
       end
 
@@ -106,7 +134,7 @@ module Statesman
       def validate_not_to_initial_state(to)
         unless to.nil? || successors.values.flatten.include?(to)
           raise InvalidTransitionError,
-                "Cannont transition to initial state '#{to}'"
+                "Cannot transition to initial state '#{to}'"
         end
       end
 
@@ -143,13 +171,21 @@ module Statesman
                         transition_class: Statesman::Adapters::MemoryTransition
                       })
       @object = object
-      @storage_adapter = Statesman.storage_adapter.new(
-                                            options[:transition_class], object)
+      @transition_class = options[:transition_class]
+      @storage_adapter = adapter_class(@transition_class)
+                          .new(@transition_class, object, self)
+      send(:after_initialize) if respond_to? :after_initialize
     end
 
     def current_state
       last_action = last_transition
       last_action ? last_action.to_state : self.class.initial_state
+    end
+
+    def allowed_transitions
+      successors_for(current_state).select do |state|
+        can_transition_to?(state)
+      end
     end
 
     def last_transition
@@ -177,32 +213,69 @@ module Statesman
                           to: new_state,
                           metadata: metadata)
 
-      before_cbs = before_callbacks_for(from: initial_state, to: new_state)
-      after_cbs = after_callbacks_for(from: initial_state, to: new_state)
-
-      @storage_adapter.create(new_state, before_cbs, after_cbs, metadata)
+      @storage_adapter.create(initial_state, new_state, metadata)
 
       true
     end
 
+    def trigger!(event_name, metadata = nil)
+      transitions = self.class.events.fetch(event_name) do
+        raise Statesman::TransitionFailedError,
+              "Event #{event_name} not found"
+      end
+
+      new_state = transitions.fetch(current_state) do
+        raise Statesman::TransitionFailedError,
+              "State #{current_state} not found for Event #{event_name}"
+      end
+
+      transition_to!(new_state.first, metadata)
+      true
+    end
+
+    def execute(phase, initial_state, new_state, transition)
+      callbacks = callbacks_for(phase, from: initial_state, to: new_state)
+      callbacks.each { |cb| cb.call(@object, transition) }
+    end
+
     def transition_to(new_state, metadata = nil)
       self.transition_to!(new_state, metadata)
-    rescue
+    rescue TransitionFailedError, GuardFailedError
       false
+    end
+
+    def trigger(event_name, metadata = nil)
+      self.trigger!(event_name, metadata)
+    rescue TransitionFailedError, GuardFailedError
+      false
+    end
+
+    def available_events
+      self.class.events.select do |_, transitions|
+        transitions.key?(current_state)
+      end.map(&:first)
     end
 
     private
 
+    def adapter_class(transition_class)
+      if transition_class == Statesman::Adapters::MemoryTransition
+        Adapters::Memory
+      else
+        Statesman.storage_adapter
+      end
+    end
+
+    def successors_for(from)
+      self.class.successors[from] || []
+    end
+
     def guards_for(options = { from: nil, to: nil })
-      select_callbacks_for(self.class.guards, options)
+      select_callbacks_for(self.class.callbacks[:guards], options)
     end
 
-    def before_callbacks_for(options = { from: nil, to: nil })
-      select_callbacks_for(self.class.before_callbacks, options)
-    end
-
-    def after_callbacks_for(options = { from: nil, to: nil })
-      select_callbacks_for(self.class.after_callbacks, options)
+    def callbacks_for(phase, options = { from: nil, to: nil })
+      select_callbacks_for(self.class.callbacks[phase], options)
     end
 
     def select_callbacks_for(callbacks, options = { from: nil, to: nil })
@@ -215,15 +288,15 @@ module Statesman
       from = to_s_or_nil(options[:from])
       to   = to_s_or_nil(options[:to])
 
-      # Call all guards, they raise exceptions if they fail
-      guards_for(from: from, to: to).each do |guard|
-        guard.call(@object, last_transition, options[:metadata])
-      end
-
       successors = self.class.successors[from] || []
       unless successors.include?(to)
         raise TransitionFailedError,
               "Cannot transition from '#{from}' to '#{to}'"
+      end
+
+      # Call all guards, they raise exceptions if they fail
+      guards_for(from: from, to: to).each do |guard|
+        guard.call(@object, last_transition, options[:metadata])
       end
     end
 

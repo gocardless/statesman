@@ -5,4 +5,6 @@ module Statesman
   class GuardFailedError < StandardError; end
   class TransitionFailedError < StandardError; end
   class UnserializedMetadataError < StandardError; end
+  class IncompatibleSerializationError < StandardError; end
+  class TransitionConflictError < StandardError; end
 end

@@ -53,10 +53,18 @@ class OrderStateMachine
 end
 
 class Order < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordModel
+
   has_many :order_transitions
 
   def state_machine
     OrderStateMachine.new(self, transition_class: OrderTransition)
+  end
+
+  private
+
+  def self.transition_class
+    OrderTransition
   end
 end
 
@@ -69,14 +77,88 @@ end
 Order.first.state_machine.current_state
 # => "pending"
 
+Order.first.state_machine.allowed_transitions
+# => ["checking_out", "cancelled"]
+
 Order.first.state_machine.can_transition_to?(:cancelled)
 # => true/false
 
 Order.first.state_machine.transition_to(:cancelled, optional: :metadata)
 # => true/false
 
+Order.in_state(:cancelled)
+# => [#<Order id: "123">]
+
+Order.not_in_state(:checking_out)
+# => [#<Order id: "123">]
+
 Order.first.state_machine.transition_to!(:cancelled)
 # => true/exception
+```
+
+## Events
+
+```ruby
+class TaskStateMachine
+  include Statesman::Machine
+
+  state :unstarted, initial: true
+  state :started
+  state :finished
+  state :delivered
+  state :accepted
+  state :rejected
+
+  event :start do
+    transition from: :unstarted,  to: :started
+  end
+
+  event :finish do
+    transition from: :started,    to: :finished
+  end
+
+  event :deliver do
+    transition from: :finished,   to: :delivered
+    transition from: :started,    to: :delivered
+  end
+
+  event :accept do
+    transition from: :delivered, to: :accepted
+  end
+
+  event :rejected do
+    transition from: :delivered, to: :rejected
+  end
+
+  event :restart do
+    transition from: :rejected,   to: :started
+  end
+
+end
+
+class Task < ActiveRecord::Base
+  delegate :current_state, :trigger!, :available_events, to: :state_machine
+
+  def state_machine
+    @state_machine ||= TaskStateMachine.new(self)
+  end
+
+end
+
+task = Task.new
+
+task.current_state
+# => "unstarted"
+
+task.trigger!(:start)
+# => true/exception
+
+task.current_state
+# => "started"
+
+task.available_events
+# => [:finish, :deliver]
+
 ```
 
 ## Persistence
@@ -117,6 +199,23 @@ class Order < ActiveRecord::Base
            to: :state_machine
 end
 ```
+#### Using PostgreSQL JSON column
+
+By default, Statesman uses `serialize` to store the metadata in JSON format.
+It is also possible to use the PostgreSQL JSON column if you are using Rails 4. To do that
+
+* Change `metadata` column type in the transition model migration to `json`
+
+  ```ruby
+  # Before
+  t.text :metadata, default: "{}"
+  # After
+  t.json :metadata, default: "{}"
+  ```
+
+* Remove `include Statesman::Adapters::ActiveRecordTransition` statement from your
+  transition model
+
 
 ## Configuration
 
@@ -132,6 +231,8 @@ end
 Statesman defaults to storing transitions in memory. If you're using rails, you
 can instead configure it to persist transitions to the database by using the
 ActiveRecord or Mongoid adapter.
+
+Statesman will fallback to memory unless you specify a transition_class when instantiating your state machine. This allows you to only persist transitions on certain state machines in your app.
 
 
 ## Class methods
@@ -190,6 +291,15 @@ Initialize a new state machine instance. `my_model` is required. If using the
 ActiveRecord adapter `my_model` should have a `has_many` association with
 `MyTransitionModel`.
 
+#### `Machine.retry_conflicts`
+```ruby
+Machine.retry_conflicts { instance.transition_to(:new_state) }
+```
+Automatically retry the given block if a `TransitionConflictError` is raised.
+If you know you want to retry a transition if it fails due to a race condition
+call it from within this block. Takes an (optional) argument for the maximum
+number of retry attempts (defaults to 1).
+
 ## Instance methods
 
 #### `Machine#current_state`
@@ -201,6 +311,9 @@ Returns a sorted array of all transition objects.
 #### `Machine#last_transition`
 Returns the most recent transition object.
 
+#### `Machine#allowed_transitions`
+Returns an array of states you can `transition_to` from current state.
+
 #### `Machine#can_transition_to?(:state)`
 Returns true if the current state can transition to the passed state and all
 applicable guards pass.
@@ -211,8 +324,33 @@ Transition to the passed state, returning `true` on success. Raises
 
 #### `Machine#transition_to(:state)`
 Transition to the passed state, returning `true` on success. Swallows all
-exceptions and returns false on failure.
+Statesman exceptions and returns false on failure. (NB. if your guard or
+callback code throws an exception, it will not be caught.)
+
+## Model scopes
+
+A mixin is provided for the ActiveRecord adapter which adds scopes to easily
+find all models currently in (or not in) a given state. Include it into your
+model and define a `transition_class` method.
+
+```ruby
+class Order < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordModel
+
+  private
+
+  def self.transition_class
+    OrderTransition
+  end
+end
+```
+
+#### `Model.in_state(:state_1, :state_2, etc)`
+Returns all models currently in any of the supplied states.
+
+#### `Model.not_in_state(:state_1, :state_2, etc)`
+Returns all models not currently in any of the supplied states.
 
 ---
 
-GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/jobs/backend_developer).
+GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/jobs#software-engineer).

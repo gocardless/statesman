@@ -6,24 +6,28 @@ module Statesman
       attr_reader :transition_class
       attr_reader :parent_model
 
-      def initialize(transition_class, parent_model)
+      def initialize(transition_class, parent_model, observer)
         @transition_class = transition_class
         @parent_model = parent_model
+        @observer = observer
         unless transition_class_hash_fields.include?('statesman_metadata')
           raise UnserializedMetadataError, metadata_field_error_message
         end
       end
 
-      def create(to, before_cbs, after_cbs, metadata = {})
+      def create(from, to, metadata = {})
         transition = transitions_for_parent.build(to_state: to,
                                                   sort_key: next_sort_key,
                                                   statesman_metadata: metadata)
 
-        before_cbs.each { |cb| cb.call(@parent_model, transition) }
+        @observer.execute(:before, from, to, transition)
         transition.save!
-        after_cbs.each { |cb| cb.call(@parent_model, transition) }
-        @last_transition = nil
+        @last_transition = transition
+        @observer.execute(:after, from, to, transition)
+        @observer.execute(:after_commit, from, to, transition)
         transition
+      ensure
+        @last_transition = nil
       end
 
       def history
@@ -37,7 +41,7 @@ module Statesman
       private
 
       def transition_class_hash_fields
-        transition_class.fields.select { |k, v| v.type == Hash }.keys
+        transition_class.fields.select { |_, v| v.type == Hash }.keys
       end
 
       def metadata_field_error_message
