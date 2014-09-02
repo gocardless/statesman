@@ -251,8 +251,9 @@ module Statesman
     end
 
     def available_events
+      state = current_state
       self.class.events.select do |_, transitions|
-        transitions.key?(current_state)
+        transitions.key?(state)
       end.map(&:first)
     end
 
