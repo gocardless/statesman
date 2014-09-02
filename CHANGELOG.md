@@ -1,3 +1,8 @@
+## v0.8.2 19 August 2014
+*Fixes*
+
+- Stop generating a default value for the metadata column if using MySQL.
+
 ## v0.8.1 19 August 2014
 *Fixes*
 
