@@ -28,7 +28,7 @@ module Statesman
       klass.demodulize.underscore.pluralize
     end
 
-    def is_mysql?
+    def mysql?
       ActiveRecord::Base.configurations[Rails.env]
         .try(:[], "adapter").try(:match, /mysql/)
     end
