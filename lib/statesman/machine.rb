@@ -233,7 +233,9 @@ module Statesman
         break if transition_to(new_state, metadata)
       end
 
-      raise Statesman::TransitionFailedError, "Event could not transition to any allowed state" unless target_states.include? current_state
+      raise Statesman::TransitionFailedError,
+            "Event could not transition to any allowed state" unless
+          target_states.include? current_state
       true
     end
 
