@@ -628,6 +628,10 @@ describe Statesman::Machine do
         event :event_2 do
           transition from: :y, to: :z
         end
+
+        event :event_3 do
+          transition from: :x, to: [:y, :z]
+        end
       end
     end
 
@@ -689,6 +693,11 @@ describe Statesman::Machine do
             instance.trigger!(:event_1)
             expect(instance.current_state).to eq("y")
           end
+
+          it 'changes to the first passing state' do
+            instance.trigger!(:event_3)
+            expect(instance.current_state).to eq('y')
+          end
         end
 
         context "which fails" do
@@ -697,7 +706,12 @@ describe Statesman::Machine do
           it "raises an exception" do
             expect do
               instance.trigger!(:event_1)
-            end.to raise_error(Statesman::GuardFailedError)
+            end.to raise_error(Statesman::TransitionFailedError)
+          end
+
+          it 'changes to the next passing state' do
+            instance.trigger(:event_3)
+            expect(instance.current_state).to eq('z')
           end
         end
       end

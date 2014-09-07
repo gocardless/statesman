@@ -224,12 +224,16 @@ module Statesman
               "Event #{event_name} not found"
       end
 
-      new_state = transitions.fetch(current_state) do
+      target_states = transitions.fetch(current_state) do
         raise Statesman::TransitionFailedError,
               "State #{current_state} not found for Event #{event_name}"
       end
 
-      transition_to!(new_state.first, metadata)
+      target_states.each do |new_state|
+        break if transition_to(new_state, metadata)
+      end
+
+      raise Statesman::TransitionFailedError, "Event could not transition to any allowed state" unless target_states.include? current_state
       true
     end
 
