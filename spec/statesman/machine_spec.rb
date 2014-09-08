@@ -695,7 +695,6 @@ describe Statesman::Machine do
       end
     end
 
-
     context "when the state can be transitioned to" do
       it "changes state" do
         instance.trigger!(:event_1)
