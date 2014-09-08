@@ -645,6 +645,57 @@ describe Statesman::Machine do
       end
     end
 
+    context "when two states can be transitioned to" do
+      it "changes to the first available state" do
+        instance.trigger!(:event_3)
+        expect(instance.current_state).to eq('y')
+      end
+
+      context "with a guard on the first state" do
+        let(:result) { true }
+        # rubocop:disable UnusedBlockArgument
+        let(:guard_cb) { ->(*args) { result } }
+        # rubocop:enable UnusedBlockArgument
+        before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
+
+        context "which passes" do
+          it "changes state" do
+            instance.trigger!(:event_3)
+            expect(instance.current_state).to eq("y")
+          end
+        end
+
+        context "which fails" do
+          let(:result) { false }
+
+          it 'changes to the next passing state' do
+            instance.trigger(:event_3)
+            expect(instance.current_state).to eq('z')
+          end
+        end
+
+        context "and the second state" do
+          let(:result2) { true }
+          # rubocop:disable UnusedBlockArgument
+          let(:guard2_cb) { ->(*args) { result } }
+          # rubocop:enable UnusedBlockArgument
+          before { machine.guard_transition(from: :x, to: :z, &guard2_cb) }
+
+          context "both of which fail" do
+            let(:result) { false }
+            let(:result2) { false }
+
+            it "raises an exception" do
+              expect do
+                instance.trigger!(:event_3)
+              end.to raise_error(Statesman::TransitionFailedError)
+            end
+          end
+        end
+      end
+    end
+
+
     context "when the state can be transitioned to" do
       it "changes state" do
         instance.trigger!(:event_1)
@@ -693,11 +744,6 @@ describe Statesman::Machine do
             instance.trigger!(:event_1)
             expect(instance.current_state).to eq("y")
           end
-
-          it 'changes to the first passing state' do
-            instance.trigger!(:event_3)
-            expect(instance.current_state).to eq('y')
-          end
         end
 
         context "which fails" do
@@ -707,11 +753,6 @@ describe Statesman::Machine do
             expect do
               instance.trigger!(:event_1)
             end.to raise_error(Statesman::TransitionFailedError)
-          end
-
-          it 'changes to the next passing state' do
-            instance.trigger(:event_3)
-            expect(instance.current_state).to eq('z')
           end
         end
       end
