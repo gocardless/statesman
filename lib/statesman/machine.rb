@@ -82,29 +82,24 @@ module Statesman
       end
 
       def before_transition(options = { from: nil, to: nil }, &block)
-        from = to_s_or_nil(options[:from])
-        to   = to_s_or_nil(options[:to])
+        add_callback(
+          options.merge(callback_class: Callback, callback_type: :before),
+          &block)
+      end
 
-        validate_callback_condition(from: from, to: to)
-        callbacks[:before] << Callback.new(from: from, to: to, callback: block)
+      def guard_transition(options = { from: nil, to: nil }, &block)
+        add_callback(
+          options.merge(callback_class: Guard, callback_type: :guards),
+          &block)
       end
 
       def after_transition(options = { from: nil, to: nil,
                                        after_commit: false }, &block)
-        from = to_s_or_nil(options[:from])
-        to   = to_s_or_nil(options[:to])
+        callback_type = options[:after_commit] ? :after_commit : :after
 
-        validate_callback_condition(from: from, to: to)
-        phase = options[:after_commit] ? :after_commit : :after
-        callbacks[phase] << Callback.new(from: from, to: to, callback: block)
-      end
-
-      def guard_transition(options = { from: nil, to: nil }, &block)
-        from = to_s_or_nil(options[:from])
-        to   = to_s_or_nil(options[:to])
-
-        validate_callback_condition(from: from, to: to)
-        callbacks[:guards] << Guard.new(from: from, to: to, callback: block)
+        add_callback(
+          options.merge(callback_class: Callback, callback_type: callback_type),
+          &block)
       end
 
       def validate_callback_condition(options = { from: nil, to: nil })
@@ -147,6 +142,17 @@ module Statesman
       end
 
       private
+
+      def add_callback(options, &block)
+        from = to_s_or_nil(options[:from])
+        to   = to_s_or_nil(options[:to])
+        callback_klass = options.fetch(:callback_class)
+        callback_type = options.fetch(:callback_type)
+
+        validate_callback_condition(from: from, to: to)
+        callbacks[callback_type] <<
+          callback_klass.new(from: from, to: to, callback: block)
+      end
 
       def validate_state(state)
         unless states.include?(state.to_s)
