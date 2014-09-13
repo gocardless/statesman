@@ -64,7 +64,7 @@ module Statesman
 
       def transition(options = { from: nil, to: nil }, event = nil)
         from = to_s_or_nil(options[:from])
-        to = Array(options[:to]).map { |item| to_s_or_nil(item) }
+        to = array_to_s_or_nil(options[:to])
 
         raise InvalidStateError, "No to states provided." if to.empty?
 
@@ -81,19 +81,19 @@ module Statesman
         end
       end
 
-      def before_transition(options = { from: nil, to: nil }, &block)
+      def before_transition(options = { from: nil, to: [] }, &block)
         add_callback(
           options.merge(callback_class: Callback, callback_type: :before),
           &block)
       end
 
-      def guard_transition(options = { from: nil, to: nil }, &block)
+      def guard_transition(options = { from: nil, to: [] }, &block)
         add_callback(
           options.merge(callback_class: Guard, callback_type: :guards),
           &block)
       end
 
-      def after_transition(options = { from: nil, to: nil,
+      def after_transition(options = { from: nil, to: [],
                                        after_commit: false }, &block)
         callback_type = options[:after_commit] ? :after_commit : :after
 
@@ -145,13 +145,18 @@ module Statesman
 
       def add_callback(options, &block)
         from = to_s_or_nil(options[:from])
-        to   = to_s_or_nil(options[:to])
+        to_states   = array_to_s_or_nil(options[:to])
+        to_states << nil if to_states.empty?
         callback_klass = options.fetch(:callback_class)
         callback_type = options.fetch(:callback_type)
 
-        validate_callback_condition(from: from, to: to)
-        callbacks[callback_type] <<
-          callback_klass.new(from: from, to: to, callback: block)
+        to_states.each do |to|
+          validate_callback_condition(from: from, to: to)
+        end
+        to_states.each do |to|
+          callbacks[callback_type] <<
+            callback_klass.new(from: from, to: to, callback: block)
+        end
       end
 
       def validate_state(state)
@@ -169,6 +174,10 @@ module Statesman
 
       def to_s_or_nil(input)
         input.nil? ? input : input.to_s
+      end
+
+      def array_to_s_or_nil(input)
+        Array(input).map { |item| to_s_or_nil(item) }
       end
     end
 
