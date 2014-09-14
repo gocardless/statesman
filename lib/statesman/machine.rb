@@ -81,19 +81,19 @@ module Statesman
         end
       end
 
-      def before_transition(options = { from: nil, to: [] }, &block)
+      def before_transition(options = { from: nil, to: nil }, &block)
         add_callback(
           options.merge(callback_class: Callback, callback_type: :before),
           &block)
       end
 
-      def guard_transition(options = { from: nil, to: [] }, &block)
+      def guard_transition(options = { from: nil, to: nil }, &block)
         add_callback(
           options.merge(callback_class: Guard, callback_type: :guards),
           &block)
       end
 
-      def after_transition(options = { from: nil, to: [],
+      def after_transition(options = { from: nil, to: nil,
                                        after_commit: false }, &block)
         callback_type = options[:after_commit] ? :after_commit : :after
 
@@ -104,17 +104,17 @@ module Statesman
 
       def validate_callback_condition(options = { from: nil, to: nil })
         from = to_s_or_nil(options[:from])
-        to   = to_s_or_nil(options[:to])
+        to   = array_to_s_or_nil(options[:to])
 
-        [from, to].compact.each { |state| validate_state(state) }
-        return if from.nil? && to.nil?
+        ([from] + to).compact.each { |state| validate_state(state) }
+        return if from.nil? && to.empty?
 
         validate_not_from_terminal_state(from)
-        validate_not_to_initial_state(to)
+        to.each { |state| validate_not_to_initial_state(state) }
 
-        return if from.nil? || to.nil?
+        return if from.nil? || to.empty?
 
-        validate_from_and_to_state(from, to)
+        to.each { |state| validate_from_and_to_state(from, state) }
       end
 
       # Check that the 'from' state is not terminal
@@ -145,16 +145,13 @@ module Statesman
 
       def add_callback(options, &block)
         from = to_s_or_nil(options[:from])
-        to_states   = array_to_s_or_nil(options[:to])
-        to_states << nil if to_states.empty?
+        to   = array_to_s_or_nil(options[:to])
         callback_klass = options.fetch(:callback_class)
         callback_type = options.fetch(:callback_type)
 
-        to_states.each { |to| validate_callback_condition(from: from, to: to) }
-        to_states.each do |to|
-          callbacks[callback_type] <<
-            callback_klass.new(from: from, to: to, callback: block)
-        end
+        validate_callback_condition(from: from, to: to)
+        callbacks[callback_type] <<
+          callback_klass.new(from: from, to: to, callback: block)
       end
 
       def validate_state(state)

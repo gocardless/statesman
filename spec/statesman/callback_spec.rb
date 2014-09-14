@@ -72,12 +72,17 @@ describe Statesman::Callback do
 
     context "with any from value on the callback" do
       let(:callback) do
-        Statesman::Callback.new(to: :y, callback: cb_lambda)
+        Statesman::Callback.new(to: [:y, :z], callback: cb_lambda)
       end
       let(:from) { :x }
 
       context "and an allowed to value" do
         let(:to) { :y }
+        it { is_expected.to be_truthy }
+      end
+
+      context "and another allowed to value" do
+        let(:to) { :z }
         it { is_expected.to be_truthy }
       end
 
