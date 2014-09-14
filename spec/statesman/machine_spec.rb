@@ -242,14 +242,14 @@ describe Statesman::Machine do
       end
     end
 
-    shared_examples "adds callbacks" do |num_callbacks|
+    shared_examples "adds callback" do
       it "does not raise" do
         expect { set_callback }.to_not raise_error
       end
 
       it "stores callbacks" do
         expect { set_callback }.to change(
-          machine.callbacks[callback_store], :count).by(num_callbacks)
+          machine.callbacks[callback_store], :count).by(1)
       end
 
       it "stores callback instances" do
@@ -290,22 +290,22 @@ describe Statesman::Machine do
     context "with validate_states" do
       context "from anything" do
         let(:options) { { from: nil, to: :y } }
-        it_behaves_like "adds callbacks", 1
+        it_behaves_like "adds callback"
       end
 
       context "to anything" do
         let(:options) { { from: :x, to: [] } }
-        it_behaves_like "adds callbacks", 1
+        it_behaves_like "adds callback"
       end
 
       context "to several" do
         let(:options) { { from: :x, to: [:y, :z] } }
-        it_behaves_like "adds callbacks", 2
+        it_behaves_like "adds callback"
       end
 
       context "from any to several" do
         let(:options) { { from: nil, to: [:y, :z] } }
-        it_behaves_like "adds callbacks", 2
+        it_behaves_like "adds callback"
       end
     end
   end
