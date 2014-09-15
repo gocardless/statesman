@@ -16,6 +16,8 @@ module Statesman
       end
 
       def create(from, to, metadata = {})
+        from = from.to_s
+        to = to.to_s
         transition = transitions_for_parent.build(to_state: to,
                                                   sort_key: next_sort_key,
                                                   statesman_metadata: metadata)
