@@ -660,10 +660,10 @@ describe Statesman::Machine do
         let(:result) { false }
         let(:result2) { true }
 
-        let(:guard_cb) { ->(*args) { result } }
+        let(:guard_cb) { ->(*_args) { result } }
         before { machine.guard_transition(from: :x, to: :w, &guard_cb) }
 
-        let(:guard_cb2) { ->(*args) { result2 } }
+        let(:guard_cb2) { ->(*_args) { result2 } }
         before { machine.guard_transition(from: :x, to: :x, &guard_cb2) }
 
         context "successfully transitioning back to current_state" do
