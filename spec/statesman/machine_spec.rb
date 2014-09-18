@@ -617,6 +617,7 @@ describe Statesman::Machine do
   describe "#event" do
     before do
       machine.class_eval do
+        state :w
         state :x, initial: true
         state :y
         state :z
@@ -631,6 +632,10 @@ describe Statesman::Machine do
 
         event :event_3 do
           transition from: :x, to: [:y, :z]
+        end
+
+        event :event_4 do
+          transition from: :x, to: [:w, :x]
         end
       end
     end
@@ -649,6 +654,34 @@ describe Statesman::Machine do
       it "changes to the first available state" do
         instance.trigger!(:event_3)
         expect(instance.current_state).to eq('y')
+      end
+
+      context "and one state is the current_state" do
+        let(:result) { false }
+        let(:result2) { true }
+
+        let(:guard_cb) { ->(*args) { result } }
+        before { machine.guard_transition(from: :x, to: :w, &guard_cb) }
+
+        let(:guard_cb2) { ->(*args) { result2 } }
+        before { machine.guard_transition(from: :x, to: :x, &guard_cb2) }
+
+        context "successfully transitioning back to current_state" do
+          it "does not raise an exception" do
+            expect do
+              instance.trigger!(:event_4)
+            end.not_to raise_error
+          end
+        end
+
+        context "failing to transition to either state" do
+          let(:result2) { false }
+          it "raises an exception" do
+            expect do
+              instance.trigger!(:event_4)
+            end.to raise_error(Statesman::GuardFailedError)
+          end
+        end
       end
 
       context "with a guard on the first state" do
@@ -688,7 +721,7 @@ describe Statesman::Machine do
             it "raises an exception" do
               expect do
                 instance.trigger!(:event_3)
-              end.to raise_error(Statesman::TransitionFailedError)
+              end.to raise_error(Statesman::GuardFailedError)
             end
           end
         end
@@ -751,7 +784,7 @@ describe Statesman::Machine do
           it "raises an exception" do
             expect do
               instance.trigger!(:event_1)
-            end.to raise_error(Statesman::TransitionFailedError)
+            end.to raise_error(Statesman::GuardFailedError)
           end
         end
       end

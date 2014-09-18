@@ -229,13 +229,16 @@ module Statesman
               "State #{current_state} not found for Event #{event_name}"
       end
 
+      failed_transition_states = []
+
       target_states.each do |new_state|
         break if transition_to(new_state, metadata)
+        failed_transition_states << new_state
       end
 
-      raise Statesman::TransitionFailedError,
-            "Event could not transition to any allowed state" unless
-          target_states.include? current_state
+      raise Statesman::GuardFailedError,
+            "All guards returned false when triggering event #{event_name}" if
+          target_states == failed_transition_states
       true
     end
 
