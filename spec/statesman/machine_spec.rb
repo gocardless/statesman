@@ -617,6 +617,7 @@ describe Statesman::Machine do
   describe "#event" do
     before do
       machine.class_eval do
+        state :w
         state :x, initial: true
         state :y
         state :z
@@ -628,6 +629,14 @@ describe Statesman::Machine do
         event :event_2 do
           transition from: :y, to: :z
         end
+
+        event :event_3 do
+          transition from: :x, to: [:y, :z]
+        end
+
+        event :event_4 do
+          transition from: :x, to: [:w, :x]
+        end
       end
     end
 
@@ -638,6 +647,84 @@ describe Statesman::Machine do
         expect do
           instance.trigger!(:event_2)
         end.to raise_error(Statesman::TransitionFailedError)
+      end
+    end
+
+    context "when two states can be transitioned to" do
+      it "changes to the first available state" do
+        instance.trigger!(:event_3)
+        expect(instance.current_state).to eq('y')
+      end
+
+      context "and one state is the current_state" do
+        let(:result) { false }
+        let(:result2) { true }
+
+        let(:guard_cb) { ->(*_args) { result } }
+        before { machine.guard_transition(from: :x, to: :w, &guard_cb) }
+
+        let(:guard_cb2) { ->(*_args) { result2 } }
+        before { machine.guard_transition(from: :x, to: :x, &guard_cb2) }
+
+        context "successfully transitioning back to current_state" do
+          it "does not raise an exception" do
+            expect do
+              instance.trigger!(:event_4)
+            end.not_to raise_error
+          end
+        end
+
+        context "failing to transition to either state" do
+          let(:result2) { false }
+          it "raises an exception" do
+            expect do
+              instance.trigger!(:event_4)
+            end.to raise_error(Statesman::GuardFailedError)
+          end
+        end
+      end
+
+      context "with a guard on the first state" do
+        let(:result) { true }
+        # rubocop:disable UnusedBlockArgument
+        let(:guard_cb) { ->(*args) { result } }
+        # rubocop:enable UnusedBlockArgument
+        before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
+
+        context "which passes" do
+          it "changes state" do
+            instance.trigger!(:event_3)
+            expect(instance.current_state).to eq("y")
+          end
+        end
+
+        context "which fails" do
+          let(:result) { false }
+
+          it 'changes to the next passing state' do
+            instance.trigger(:event_3)
+            expect(instance.current_state).to eq('z')
+          end
+        end
+
+        context "and the second state" do
+          let(:result2) { true }
+          # rubocop:disable UnusedBlockArgument
+          let(:guard2_cb) { ->(*args) { result } }
+          # rubocop:enable UnusedBlockArgument
+          before { machine.guard_transition(from: :x, to: :z, &guard2_cb) }
+
+          context "both of which fail" do
+            let(:result) { false }
+            let(:result2) { false }
+
+            it "raises an exception" do
+              expect do
+                instance.trigger!(:event_3)
+              end.to raise_error(Statesman::GuardFailedError)
+            end
+          end
+        end
       end
     end
 
