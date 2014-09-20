@@ -64,7 +64,7 @@ module Statesman
 
       def transition(options = { from: nil, to: nil }, event = nil)
         from = to_s_or_nil(options[:from])
-        to = Array(options[:to]).map { |item| to_s_or_nil(item) }
+        to = array_to_s_or_nil(options[:to])
 
         raise InvalidStateError, "No to states provided." if to.empty?
 
@@ -104,17 +104,17 @@ module Statesman
 
       def validate_callback_condition(options = { from: nil, to: nil })
         from = to_s_or_nil(options[:from])
-        to   = to_s_or_nil(options[:to])
+        to   = array_to_s_or_nil(options[:to])
 
-        [from, to].compact.each { |state| validate_state(state) }
-        return if from.nil? && to.nil?
+        ([from] + to).compact.each { |state| validate_state(state) }
+        return if from.nil? && to.empty?
 
         validate_not_from_terminal_state(from)
-        validate_not_to_initial_state(to)
+        to.each { |state| validate_not_to_initial_state(state) }
 
-        return if from.nil? || to.nil?
+        return if from.nil? || to.empty?
 
-        validate_from_and_to_state(from, to)
+        to.each { |state| validate_from_and_to_state(from, state) }
       end
 
       # Check that the 'from' state is not terminal
@@ -145,7 +145,7 @@ module Statesman
 
       def add_callback(options, &block)
         from = to_s_or_nil(options[:from])
-        to   = to_s_or_nil(options[:to])
+        to   = array_to_s_or_nil(options[:to])
         callback_klass = options.fetch(:callback_class)
         callback_type = options.fetch(:callback_type)
 
@@ -169,6 +169,10 @@ module Statesman
 
       def to_s_or_nil(input)
         input.nil? ? input : input.to_s
+      end
+
+      def array_to_s_or_nil(input)
+        Array(input).map { |item| to_s_or_nil(item) }
       end
     end
 
