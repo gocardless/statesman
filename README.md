@@ -423,33 +423,33 @@ end
 
 #### Creating models in certain states
 
-Sometimes you'll want to test a guard / transition from one state to another, where the state you want to go from is not the initial state of the model. In this instance you'll need to construct a model instance in the state required. However, if you have strict guards, this can be a pain. One way to get around this in tests is to directly create the transitions in the database, hence avoiding the guards. 
+Sometimes you'll want to test a guard/transition from one state to another, where the state you want to go from is not the initial state of the model. In this instance you'll need to construct a model instance in the state required. However, if you have strict guards, this can be a pain. One way to get around this in tests is to directly create the transitions in the database, hence avoiding the guards.
 
-We use [FactoryGirl](https://github.com/thoughtbot/factory_girl) for creating our test objects. Given an `Order` model that is backed by Statesman, we can easily set up transitions to particular states:
+We use [FactoryGirl](https://github.com/thoughtbot/factory_girl) for creating our test objects. Given an `Order` model that is backed by Statesman, we can easily set it up to be in a particular state:
 
 ```ruby
 factory :order do
   property "value"
   ...
-  
+
   trait :shipped do
     after(:create) do |order|
       FactoryGirl.create(:order_transition, :shipped, order: order)
     end
   end
 end
-  
+
 factory :order_transition do
   order
   ...
-  
+
   trait :shipped do
     to_state "shipped"
   end
 end
 ```
 
-This means you can easily create an `Order` with the `shipped` state:
+This means you can easily create an `Order` in the `shipped` state:
 
 ```ruby
 let(:shipped_order) { FactoryGirl.create(:order, :shipped) }
