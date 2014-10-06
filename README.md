@@ -351,6 +351,110 @@ Returns all models currently in any of the supplied states.
 #### `Model.not_in_state(:state_1, :state_2, etc)`
 Returns all models not currently in any of the supplied states.
 
+## Frequently Asked Questions
+
+#### `Model.in_state` does not work before first transition
+
+This is expected. State is modelled as a series of tranisitions so initially where there has been no transition, there is no explict state. At GoCardless we get around this by transitioning immediately after creation:
+
+```ruby
+after_create do
+  state_machine.transition_to! "pending"
+end
+```
+
+#### Storing the state on the model object
+
+If you wish to store the model state on the model directly, you can keep it up to date using an `after_transition` hook:
+
+```ruby
+after_transition do |model, transition|
+  model.state = transition.to_state
+  model.save!
+end
+```
+
+#### Accessing metadata from the last transition
+
+Given a field `foo` that was stored in the metadata, you can access it like so:
+
+```ruby
+model_instance.last_transition.metadata["foo"]
+```
+
+## Testing Statesman Implementations
+
+This answer was abstracted from [this issue](https://github.com/gocardless/statesman/issues/77).
+
+At GoCardless we focus on testing that:
+- guards correctly prevent / allow transitions
+- callbacks execute when expected and perform the expected actions
+
+#### Testing Guards
+
+Guards can be tested by asserting that `transition_to!` does or does not raise a `Statesman::GuardFailedError`:
+
+```ruby
+describe "guards" do
+  it "cannot transition from state foo to state bar" do
+    expect { some_model.transition_to!(:bar) }.to raise_error(Statesman::GuardFailedError)
+  end
+
+  it "can transition from state foo to state baz" do
+    expect { some_model.transition_to!(:baz).to_not raise_error
+  end
+end
+```
+
+#### Testing Callbacks
+
+Callbacks are tested by asserting that the action they perform occurs:
+
+```ruby
+describe "some callback" do
+  it "adds one to the count property on the model" do
+    expect { some_model.transition_to!(:some_state) }.
+      to change {
+        some_model.reload.count
+      }.by(1)
+  end
+end
+```
+
+#### Creating models in certain states
+
+Sometimes you'll want to test a guard / transition from one state to another, where the state you want to go from is not the initial state of the model. In this instance you'll need to construct a model instance in the state required. However, if you have strict guards, this can be a pain. One way to get around this in tests is to directly create the transitions in the database, hence avoiding the guards. 
+
+We use [FactoryGirl](https://github.com/thoughtbot/factory_girl) for creating our test objects. Given an `Order` model that is backed by Statesman, we can easily set up transitions to particular states:
+
+```ruby
+factory :order do
+  property "value"
+  ...
+  
+  trait :shipped do
+    after(:create) do |order|
+      FactoryGirl.create(:order_transition, :shipped, order: order)
+    end
+  end
+end
+  
+factory :order_transition do
+  order
+  ...
+  
+  trait :shipped do
+    to_state "shipped"
+  end
+end
+```
+
+This means you can easily create an `Order` with the `shipped` state:
+
+```ruby
+let(:shipped_order) { FactoryGirl.create(:order, :shipped) }
+```
+
 ---
 
 GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/jobs#software-engineer).
