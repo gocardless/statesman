@@ -218,54 +218,94 @@ describe Statesman::Machine do
       machine.class_eval do
         state :x, initial: true
         state :y
-        transition from: :x, to: :y
+        state :z
+        transition from: :x, to: [:y, :z]
       end
     end
 
-    it "stores callbacks" do
-      expect do
-        machine.send(assignment_method) {}
-      end.to change(machine.callbacks[callback_store], :count).by(1)
+    let(:options) { { from: nil, to: [] } }
+    let(:set_callback) { machine.send(assignment_method, options) {} }
+
+    shared_examples "fails" do |error_type|
+      it "raises an exception" do
+        expect { set_callback }.to raise_error(error_type)
+      end
+
+      it "does not add a callback" do
+        expect do
+          begin
+            set_callback
+          rescue error_type
+            nil
+          end
+        end.to_not change(machine.callbacks[callback_store], :count)
+      end
     end
 
-    it "stores callback instances" do
-      machine.send(assignment_method) {}
-      machine.callbacks[callback_store].each do |callback|
-        expect(callback).to be_a(Statesman::Callback)
+    shared_examples "adds callback" do
+      it "does not raise" do
+        expect { set_callback }.to_not raise_error
+      end
+
+      it "stores callbacks" do
+        expect { set_callback }.to change(
+          machine.callbacks[callback_store], :count).by(1)
+      end
+
+      it "stores callback instances" do
+        set_callback
+        machine.callbacks[callback_store].each do |callback|
+          expect(callback).to be_a(Statesman::Callback)
+        end
       end
     end
 
     context "with invalid states" do
-      it "raises an exception when both are invalid" do
-        expect do
-          machine.send(assignment_method, from: :foo, to: :bar) {}
-        end.to raise_error(Statesman::InvalidStateError)
+      context "when both are invalid" do
+        let(:options) { { from: :foo, to: :bar } }
+        it_behaves_like "fails", Statesman::InvalidStateError
       end
 
-      it "raises an exception with a terminal from state and nil to state" do
-        expect do
-          machine.send(assignment_method, from: :y) {}
-        end.to raise_error(Statesman::InvalidTransitionError)
+      context "from a terminal state to anything" do
+        let(:options) { { from: :y, to: [] } }
+        it_behaves_like "fails", Statesman::InvalidTransitionError
       end
 
-      it "raises an exception with an initial to state and nil from state" do
-        expect do
-          machine.send(assignment_method, to: :x) {}
-        end.to raise_error(Statesman::InvalidTransitionError)
+      context "to an initial state and from anything" do
+        let(:options) { { from: nil, to: :x } }
+        it_behaves_like "fails", Statesman::InvalidTransitionError
+      end
+
+      context "from a terminal state and to multiple states" do
+        let(:options) { { from: :y, to: [:x, :z] } }
+        it_behaves_like "fails", Statesman::InvalidTransitionError
+      end
+
+      context "to an initial state and other states" do
+        let(:options) { { from: nil, to: [:y, :x, :z] } }
+        it_behaves_like "fails", Statesman::InvalidTransitionError
       end
     end
 
     context "with validate_states" do
-      it "allows a nil from state" do
-        expect do
-          machine.send(assignment_method, to: :y) {}
-        end.to_not raise_error
+      context "from anything" do
+        let(:options) { { from: nil, to: :y } }
+        it_behaves_like "adds callback"
       end
 
-      it "allows a nil to state" do
-        expect do
-          machine.send(assignment_method, from: :x) {}
-        end.to_not raise_error
+      context "to anything" do
+        let(:options) { { from: :x, to: [] } }
+        it_behaves_like "adds callback"
+      end
+
+      context "to several" do
+        let(:options) { { from: :x, to: [:y, :z] } }
+        it_behaves_like "adds callback"
+      end
+
+      context "from any to several" do
+        let(:options) { { from: nil, to: [:y, :z] } }
+        it_behaves_like "adds callback"
       end
     end
   end
