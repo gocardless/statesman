@@ -1,3 +1,8 @@
+## v0.9.0 ???
+*Fixes*
+
+- `ActiveRecordModel.in_state` and `ActiveRecordModel.not_in_state` now handle inital states correctly. This requires adding an `initial_state` class method to all classes which include `ActiveRecordModel` (patch by [@isaacseymour](https://github.com/isaacseymour))
+
 ## v0.8.3 2 September 2014
 *Fixes*
 
