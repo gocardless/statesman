@@ -13,8 +13,8 @@ describe Statesman::Adapters::ActiveRecordModel do
         MyActiveRecordModelTransition
       end
 
-      def self.state_machine_class
-        MyStateMachine
+      def self.initial_state
+        MyStateMachine.initial_state
       end
     end
   end
