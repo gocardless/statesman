@@ -45,23 +45,23 @@ module Statesman
         end
 
         def transition1_join
-          "LEFT OUTER JOIN #{transition_name}
-             ON #{transition_name}.#{model_foreign_key} = #{table_name}.id"
+          "LEFT OUTER JOIN #{transition_name} transition1
+             ON transition1.#{model_foreign_key} = #{table_name}.id"
         end
 
         def transition2_join
           "LEFT OUTER JOIN #{transition_name} transition2
              ON transition2.#{model_foreign_key} = #{table_name}.id
-             AND transition2.sort_key > #{transition_name}.sort_key"
+             AND transition2.sort_key > transition1.sort_key"
         end
 
         def state_inclusion_where(states)
           if initial_state.in?(states)
-            "#{transition_name}.to_state IN (?) OR " \
-            "#{transition_name}.to_state IS NULL"
+            'transition1.to_state IN (?) OR ' \
+            'transition1.to_state IS NULL'
           else
-            "#{transition_name}.to_state IN (?) AND " \
-            "#{transition_name}.to_state IS NOT NULL"
+            'transition1.to_state IN (?) AND ' \
+            'transition1.to_state IS NOT NULL'
           end
         end
       end

@@ -350,10 +350,10 @@ end
 ```
 
 #### `Model.in_state(:state_1, :state_2, etc)`
-Returns all models currently in any of the supplied states. Prior to 0.9.0 this ignored all models in the initial state, and the `initial_state` class method was not required.
+Returns all models currently in any of the supplied states. Prior to 1.0 this ignored all models in the initial state, and the `initial_state` class method was not required.
 
 #### `Model.not_in_state(:state_1, :state_2, etc)`
-Returns all models not currently in any of the supplied states. Prior to 0.9.0 this always excluded models in the initial state, and the `initial_state` class method was not required.
+Returns all models not currently in any of the supplied states. Prior to 1.0 this always excluded models in the initial state, and the `initial_state` class method was not required.
 
 ## Frequently Asked Questions
 
