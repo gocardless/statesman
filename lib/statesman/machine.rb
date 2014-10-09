@@ -229,17 +229,21 @@ module Statesman
     end
 
     def trigger!(event_name, metadata = nil)
-      transitions = self.class.events.fetch(event_name) do
-        raise Statesman::TransitionFailedError,
-              "Event #{event_name} not found"
-      end
-
-      new_state = transitions.fetch(current_state) do
+      transition_targets = transitions_for(event_name).fetch(current_state) do
         raise Statesman::TransitionFailedError,
               "State #{current_state} not found for Event #{event_name}"
       end
 
-      transition_to!(new_state.first, metadata)
+      failed_targets = []
+
+      transition_targets.each do |target_state|
+        break if transition_to(target_state, metadata)
+        failed_targets << target_state
+      end
+
+      raise Statesman::GuardFailedError,
+            "All guards returned false when triggering event #{event_name}" if
+          transition_targets == failed_targets
       true
     end
 
@@ -274,6 +278,13 @@ module Statesman
         Adapters::Memory
       else
         Statesman.storage_adapter
+      end
+    end
+
+    def transitions_for(event_name)
+      self.class.events.fetch(event_name) do
+        raise Statesman::TransitionFailedError,
+              "Event #{event_name} not found"
       end
     end
 
