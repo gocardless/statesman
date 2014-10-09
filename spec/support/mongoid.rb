@@ -7,6 +7,8 @@ end
 class MyMongoidModel
   include Mongoid::Document
 
+  field :current_state, type: String
+
   has_many :my_mongoid_model_transitions
 end
 

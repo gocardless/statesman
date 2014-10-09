@@ -56,7 +56,7 @@ describe Statesman::Adapters::ActiveRecord do
   end
 
   describe "#create" do
-    let(:adapter) do
+    let!(:adapter) do
       described_class.new(MyActiveRecordModelTransition, model, observer)
     end
     let(:from) { :x }
@@ -123,8 +123,8 @@ describe Statesman::Adapters::ActiveRecord do
 
     context "with a pre-fetched transition history" do
       before do
-        # inspect the transitions to coerce a [pre-]load
-        model.my_active_record_model_transitions.inspect
+        adapter.create(:x, :y)
+        model.my_active_record_model_transitions.load_target
       end
 
       it "doesn't query the database" do
