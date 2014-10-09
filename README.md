@@ -331,7 +331,7 @@ callback code throws an exception, it will not be caught.)
 
 A mixin is provided for the ActiveRecord adapter which adds scopes to easily
 find all models currently in (or not in) a given state. Include it into your
-model and define a `transition_class` method.
+model and define `transition_class` and `initial_state` class methods:
 
 ```ruby
 class Order < ActiveRecord::Base
@@ -342,14 +342,18 @@ class Order < ActiveRecord::Base
   def self.transition_class
     OrderTransition
   end
+
+  def self.initial_state
+    OrderStateMachine.initial_state
+  end
 end
 ```
 
 #### `Model.in_state(:state_1, :state_2, etc)`
-Returns all models currently in any of the supplied states.
+Returns all models currently in any of the supplied states. Prior to 1.0 this ignored all models in the initial state, and the `initial_state` class method was not required.
 
 #### `Model.not_in_state(:state_1, :state_2, etc)`
-Returns all models not currently in any of the supplied states.
+Returns all models not currently in any of the supplied states. Prior to 1.0 this always excluded models in the initial state, and the `initial_state` class method was not required.
 
 ## Frequently Asked Questions
 
