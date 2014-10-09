@@ -1,3 +1,17 @@
+## v1.0.0.beta1 9 October 2014
+*Breaking changes*
+
+- Classes which include `ActiveRecordModel` must define an `initial_state` class method.
+
+*Fixes*
+
+- `ActiveRecordModel.in_state` and `ActiveRecordModel.not_in_state` now handle inital states correctly (patch by [@isaacseymour](https://github.com/isaacseymour))
+
+*Additions*
+
+- Transition tables created by generated migrations have `NOT NULL` constraints on `to_state`, `sort_key` and foreign key columns (patch by [@greysteil](https://github.com/greysteil))
+- `before_transition` and `after_transition` allow an array of to states (patch by [@isaacseymour](https://github.com/isaacseymour))
+
 ## v0.8.3 2 September 2014
 *Fixes*
 
