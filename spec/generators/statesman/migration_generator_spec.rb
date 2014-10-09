@@ -28,5 +28,6 @@ describe Statesman::MigrationGenerator, type: :generator do
 
     it { is_expected.to contain(/:bacon_transition/) }
     it { is_expected.not_to contain(/:yummy\/bacon/) }
+    it { is_expected.to contain(/null: false/) }
   end
 end
