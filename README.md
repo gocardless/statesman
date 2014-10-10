@@ -53,7 +53,7 @@ class OrderStateMachine
 end
 
 class Order < ActiveRecord::Base
-  include Statesman::Adapters::ActiveRecordModel
+  include Statesman::Adapters::ActiveRecordQueries
 
   has_many :order_transitions
 
@@ -65,6 +65,10 @@ class Order < ActiveRecord::Base
 
   def self.transition_class
     OrderTransition
+  end
+
+  def self.initial_state
+    :pending
   end
 end
 
@@ -335,7 +339,7 @@ model and define `transition_class` and `initial_state` class methods:
 
 ```ruby
 class Order < ActiveRecord::Base
-  include Statesman::Adapters::ActiveRecordModel
+  include Statesman::Adapters::ActiveRecordQueries
 
   private
 
@@ -357,16 +361,6 @@ Returns all models not currently in any of the supplied states. Prior to 1.0 thi
 
 ## Frequently Asked Questions
 
-#### `Model.in_state` does not work before first transition
-
-This is expected. State is modelled as a series of tranisitions so initially where there has been no transition, there is no explict state. At GoCardless we get around this by transitioning immediately after creation:
-
-```ruby
-after_create do
-  state_machine.transition_to! "pending"
-end
-```
-
 #### Storing the state on the model object
 
 If you wish to store the model state on the model directly, you can keep it up to date using an `after_transition` hook:
@@ -377,6 +371,8 @@ after_transition do |model, transition|
   model.save!
 end
 ```
+
+You could also use a calculated column or view in your database.
 
 #### Accessing metadata from the last transition
 
