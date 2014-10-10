@@ -1,3 +1,8 @@
+## v1.0.0.beta2 10 October 2014
+*Breaking changes*
+
+- Rename `ActiveRecordModel` to `ActiveRecordQueries`, to reflect the fact that it mixes in some helpful scopes, but is not required.
+
 ## v1.0.0.beta1 9 October 2014
 *Breaking changes*
 
