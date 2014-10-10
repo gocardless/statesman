@@ -1,6 +1,6 @@
 module Statesman
   module Adapters
-    module ActiveRecordModel
+    module ActiveRecordQueries
       def self.included(base)
         base.extend(ClassMethods)
       end

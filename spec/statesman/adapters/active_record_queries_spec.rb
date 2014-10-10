@@ -1,13 +1,13 @@
 require "spec_helper"
 
-describe Statesman::Adapters::ActiveRecordModel do
+describe Statesman::Adapters::ActiveRecordQueries do
   before do
     prepare_model_table
     prepare_transitions_table
   end
 
   before do
-    MyActiveRecordModel.send(:include, Statesman::Adapters::ActiveRecordModel)
+    MyActiveRecordModel.send(:include, Statesman::Adapters::ActiveRecordQueries)
     MyActiveRecordModel.class_eval do
       def self.transition_class
         MyActiveRecordModelTransition
