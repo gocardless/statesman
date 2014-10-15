@@ -9,19 +9,23 @@ module Statesman
         def in_state(*states)
           states = states.map(&:to_s)
 
-          joins(transition1_join)
+          includes(transition_name)
+            .joins(transition1_join)
             .joins(transition2_join)
             .where(state_inclusion_where(states), states)
             .where("transition2.id" => nil)
+            .references(transition_name)
         end
 
         def not_in_state(*states)
           states = states.map(&:to_s)
 
-          joins(transition1_join)
+          includes(transition_name)
+            .joins(transition1_join)
             .joins(transition2_join)
             .where("NOT (#{state_inclusion_where(states)})", states)
             .where("transition2.id" => nil)
+            .references(transition_name)
         end
 
         private
