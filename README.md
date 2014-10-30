@@ -17,6 +17,7 @@ This data model allows for interesting things like using a different state
 machine depending on the value of a model attribute.
 
 ## TL;DR Usage
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ```ruby
 class OrderStateMachine
