@@ -5,6 +5,8 @@ A statesmanlike state machine library for Ruby 1.9.3 and 2.0.
 [![Gem Version](https://badge.fury.io/rb/statesman.png)](http://badge.fury.io/rb/statesman)
 [![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
 [![Code Climate](https://codeclimate.com/github/gocardless/statesman.png)](https://codeclimate.com/github/gocardless/statesman)
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 
 Statesman is a little different from other state machine libraries which tack
 state behaviour directly onto a model. A statesman state machine is defined as a
@@ -17,7 +19,6 @@ This data model allows for interesting things like using a different state
 machine depending on the value of a model attribute.
 
 ## TL;DR Usage
-[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ```ruby
 class OrderStateMachine
