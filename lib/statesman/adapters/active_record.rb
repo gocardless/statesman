@@ -28,7 +28,7 @@ module Statesman
         create_transition(from, to, metadata)
       rescue ::ActiveRecord::RecordNotUnique => e
         if e.message.include?('sort_key') &&
-          e.message.include?(@transition_class.table_name)
+           e.message.include?(@transition_class.table_name)
           raise TransitionConflictError, e.message
         else raise
         end

@@ -1,3 +1,3 @@
 module Statesman
-  VERSION = "1.0.0.beta2"
+  VERSION = "1.0.0"
 end
