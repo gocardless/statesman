@@ -162,7 +162,7 @@ module Statesman
 
       def validate_initial_state(state)
         unless initial_state.nil?
-          raise InvalidStateError, "Cannot set initial state to '#{state}', " +
+          raise InvalidStateError, "Cannot set initial state to '#{state}', " \
                                    "already defined as #{initial_state}."
         end
       end
@@ -182,8 +182,8 @@ module Statesman
                       })
       @object = object
       @transition_class = options[:transition_class]
-      @storage_adapter = adapter_class(@transition_class)
-                          .new(@transition_class, object, self)
+      @storage_adapter = adapter_class(@transition_class).new(
+        @transition_class, object, self)
       send(:after_initialize) if respond_to? :after_initialize
     end
 

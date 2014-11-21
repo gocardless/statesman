@@ -18,8 +18,8 @@ class MyActiveRecordModel < ActiveRecord::Base
   has_many :my_active_record_model_transitions
 
   def state_machine
-    @state_machine ||= MyStateMachine
-      .new(self, transition_class: MyActiveRecordModelTransition)
+    @state_machine ||= MyStateMachine.new(
+      self, transition_class: MyActiveRecordModelTransition)
   end
 end
 

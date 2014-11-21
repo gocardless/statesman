@@ -27,7 +27,7 @@ module Statesman
         private
 
         def transition_class
-          raise NotImplementedError, "A transition_class method should be " +
+          raise NotImplementedError, "A transition_class method should be " \
                                      "defined on the model"
         end
 

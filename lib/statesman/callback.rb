@@ -28,9 +28,9 @@ module Statesman
 
     def matches(from, to)
       matches_all_transitions ||
-      matches_to_state(from, to) ||
-      matches_from_state(from, to) ||
-      matches_both_states(from, to)
+        matches_to_state(from, to) ||
+        matches_from_state(from, to) ||
+        matches_both_states(from, to)
     end
 
     def matches_all_transitions

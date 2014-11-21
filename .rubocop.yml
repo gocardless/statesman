@@ -10,9 +10,6 @@ AllCops:
 StringLiterals:
   Enabled: false
 
-LineEndConcatenation:
-  Enabled: false
-
 Documentation:
   Enabled: false
 
@@ -23,6 +20,9 @@ SignalException:
 MethodLength:
   CountComments: false  # count full line comments?
   Max: 15
+
+AbcSize:
+  Max: 25
 
 # Don't require utf-8 encoding comment
 Encoding:
