@@ -56,7 +56,7 @@ module Statesman
         end
 
         def state_inclusion_where(states)
-          if initial_state.in?(states)
+          if initial_state.to_s.in?(states.map(&:to_s))
             'transition1.to_state IN (?) OR ' \
             'transition1.to_state IS NULL'
           else

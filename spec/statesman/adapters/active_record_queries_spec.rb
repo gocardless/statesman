@@ -14,7 +14,7 @@ describe Statesman::Adapters::ActiveRecordQueries do
       end
 
       def self.initial_state
-        MyStateMachine.initial_state
+        :initial
       end
     end
   end
