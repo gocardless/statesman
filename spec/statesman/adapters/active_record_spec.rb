@@ -24,8 +24,12 @@ describe Statesman::Adapters::ActiveRecord do
         allow(metadata_column).to receive_messages(sql_type: '')
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { 'metadata' => metadata_column })
-        allow(MyActiveRecordModelTransition)
-          .to receive_messages(serialized_attributes: {})
+        if ActiveRecord::VERSION::MINOR >= 2
+          allow(metadata_column).to receive_messages(cast_type: '')
+        else
+          allow(MyActiveRecordModelTransition)
+            .to receive_messages(serialized_attributes: {})
+        end
       end
 
       it "raises an exception" do
@@ -42,8 +46,13 @@ describe Statesman::Adapters::ActiveRecord do
         allow(metadata_column).to receive_messages(sql_type: 'json')
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { 'metadata' => metadata_column })
-        allow(MyActiveRecordModelTransition)
-          .to receive_messages(serialized_attributes: { 'metadata' => '' })
+        if ActiveRecord::VERSION::MINOR >= 2
+          allow(metadata_column)
+            .to receive_messages(cast_type: ::ActiveRecord::Type::Serialized)
+        else
+          allow(MyActiveRecordModelTransition)
+            .to receive_messages(serialized_attributes: { 'metadata' => '' })
+        end
       end
 
       it "raises an exception" do
