@@ -24,7 +24,7 @@ describe Statesman::Adapters::ActiveRecord do
         allow(metadata_column).to receive_messages(sql_type: '')
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { 'metadata' => metadata_column })
-        if ActiveRecord::VERSION::MINOR >= 2
+        if ::ActiveRecord.gem_version >= Gem::Version.new('4.2')
           allow(metadata_column).to receive_messages(cast_type: '')
         else
           allow(MyActiveRecordModelTransition)
@@ -46,7 +46,7 @@ describe Statesman::Adapters::ActiveRecord do
         allow(metadata_column).to receive_messages(sql_type: 'json')
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { 'metadata' => metadata_column })
-        if ActiveRecord::VERSION::MINOR >= 2
+        if ::ActiveRecord.gem_version >= Gem::Version.new('4.2')
           allow(metadata_column)
             .to receive_messages(cast_type: ::ActiveRecord::Type::Serialized)
         else
