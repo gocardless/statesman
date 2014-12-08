@@ -41,7 +41,7 @@ module Statesman
         end
 
         def model_foreign_key
-          reflections[transition_name].foreign_key
+          reflect_on_association(transition_name).foreign_key
         end
 
         def transition1_join
