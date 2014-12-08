@@ -527,6 +527,11 @@ describe Statesman::Machine do
         expect(instance.history.first.metadata).to eq(meta)
       end
 
+      it "sets an empty hash as the metadata if not specified" do
+        instance.transition_to!(:y)
+        expect(instance.history.first.metadata).to eq({})
+      end
+
       it "returns true" do
         expect(instance.transition_to!(:y)).to be_truthy
       end
@@ -541,7 +546,7 @@ describe Statesman::Machine do
 
           it "passes the object to the guard" do
             expect(guard_cb).to receive(:call).once
-              .with(my_model, instance.last_transition, nil).and_return(true)
+              .with(my_model, instance.last_transition, {}).and_return(true)
             instance.transition_to!(:y)
           end
         end
@@ -703,6 +708,11 @@ describe Statesman::Machine do
         expect(instance.history.first.metadata).to eq(meta)
       end
 
+      it "sets an empty hash as the metadata if not specified" do
+        instance.trigger!(:event_1)
+        expect(instance.history.first.metadata).to eq({})
+      end
+
       it "returns true" do
         expect(instance.trigger!(:event_1)).to eq(true)
       end
@@ -719,7 +729,7 @@ describe Statesman::Machine do
 
           it "passes the object to the guard" do
             expect(guard_cb).to receive(:call).once
-              .with(my_model, instance.last_transition, nil).and_return(true)
+              .with(my_model, instance.last_transition, {}).and_return(true)
             instance.trigger!(:event_1)
           end
         end
