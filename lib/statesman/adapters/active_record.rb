@@ -7,7 +7,7 @@ module Statesman
       attr_reader :parent_model
 
       def initialize(transition_class, parent_model, observer)
-        serialized = transition_class.serialized_attributes.include?("metadata")
+        serialized = serialized?(transition_class)
         column_type = transition_class.columns_hash['metadata'].sql_type
         if !serialized && column_type != 'json'
           raise UnserializedMetadataError,
@@ -74,6 +74,15 @@ module Statesman
 
       def next_sort_key
         (last && last.sort_key + 10) || 0
+      end
+
+      def serialized?(transition_class)
+        if ::ActiveRecord.gem_version >= Gem::Version.new('4.2')
+          transition_class.columns_hash["metadata"]
+            .cast_type.is_a?(::ActiveRecord::Type::Serialized)
+        else
+          transition_class.serialized_attributes.include?("metadata")
+        end
       end
     end
   end
