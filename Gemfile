@@ -1,4 +1,5 @@
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in statesman.gemspec
 gemspec
+
+gem "rails", "~> #{ENV["TEST_RAILS_VERSION"]}" if ENV["TEST_RAILS_VERSION"]

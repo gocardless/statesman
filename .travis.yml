@@ -6,3 +6,6 @@ services: mongodb
 script:
  - bundle exec rubocop
  - bundle exec rake
+env:
+  - "RAILS_VERSION=4.1.7"
+  - "RAILS_VERSION=4.2.0.rc2"
