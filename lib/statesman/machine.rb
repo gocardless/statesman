@@ -202,7 +202,7 @@ module Statesman
       @storage_adapter.last
     end
 
-    def can_transition_to?(new_state, metadata = nil)
+    def can_transition_to?(new_state, metadata = {})
       validate_transition(from: current_state,
                           to: new_state,
                           metadata: metadata)
@@ -215,7 +215,7 @@ module Statesman
       @storage_adapter.history
     end
 
-    def transition_to!(new_state, metadata = nil)
+    def transition_to!(new_state, metadata = {})
       initial_state = current_state
       new_state = new_state.to_s
 
@@ -228,7 +228,7 @@ module Statesman
       true
     end
 
-    def trigger!(event_name, metadata = nil)
+    def trigger!(event_name, metadata = {})
       transitions = self.class.events.fetch(event_name) do
         raise Statesman::TransitionFailedError,
               "Event #{event_name} not found"
@@ -248,13 +248,13 @@ module Statesman
       callbacks.each { |cb| cb.call(@object, transition) }
     end
 
-    def transition_to(new_state, metadata = nil)
+    def transition_to(new_state, metadata = {})
       self.transition_to!(new_state, metadata)
     rescue TransitionFailedError, GuardFailedError
       false
     end
 
-    def trigger(event_name, metadata = nil)
+    def trigger(event_name, metadata = {})
       self.trigger!(event_name, metadata)
     rescue TransitionFailedError, GuardFailedError
       false
