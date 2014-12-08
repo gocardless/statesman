@@ -32,7 +32,7 @@ class CreateMyActiveRecordModelMigration < ActiveRecord::Migration
   def change
     create_table :my_active_record_models do |t|
       t.string :current_state
-      t.timestamps
+      t.timestamps(null: false)
     end
   end
 end
@@ -45,7 +45,7 @@ class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
       t.integer :my_active_record_model_id
       t.integer :sort_key
       t.text    :metadata
-      t.timestamps
+      t.timestamps(null: false)
     end
 
     add_index :my_active_record_model_transitions, :sort_key, unique: true
