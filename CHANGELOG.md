@@ -1,3 +1,19 @@
+## v1.1.0 9 December 2014
+*Fixes*
+
+- Support for Rails 4.2.0.rc2:
+  - Remove use of serialized_attributes when using 4.2+. (patch by [@greysteil](https://github.com/greysteil))
+  - Use reflect_on_association rather than directly using the reflections hash. (patch by [@timrogers](https://github.com/timrogers))
+- Fix `ActiveRecordQueries.in_state` when `Model.initial_state` is defined as a symbol. (patch by [@isaacseymour](https://github.com/isaacseymour))
+
+*Changes*
+
+- Transition metadata now defaults to `{}` rather than `nil`. (patch by [@greysteil](https://github.com/greysteil))
+
+## v1.0.0 21 November 2014
+
+No changes from v1.0.0.beta2
+
 ## v1.0.0.beta2 10 October 2014
 *Breaking changes*
 
