@@ -6,6 +6,7 @@ AllCops:
     - statesman.gemfile
   Exclude:
     - vendor/**
+    - .*/**
 
 StringLiterals:
   Enabled: false
