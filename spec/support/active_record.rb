@@ -21,6 +21,10 @@ class MyActiveRecordModel < ActiveRecord::Base
     @state_machine ||= MyStateMachine.new(
       self, transition_class: MyActiveRecordModelTransition)
   end
+
+  def metadata
+    super || {}
+  end
 end
 
 class MyActiveRecordModelTransition < ActiveRecord::Base
@@ -44,7 +48,7 @@ class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
       t.string  :to_state
       t.integer :my_active_record_model_id
       t.integer :sort_key
-      t.text    :metadata
+      t.text    :metadata, default: '{}'
       t.timestamps(null: false)
     end
 

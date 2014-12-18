@@ -7,5 +7,7 @@ script:
  - bundle exec rubocop
  - bundle exec rake
 env:
-  - "RAILS_VERSION=4.1.7"
-  - "RAILS_VERSION=4.2.0.rc2"
+  - "RAILS_VERSION=3.2.21"
+  - "RAILS_VERSION=4.0.12"
+  - "RAILS_VERSION=4.1.8"
+  - "RAILS_VERSION=4.2.0"
