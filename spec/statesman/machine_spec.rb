@@ -752,7 +752,6 @@ describe Statesman::Machine do
         end
       end
     end
-
   end
 
   describe "#available_events" do
@@ -784,5 +783,4 @@ describe Statesman::Machine do
       expect(instance.available_events).to eq([:event_2, :event_3])
     end
   end
-
 end

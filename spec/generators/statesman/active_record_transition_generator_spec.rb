@@ -3,7 +3,6 @@ require "support/generators_shared_examples"
 require "generators/statesman/active_record_transition_generator"
 
 describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
-
   it_behaves_like "a generator" do
     let(:migration_name) { 'db/migrate/create_bacon_transitions.rb' }
   end
@@ -24,5 +23,4 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     it { is_expected.not_to contain(/class_name:/) }
     it { is_expected.to contain(/class BaconTransition/) }
   end
-
 end

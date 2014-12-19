@@ -224,7 +224,6 @@ module Statesman
                           metadata: metadata)
 
       @storage_adapter.create(initial_state, new_state, metadata)
-
     end
 
     def trigger!(event_name, metadata = {})
