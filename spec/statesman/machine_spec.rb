@@ -532,8 +532,8 @@ describe Statesman::Machine do
         expect(instance.history.first.metadata).to eq({})
       end
 
-      it "returns true" do
-        expect(instance.transition_to!(:y)).to be_truthy
+      it "returns transition object" do
+        expect(instance.transition_to!(:y)).to eq(instance.history.last)
       end
 
       context "with a guard" do
@@ -713,8 +713,8 @@ describe Statesman::Machine do
         expect(instance.history.first.metadata).to eq({})
       end
 
-      it "returns true" do
-        expect(instance.trigger!(:event_1)).to eq(true)
+      it "returns transition object" do
+        expect(instance.trigger!(:event_1)).to eq(instance.history.last)
       end
 
       context "with a guard" do
