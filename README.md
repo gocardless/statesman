@@ -60,7 +60,7 @@ class Order < ActiveRecord::Base
   has_many :order_transitions
 
   def state_machine
-    OrderStateMachine.new(self, transition_class: OrderTransition)
+    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
   end
 
   private
