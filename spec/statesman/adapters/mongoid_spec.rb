@@ -5,7 +5,6 @@ require "support/mongoid"
 require "mongoid"
 
 describe Statesman::Adapters::Mongoid, mongo: true do
-
   after do
     Mongoid.purge!
   end
