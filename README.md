@@ -289,6 +289,9 @@ model object and transition object are passed as arguments to the callback.
 This callback can have side-effects as it will only be run once immediately
 after the transition.
 
+If you specify `after_commit: true`, the callback will be executed once the
+transition has been committed to the database.
+
 #### `Machine.new`
 ```ruby
 my_machine = Machine.new(my_model, transition_class: MyTransitionModel)
