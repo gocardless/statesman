@@ -27,9 +27,16 @@ module Statesman
 
     module ClassMethods
       attr_reader :initial_state
-      
-      def inherited subclass
-        [:@states, :@initial_state, :@events, :@successors, :@callbacks].each do |ivar|
+      INHERITABLE_IVARS = [
+        :@states,
+        :@initial_state,
+        :@events,
+        :@successors,
+        :@callbacks
+      ]
+
+      def inherited(subclass)
+        INHERITABLE_IVARS.each do |ivar|
           subclass.instance_variable_set(ivar, instance_variable_get(ivar))
         end
       end
