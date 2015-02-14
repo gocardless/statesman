@@ -7,7 +7,7 @@ module Statesman
 
       module ClassMethods
         def in_state(*states)
-          states = states.map(&:to_s)
+          states = states.flatten.map(&:to_s)
 
           joins(transition1_join)
             .joins(transition2_join)
@@ -16,7 +16,7 @@ module Statesman
         end
 
         def not_in_state(*states)
-          states = states.map(&:to_s)
+          states = states.flatten.map(&:to_s)
 
           joins(transition1_join)
             .joins(transition2_join)
