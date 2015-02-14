@@ -67,8 +67,7 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
     context "with after callbacks" do
       it "is called after the state transition" do
         expect(observer).to receive(:execute)
-          .with(:after, anything, anything, anything) {
-            |_phase, _from_state, _to_state, transition|
+          .with(:after, anything, anything, anything) { |_, _, _, transition|
             expect(adapter.last).to eq(transition)
           }.once
         adapter.create(from, to)
@@ -78,8 +77,7 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
         adapter.create(from, to)
 
         expect(observer).to receive(:execute)
-          .with(:after, anything, anything, anything) {
-            |_phase, _from_state, _to_state, transition|
+          .with(:after, anything, anything, anything) { |_, _, _, transition|
             expect(adapter.last).to eq(transition)
           }.once
         adapter.create(to, there)
