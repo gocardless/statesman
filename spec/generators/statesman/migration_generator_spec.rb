@@ -28,11 +28,10 @@ describe Statesman::MigrationGenerator, type: :generator do
     it { is_expected.to contain(/:bacon_transition/) }
     it { is_expected.not_to contain(/:yummy\/bacon/) }
     it { is_expected.to contain(/null: false/) }
-    it { is_expected.to contain("name: \"index_bacon_transitions_parent\"") }
 
     it "names the sorting index appropriately" do
       expect(subject)
-        .to contain("name: \"index_bacon_transitions_sort_parent\"")
+        .to contain("name: \"index_bacon_transitions_parent_sort\"")
     end
   end
 end

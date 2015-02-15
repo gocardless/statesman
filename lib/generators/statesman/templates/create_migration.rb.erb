@@ -8,7 +8,6 @@ class Create<%= migration_class_name %> < ActiveRecord::Migration
       t.timestamps null: false
     end
 
-    add_index :<%= table_name %>, :<%= parent_id %>, name: "<%= index_name :parent %>"
-    add_index :<%= table_name %>, [:sort_key, :<%= parent_id %>], unique: true, name: "<%= index_name :sort_parent  %>"
+    add_index :<%= table_name %>, [:<%= parent_id %>, :sort_key], unique: true, name: "<%= index_name :parent_sort  %>"
   end
 end

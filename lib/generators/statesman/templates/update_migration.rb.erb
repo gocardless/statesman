@@ -7,7 +7,6 @@ class AddStatesmanTo<%= migration_class_name %> < ActiveRecord::Migration
     add_column :<%= table_name %>, :created_at, :datetime, null: false
     add_column :<%= table_name %>, :updated_at, :datetime, null: false
 
-    add_index :<%= table_name %>, :<%= parent_id %>, name: "<%= index_name :parent %>"
-    add_index :<%= table_name %>, [:sort_key, :<%= parent_id %>], unique: true, name: "<%= index_name :sort_parent  %>"
+    add_index :<%= table_name %>, [:<%= parent_id %>, :sort_key], unique: true, name: "<%= index_name :parent_sort  %>"
   end
 end
