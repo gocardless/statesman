@@ -390,37 +390,65 @@ describe Statesman::Machine do
   end
 
   describe "#allowed_transitions" do
-    before do
-      machine.class_eval do
-        state :x, initial: true
-        state :y
-        state :z
-        transition from: :x, to: [:y, :z]
-        transition from: :y, to: :z
-      end
-    end
-
     let(:instance) { machine.new(my_model) }
-    subject { instance.allowed_transitions }
 
-    context "with multiple possible states" do
-      it { is_expected.to eq(%w(y z)) }
-    end
-
-    context "with one possible state" do
+    context 'without guards' do
       before do
-        instance.transition_to!(:y)
+        machine.class_eval do
+          state :x, initial: true
+          state :y
+          state :z
+          transition from: :x, to: [:y, :z]
+          transition from: :y, to: :z
+        end
       end
 
-      it { is_expected.to eq(['z']) }
-    end
+      subject { instance.allowed_transitions }
 
-    context "with no possible transitions" do
-      before do
-        instance.transition_to!(:z)
+      context "with multiple possible states" do
+        it { is_expected.to eq(%w(y z)) }
       end
 
-      it { is_expected.to eq([]) }
+      context "with one possible state" do
+        before do
+          instance.transition_to!(:y)
+        end
+
+        it { is_expected.to eq(['z']) }
+      end
+
+      context "with no possible transitions" do
+        before do
+          instance.transition_to!(:z)
+        end
+
+        it { is_expected.to eq([]) }
+      end
+    end
+
+    context 'with guards' do
+      before do
+        machine.class_eval do
+          state :x, initial: true
+          state :y
+
+          transition from: :x, to: :y
+
+          guard_transition to: :y do |_, _, metadata|
+            metadata[:role] == :admin
+          end
+        end
+      end
+
+      context 'with valid role' do
+        subject { instance.allowed_transitions(role: :admin) }
+        it { is_expected.to eq(%w(y)) }
+      end
+
+      context 'with invalid role' do
+        subject { instance.allowed_transitions(role: :user) }
+        it { is_expected.to be_empty }
+      end
     end
   end
 
