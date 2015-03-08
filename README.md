@@ -222,6 +222,13 @@ It is also possible to use the PostgreSQL JSON column if you are using Rails 4. 
 * Remove `include Statesman::Adapters::ActiveRecordTransition` statement from your
   transition model
 
+#### Creating transitions without using `#transition_to` with ActiveRecord
+
+By default, Statesman will include a `most_recent` column on the transitions
+table, and update its value each time `#transition_to` is called. If you create
+transitions manually (for example to backfill for a new state) you will need to
+set the `most_recent` attribute manually.
+
 
 ## Configuration
 
@@ -424,40 +431,6 @@ describe "some callback" do
       }.by(1)
   end
 end
-```
-
-#### Creating models in certain states
-
-Sometimes you'll want to test a guard/transition from one state to another, where the state you want to go from is not the initial state of the model. In this instance you'll need to construct a model instance in the state required. However, if you have strict guards, this can be a pain. One way to get around this in tests is to directly create the transitions in the database, hence avoiding the guards.
-
-We use [FactoryGirl](https://github.com/thoughtbot/factory_girl) for creating our test objects. Given an `Order` model that is backed by Statesman, we can easily set it up to be in a particular state:
-
-```ruby
-factory :order do
-  property "value"
-  ...
-
-  trait :shipped do
-    after(:create) do |order|
-      FactoryGirl.create(:order_transition, :shipped, order: order)
-    end
-  end
-end
-
-factory :order_transition do
-  order
-  ...
-
-  trait :shipped do
-    to_state "shipped"
-  end
-end
-```
-
-This means you can easily create an `Order` in the `shipped` state:
-
-```ruby
-let(:shipped_order) { FactoryGirl.create(:order, :shipped) }
 ```
 
 ---

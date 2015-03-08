@@ -7,6 +7,11 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
   end
 
   before do
+    Statesman.configure { storage_adapter(Statesman::Adapters::ActiveRecord) }
+  end
+  after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
+
+  before do
     MyActiveRecordModel.send(:include, Statesman::Adapters::ActiveRecordQueries)
     MyActiveRecordModel.class_eval do
       def self.transition_class
@@ -21,13 +26,13 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
   let!(:model) do
     model = MyActiveRecordModel.create
-    model.my_active_record_model_transitions.create(to_state: :succeeded)
+    model.state_machine.transition_to(:succeeded)
     model
   end
 
   let!(:other_model) do
     model = MyActiveRecordModel.create
-    model.my_active_record_model_transitions.create(to_state: :failed)
+    model.state_machine.transition_to(:failed)
     model
   end
 
@@ -35,60 +40,119 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
   let!(:returned_to_initial_model) do
     model = MyActiveRecordModel.create
-    model.my_active_record_model_transitions.create(to_state: :failed)
-    model.my_active_record_model_transitions.create(to_state: :initial)
+    model.state_machine.transition_to(:failed)
+    model.state_machine.transition_to(:initial)
     model
   end
 
-  describe ".in_state" do
-    context "given a single state" do
-      subject { MyActiveRecordModel.in_state(:succeeded) }
+  context "with a most_recent column" do
+    describe ".in_state" do
+      context "given a single state" do
+        subject { MyActiveRecordModel.in_state(:succeeded) }
 
-      it { is_expected.to include model }
-    end
+        it { is_expected.to include model }
+      end
 
-    context "given multiple states" do
-      subject { MyActiveRecordModel.in_state(:succeeded, :failed) }
+      context "given multiple states" do
+        subject { MyActiveRecordModel.in_state(:succeeded, :failed) }
 
-      it { is_expected.to include model }
-      it { is_expected.to include other_model }
-    end
+        it { is_expected.to include model }
+        it { is_expected.to include other_model }
+      end
 
-    context "given the initial state" do
-      subject { MyActiveRecordModel.in_state(:initial) }
+      context "given the initial state" do
+        subject { MyActiveRecordModel.in_state(:initial) }
 
-      it { is_expected.to include initial_state_model }
-      it { is_expected.to include returned_to_initial_model }
-    end
+        it { is_expected.to include initial_state_model }
+        it { is_expected.to include returned_to_initial_model }
+      end
 
-    context "given an array of states" do
-      subject { MyActiveRecordModel.in_state([:succeeded, :failed]) }
+      context "given an array of states" do
+        subject { MyActiveRecordModel.in_state([:succeeded, :failed]) }
 
-      it { is_expected.to include model }
-      it { is_expected.to include other_model }
-    end
-  end
-
-  describe ".not_in_state" do
-    context "given a single state" do
-      subject { MyActiveRecordModel.not_in_state(:failed) }
-      it { is_expected.to include model }
-      it { is_expected.not_to include other_model }
-    end
-
-    context "given multiple states" do
-      subject { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
-      it do
-        is_expected.to match_array([initial_state_model,
-                                    returned_to_initial_model])
+        it { is_expected.to include model }
+        it { is_expected.to include other_model }
       end
     end
 
-    context "given an array of states" do
-      subject { MyActiveRecordModel.not_in_state([:succeeded, :failed]) }
-      it do
-        is_expected.to match_array([initial_state_model,
-                                    returned_to_initial_model])
+    describe ".not_in_state" do
+      context "given a single state" do
+        subject { MyActiveRecordModel.not_in_state(:failed) }
+        it { is_expected.to include model }
+        it { is_expected.not_to include other_model }
+      end
+
+      context "given multiple states" do
+        subject { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
+        it do
+          is_expected.to match_array([initial_state_model,
+                                      returned_to_initial_model])
+        end
+      end
+
+      context "given an array of states" do
+        subject { MyActiveRecordModel.not_in_state([:succeeded, :failed]) }
+        it do
+          is_expected.to match_array([initial_state_model,
+                                      returned_to_initial_model])
+        end
+      end
+    end
+  end
+
+  context "without a most_recent column" do
+    before { drop_most_recent_column }
+
+    describe ".in_state" do
+      context "given a single state" do
+        subject { MyActiveRecordModel.in_state(:succeeded) }
+
+        it { is_expected.to include model }
+      end
+
+      context "given multiple states" do
+        subject { MyActiveRecordModel.in_state(:succeeded, :failed) }
+
+        it { is_expected.to include model }
+        it { is_expected.to include other_model }
+      end
+
+      context "given the initial state" do
+        subject { MyActiveRecordModel.in_state(:initial) }
+
+        it { is_expected.to include initial_state_model }
+        it { is_expected.to include returned_to_initial_model }
+      end
+
+      context "given an array of states" do
+        subject { MyActiveRecordModel.in_state([:succeeded, :failed]) }
+
+        it { is_expected.to include model }
+        it { is_expected.to include other_model }
+      end
+    end
+
+    describe ".not_in_state" do
+      context "given a single state" do
+        subject { MyActiveRecordModel.not_in_state(:failed) }
+        it { is_expected.to include model }
+        it { is_expected.not_to include other_model }
+      end
+
+      context "given multiple states" do
+        subject { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
+        it do
+          is_expected.to match_array([initial_state_model,
+                                      returned_to_initial_model])
+        end
+      end
+
+      context "given an array of states" do
+        subject { MyActiveRecordModel.not_in_state([:succeeded, :failed]) }
+        it do
+          is_expected.to match_array([initial_state_model,
+                                      returned_to_initial_model])
+        end
       end
     end
   end

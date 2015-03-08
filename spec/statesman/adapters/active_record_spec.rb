@@ -102,6 +102,30 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         it { is_expected.to raise_exception(StandardError) }
       end
     end
+
+    context "when the transition_class has a most_recent column" do
+      subject { create }
+
+      context "with no previous transition" do
+        its(:most_recent) { is_expected.to eq(true) }
+      end
+
+      context "with a previous transition" do
+        let!(:previous_transition) { adapter.create(from, to) }
+        its(:most_recent) { is_expected.to eq(true) }
+
+        it "updates the previous transition's most_recent flag" do
+          expect { create }.
+            to change { previous_transition.reload.most_recent }.
+            from(true).to(false)
+        end
+      end
+    end
+
+    context "when the transition_class doesn't have a most_recent column" do
+      before { drop_most_recent_column }
+      it { is_expected.to_not raise_exception }
+    end
   end
 
   describe "#last" do
