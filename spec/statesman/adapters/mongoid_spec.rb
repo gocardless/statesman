@@ -5,14 +5,8 @@ require "support/mongoid"
 require "mongoid"
 
 describe Statesman::Adapters::Mongoid, mongo: true do
-  after do
-    Mongoid.purge!
-  end
-  let(:observer) do
-    result = double(Statesman::Machine)
-    allow(result).to receive(:execute)
-    result
-  end
+  after { Mongoid.purge! }
+  let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyMongoidModel.create(current_state: :pending) }
   it_behaves_like "an adapter", described_class, MyMongoidModelTransition
 
@@ -38,10 +32,8 @@ describe Statesman::Adapters::Mongoid, mongo: true do
     end
 
     context "with a previously looked up transition" do
-      before do
-        adapter.create(:x, :y)
-        adapter.last
-      end
+      before { adapter.create(:x, :y) }
+      before { adapter.last }
 
       it "caches the transition" do
         expect_any_instance_of(MyMongoidModel)

@@ -12,11 +12,7 @@ require "spec_helper"
 #   last:             Returns the latest transition history item
 #
 shared_examples_for "an adapter" do |adapter_class, transition_class|
-  let(:observer) do
-    result = double(Statesman::Machine)
-    allow(result).to receive(:execute)
-    result
-  end
+  let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:adapter) { adapter_class.new(transition_class, model, observer) }
 
   describe "#initialize" do
@@ -102,16 +98,15 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
       context "sorting" do
         let!(:transition2) { adapter.create(:x, :y) }
         subject { adapter.history }
+
         it { is_expected.to eq(adapter.history.sort_by(&:sort_key)) }
       end
     end
   end
 
   describe "#last" do
-    before do
-      adapter.create(:x, :y)
-      adapter.create(:y, :z)
-    end
+    before { adapter.create(:x, :y) }
+    before { adapter.create(:y, :z) }
     subject { adapter.last }
 
     it { is_expected.to be_a(transition_class) }
