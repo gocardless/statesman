@@ -9,11 +9,7 @@ describe Statesman::Adapters::ActiveRecord do
   end
 
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
-  let(:observer) do
-    result = double(Statesman::Machine)
-    allow(result).to receive(:execute)
-    result
-  end
+  let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
 
@@ -113,14 +109,10 @@ describe Statesman::Adapters::ActiveRecord do
       described_class.new(MyActiveRecordModelTransition, model, observer)
     end
 
-    before do
-      adapter.create(:x, :y)
-    end
+    before { adapter.create(:x, :y) }
 
     context "with a previously looked up transition" do
-      before do
-        adapter.last
-      end
+      before { adapter.last }
 
       it "caches the transition" do
         expect_any_instance_of(MyActiveRecordModel)
@@ -137,10 +129,8 @@ describe Statesman::Adapters::ActiveRecord do
     end
 
     context "with a pre-fetched transition history" do
-      before do
-        adapter.create(:x, :y)
-        model.my_active_record_model_transitions.load_target
-      end
+      before { adapter.create(:x, :y) }
+      before { model.my_active_record_model_transitions.load_target }
 
       it "doesn't query the database" do
         expect(MyActiveRecordModelTransition).not_to receive(:connection)

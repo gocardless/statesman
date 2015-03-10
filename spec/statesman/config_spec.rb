@@ -2,16 +2,13 @@ require "spec_helper"
 
 describe Statesman::Config do
   let(:instance) { Statesman::Config.new }
-
-  after do
-    # Don't leak global config changes into other specs
-    Statesman.configure { storage_adapter(Statesman::Adapters::Memory) }
-  end
+  after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
 
   describe "#storage_adapter" do
     let(:adapter) { Class.new }
     before  { instance.storage_adapter(adapter) }
     subject { instance.adapter_class }
+
     it { is_expected.to be(adapter) }
 
     it "is DSL configurable" do

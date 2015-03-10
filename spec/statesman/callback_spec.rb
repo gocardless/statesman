@@ -61,9 +61,7 @@ describe Statesman::Callback do
     end
 
     context "with any to and any from value on the callback" do
-      let(:callback) do
-        Statesman::Callback.new(callback: cb_lambda)
-      end
+      let(:callback) { Statesman::Callback.new(callback: cb_lambda) }
       let(:from) { :x }
       let(:to) { :y }
 
@@ -93,9 +91,7 @@ describe Statesman::Callback do
     end
 
     context "with any to value on the callback" do
-      let(:callback) do
-        Statesman::Callback.new(from: :x, callback: cb_lambda)
-      end
+      let(:callback) { Statesman::Callback.new(from: :x, callback: cb_lambda) }
       let(:to) { :y }
 
       context "and an allowed to value" do
