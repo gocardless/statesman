@@ -30,8 +30,9 @@ RSpec.configure do |config|
     puts "Skipping ActiveRecord tests"
   else
     # Connect to the database for activerecord tests
-    db_conn_str = ENV.fetch("DATABASE_URL", "sqlite3::memory:")
-    ActiveRecord::Base.establish_connection(db_conn_str)
+    db_conn_spec = ENV["DATABASE_URL"]
+    db_conn_spec ||=  { adapter: "sqlite3", database: ":memory:" }
+    ActiveRecord::Base.establish_connection(db_conn_spec)
 
     db_adapter = ActiveRecord::Base.connection.adapter_name
     puts "Running with database adapter '#{db_adapter}'"
