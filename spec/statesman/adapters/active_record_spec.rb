@@ -2,7 +2,7 @@ require "spec_helper"
 require "statesman/adapters/shared_examples"
 require "statesman/exceptions"
 
-describe Statesman::Adapters::ActiveRecord do
+describe Statesman::Adapters::ActiveRecord, active_record: true do
   before do
     prepare_model_table
     prepare_transitions_table

@@ -1,6 +1,6 @@
 require "spec_helper"
 
-describe Statesman::Adapters::ActiveRecordQueries do
+describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
   before do
     prepare_model_table
     prepare_transitions_table
