@@ -26,15 +26,15 @@ RSpec.configure do |config|
     raise(error)
   end
 
-  unless config.exclusion_filter[:active_record]
+  if config.exclusion_filter[:active_record]
+    puts "Skipping ActiveRecord tests"
+  else
     # Connect to the database for activerecord tests
     db_conn_str = ENV.fetch("DATABASE_URL", "sqlite3::memory:")
     ActiveRecord::Base.establish_connection(db_conn_str)
 
     db_adapter = ActiveRecord::Base.connection.adapter_name
-    puts "Running test suite with database #{db_adapter}"
-  else
-    puts "Running test suite without ActiveRecord"
+    puts "Running with database adapter '#{db_adapter}'"
   end
 
   config.before(:each, active_record: true) do
