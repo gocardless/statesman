@@ -1,8 +1,6 @@
 require "support/active_record"
 require "json"
 
-DB = Pathname.new("test.sqlite3")
-
 class MyStateMachine
   include Statesman::Machine
 
