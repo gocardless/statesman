@@ -1,8 +1,6 @@
 require "support/active_record"
 require "json"
 
-DB = Pathname.new("test.sqlite3")
-
 class MyStateMachine
   include Statesman::Machine
 
@@ -48,7 +46,14 @@ class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
       t.string  :to_state
       t.integer :my_active_record_model_id
       t.integer :sort_key
-      t.text    :metadata, default: '{}'
+
+      # MySQL doesn't allow default values on text fields
+      if ActiveRecord::Base.connection.adapter_name == 'Mysql2'
+        t.text :metadata
+      else
+        t.text :metadata, default: '{}'
+      end
+
       t.timestamps(null: false)
     end
 
