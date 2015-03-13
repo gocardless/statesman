@@ -24,8 +24,8 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
            ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
           allow(metadata_column).to receive_messages(cast_type: '')
         else
-          allow(MyActiveRecordModelTransition)
-            .to receive_messages(serialized_attributes: {})
+          allow(MyActiveRecordModelTransition).
+            to receive_messages(serialized_attributes: {})
         end
       end
 
@@ -48,12 +48,12 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           serialized_type = ::ActiveRecord::Type::Serialized.new(
             '', ::ActiveRecord::Coders::JSON
           )
-          expect(metadata_column)
-            .to receive(:cast_type)
-            .and_return(serialized_type)
+          expect(metadata_column).
+            to receive(:cast_type).
+            and_return(serialized_type)
         else
-          expect(MyActiveRecordModelTransition)
-            .to receive_messages(serialized_attributes: { 'metadata' => '' })
+          expect(MyActiveRecordModelTransition).
+            to receive_messages(serialized_attributes: { 'metadata' => '' })
         end
       end
 
@@ -81,15 +81,15 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         adapter2.create(:x, :y)
         adapter.last
         adapter2.create(:y, :z)
-        expect { adapter.create(:y, :z) }
-          .to raise_exception(Statesman::TransitionConflictError)
+        expect { adapter.create(:y, :z) }.
+          to raise_exception(Statesman::TransitionConflictError)
       end
     end
 
     context "when other exceptions occur" do
       before do
-        allow_any_instance_of(MyActiveRecordModelTransition)
-          .to receive(:save!).and_raise(error)
+        allow_any_instance_of(MyActiveRecordModelTransition).
+          to receive(:save!).and_raise(error)
       end
 
       context "ActiveRecord::RecordNotUnique unrelated to this transition" do
@@ -115,8 +115,8 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       before { adapter.last }
 
       it "caches the transition" do
-        expect_any_instance_of(MyActiveRecordModel)
-          .to receive(:my_active_record_model_transitions).never
+        expect_any_instance_of(MyActiveRecordModel).
+          to receive(:my_active_record_model_transitions).never
         adapter.last
       end
 

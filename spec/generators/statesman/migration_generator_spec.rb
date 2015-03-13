@@ -30,8 +30,8 @@ describe Statesman::MigrationGenerator, type: :generator do
     it { is_expected.to contain(/null: false/) }
 
     it "names the sorting index appropriately" do
-      expect(subject)
-        .to contain("name: \"index_bacon_transitions_parent_sort\"")
+      expect(subject).
+        to contain("name: \"index_bacon_transitions_parent_sort\"")
     end
   end
 end
