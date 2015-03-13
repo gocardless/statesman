@@ -33,8 +33,8 @@ module Statesman
     end
 
     def mysql?
-      ActiveRecord::Base.configurations[Rails.env]
-        .try(:[], "adapter").try(:match, /mysql/)
+      ActiveRecord::Base.configurations[Rails.env].
+        try(:[], "adapter").try(:match, /mysql/)
     end
   end
 end

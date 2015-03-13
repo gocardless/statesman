@@ -37,3 +37,6 @@ GuardClause:
 
 SingleSpaceBeforeFirstArg:
   Enabled: false
+
+Style/DotPosition:
+  EnforcedStyle: 'trailing'

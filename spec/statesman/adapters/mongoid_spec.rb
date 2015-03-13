@@ -13,8 +13,8 @@ describe Statesman::Adapters::Mongoid, mongo: true do
   describe "#initialize" do
     context "with unserialized metadata" do
       before do
-        allow_any_instance_of(described_class)
-          .to receive_messages(transition_class_hash_fields: [])
+        allow_any_instance_of(described_class).
+          to receive_messages(transition_class_hash_fields: [])
       end
 
       it "raises an exception if metadata is not serialized" do
@@ -36,8 +36,8 @@ describe Statesman::Adapters::Mongoid, mongo: true do
       before { adapter.last }
 
       it "caches the transition" do
-        expect_any_instance_of(MyMongoidModel)
-          .to receive(:my_mongoid_model_transitions).never
+        expect_any_instance_of(MyMongoidModel).
+          to receive(:my_mongoid_model_transitions).never
         adapter.last
       end
 

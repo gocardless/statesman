@@ -51,8 +51,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
 
     context "with before callbacks" do
       it "is called before the state transition" do
-        expect(observer).to receive(:execute)
-          .with(:before, anything, anything, anything) {
+        expect(observer).to receive(:execute).
+          with(:before, anything, anything, anything) {
             expect(adapter.history.length).to eq(0)
           }.once
         adapter.create(from, to)
@@ -62,8 +62,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
 
     context "with after callbacks" do
       it "is called after the state transition" do
-        expect(observer).to receive(:execute)
-          .with(:after, anything, anything, anything) { |_, _, _, transition|
+        expect(observer).to receive(:execute).
+          with(:after, anything, anything, anything) { |_, _, _, transition|
             expect(adapter.last).to eq(transition)
           }.once
         adapter.create(from, to)
@@ -72,8 +72,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
       it "exposes the new transition for subsequent transitions" do
         adapter.create(from, to)
 
-        expect(observer).to receive(:execute)
-          .with(:after, anything, anything, anything) { |_, _, _, transition|
+        expect(observer).to receive(:execute).
+          with(:after, anything, anything, anything) { |_, _, _, transition|
             expect(adapter.last).to eq(transition)
           }.once
         adapter.create(to, there)

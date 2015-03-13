@@ -15,8 +15,8 @@ describe Statesman::Machine do
 
       context "when an initial state is already defined" do
         it "raises an error" do
-          expect { machine.state(:y, initial: true) }
-            .to raise_error(Statesman::InvalidStateError)
+          expect { machine.state(:y, initial: true) }.
+            to raise_error(Statesman::InvalidStateError)
         end
       end
     end
@@ -50,15 +50,15 @@ describe Statesman::Machine do
 
     context "when an irrelevant exception occurs" do
       it "runs the transition once" do
-        expect(instance)
-          .to receive(:transition_to).once
-          .and_raise(StandardError)
+        expect(instance).
+          to receive(:transition_to).once.
+          and_raise(StandardError)
         transition_state rescue nil # rubocop:disable RescueModifier
       end
 
       it "re-raises the exception" do
-        allow(instance).to receive(:transition_to).once
-          .and_raise(StandardError)
+        allow(instance).to receive(:transition_to).once.
+          and_raise(StandardError)
         expect { transition_state }.to raise_error(StandardError)
       end
     end
@@ -66,31 +66,31 @@ describe Statesman::Machine do
     context "when a TransitionConflictError occurs" do
       context "and is resolved on the second attempt" do
         it "runs the transition twice" do
-          expect(instance)
-            .to receive(:transition_to).once
-            .and_raise(Statesman::TransitionConflictError)
-            .ordered
-          expect(instance)
-            .to receive(:transition_to).once.ordered.and_call_original
+          expect(instance).
+            to receive(:transition_to).once.
+            and_raise(Statesman::TransitionConflictError).
+            ordered
+          expect(instance).
+            to receive(:transition_to).once.ordered.and_call_original
           transition_state
         end
       end
 
       context "and keeps occurring" do
         it "runs the transition `retry_attempts + 1` times" do
-          expect(instance)
-            .to receive(:transition_to)
-            .exactly(retry_attempts + 1).times
-            .and_raise(Statesman::TransitionConflictError)
+          expect(instance).
+            to receive(:transition_to).
+            exactly(retry_attempts + 1).times.
+            and_raise(Statesman::TransitionConflictError)
           transition_state rescue nil # rubocop:disable RescueModifier
         end
 
         it "re-raises the conflict" do
-          allow(instance)
-            .to receive(:transition_to)
-            .and_raise(Statesman::TransitionConflictError)
-          expect { transition_state }
-            .to raise_error(Statesman::TransitionConflictError)
+          allow(instance).
+            to receive(:transition_to).
+            and_raise(Statesman::TransitionConflictError)
+          expect { transition_state }.
+            to raise_error(Statesman::TransitionConflictError)
         end
       end
     end
@@ -107,43 +107,43 @@ describe Statesman::Machine do
 
     context "given neither a 'from' nor a 'to' state" do
       it "raises an error" do
-        expect { machine.transition }
-          .to raise_error(Statesman::InvalidStateError)
+        expect { machine.transition }.
+          to raise_error(Statesman::InvalidStateError)
       end
     end
 
     context "given no 'from' state and a valid 'to' state" do
       it "raises an error" do
-        expect { machine.transition from: nil, to: :x }
-          .to raise_error(Statesman::InvalidStateError)
+        expect { machine.transition from: nil, to: :x }.
+          to raise_error(Statesman::InvalidStateError)
       end
     end
 
     context "given a valid 'from' state and a no 'to' state" do
       it "raises an error" do
-        expect { machine.transition from: :x, to: nil }
-          .to raise_error(Statesman::InvalidStateError)
+        expect { machine.transition from: :x, to: nil }.
+          to raise_error(Statesman::InvalidStateError)
       end
     end
 
     context "given a valid 'from' state and an empty 'to' state array" do
       it "raises an error" do
-        expect { machine.transition from: :x, to: [] }
-          .to raise_error(Statesman::InvalidStateError)
+        expect { machine.transition from: :x, to: [] }.
+          to raise_error(Statesman::InvalidStateError)
       end
     end
 
     context "given an invalid 'from' state" do
       it "raises an error" do
-        expect { machine.transition(from: :a, to: :x) }
-          .to raise_error(Statesman::InvalidStateError)
+        expect { machine.transition(from: :a, to: :x) }.
+          to raise_error(Statesman::InvalidStateError)
       end
     end
 
     context "given an invalid 'to' state" do
       it "raises an error" do
-        expect { machine.transition(from: :x, to: :a) }
-          .to raise_error(Statesman::InvalidStateError)
+        expect { machine.transition(from: :x, to: :a) }.
+          to raise_error(Statesman::InvalidStateError)
       end
     end
 
@@ -169,22 +169,22 @@ describe Statesman::Machine do
 
     context "with a terminal 'from' state" do
       it "raises an exception" do
-        expect { machine.validate_callback_condition(from: :z, to: :y) }
-          .to raise_error(Statesman::InvalidTransitionError)
+        expect { machine.validate_callback_condition(from: :z, to: :y) }.
+          to raise_error(Statesman::InvalidTransitionError)
       end
     end
 
     context "with an initial 'to' state" do
       it "raises an exception" do
-        expect { machine.validate_callback_condition(from: :y, to: :x) }
-          .to raise_error(Statesman::InvalidTransitionError)
+        expect { machine.validate_callback_condition(from: :y, to: :x) }.
+          to raise_error(Statesman::InvalidTransitionError)
       end
     end
 
     context "with an invalid transition" do
       it "raises an exception" do
-        expect { machine.validate_callback_condition(from: :x, to: :z) }
-          .to raise_error(Statesman::InvalidTransitionError)
+        expect { machine.validate_callback_condition(from: :x, to: :z) }.
+          to raise_error(Statesman::InvalidTransitionError)
       end
     end
 
@@ -196,8 +196,8 @@ describe Statesman::Machine do
 
     context "with a valid transition" do
       it "does not raise an exception" do
-        expect { machine.validate_callback_condition(from: :x, to: :y) }
-          .to_not raise_error
+        expect { machine.validate_callback_condition(from: :x, to: :y) }.
+          to_not raise_error
       end
     end
   end
@@ -233,8 +233,8 @@ describe Statesman::Machine do
       specify { expect { set_callback }.to_not raise_error }
 
       it "stores callbacks" do
-        expect { set_callback }
-          .to change(machine.callbacks[callback_store], :count).by(1)
+        expect { set_callback }.
+          to change(machine.callbacks[callback_store], :count).by(1)
       end
 
       it "stores callback instances" do
@@ -315,22 +315,22 @@ describe Statesman::Machine do
 
     context "transition class" do
       it "sets a default" do
-        expect(Statesman.storage_adapter).to receive(:new).once
-          .with(Statesman::Adapters::MemoryTransition, my_model, anything)
+        expect(Statesman.storage_adapter).to receive(:new).once.
+          with(Statesman::Adapters::MemoryTransition, my_model, anything)
         machine.new(my_model)
       end
 
       it "sets the passed class" do
         my_transition_class = Class.new
-        expect(Statesman.storage_adapter).to receive(:new).once
-          .with(my_transition_class, my_model, anything)
+        expect(Statesman.storage_adapter).to receive(:new).once.
+          with(my_transition_class, my_model, anything)
         machine.new(my_model, transition_class: my_transition_class)
       end
 
       it "falls back to Memory without transaction_class" do
         allow(Statesman).to receive(:storage_adapter).and_return(Class.new)
-        expect(Statesman::Adapters::Memory).to receive(:new).once
-          .with(Statesman::Adapters::MemoryTransition, my_model, anything)
+        expect(Statesman::Adapters::Memory).to receive(:new).once.
+          with(Statesman::Adapters::MemoryTransition, my_model, anything)
         machine.new(my_model)
       end
     end
@@ -406,8 +406,8 @@ describe Statesman::Machine do
     let(:last_action) { "Whatever" }
 
     it "delegates to the storage adapter" do
-      expect_any_instance_of(Statesman.storage_adapter).to receive(:last).once
-        .and_return(last_action)
+      expect_any_instance_of(Statesman.storage_adapter).to receive(:last).once.
+        and_return(last_action)
       expect(instance.last_transition).to be(last_action)
     end
   end
@@ -476,8 +476,8 @@ describe Statesman::Machine do
 
     context "when the state cannot be transitioned to" do
       it "raises an error" do
-        expect { instance.transition_to!(:z) }
-          .to raise_error(Statesman::TransitionFailedError)
+        expect { instance.transition_to!(:z) }.
+          to raise_error(Statesman::TransitionFailedError)
       end
     end
 
@@ -488,11 +488,11 @@ describe Statesman::Machine do
       end
 
       it "creates a new transition object" do
-        expect { instance.transition_to!(:y) }
-          .to change(instance.history, :count).by(1)
+        expect { instance.transition_to!(:y) }.
+          to change(instance.history, :count).by(1)
 
-        expect(instance.history.first)
-          .to be_a(Statesman::Adapters::MemoryTransition)
+        expect(instance.history.first).
+          to be_a(Statesman::Adapters::MemoryTransition)
         expect(instance.history.first.to_state).to eq("y")
       end
 
@@ -518,8 +518,8 @@ describe Statesman::Machine do
           let(:instance) { machine.new(my_model) }
 
           it "passes the object to the guard" do
-            expect(guard_cb).to receive(:call).once
-              .with(my_model, instance.last_transition, {}).and_return(true)
+            expect(guard_cb).to receive(:call).once.
+              with(my_model, instance.last_transition, {}).and_return(true)
             instance.transition_to!(:y)
           end
         end
@@ -535,8 +535,8 @@ describe Statesman::Machine do
           let(:result) { false }
 
           it "raises an exception" do
-            expect { instance.transition_to!(:y) }
-              .to raise_error(Statesman::GuardFailedError)
+            expect { instance.transition_to!(:y) }.
+              to raise_error(Statesman::GuardFailedError)
           end
         end
       end
@@ -550,29 +550,29 @@ describe Statesman::Machine do
 
     context "when it is succesful" do
       before do
-        expect(instance).to receive(:transition_to!).once
-          .with(:some_state, metadata).and_return(:some_state)
+        expect(instance).to receive(:transition_to!).once.
+          with(:some_state, metadata).and_return(:some_state)
       end
       it { is_expected.to be(:some_state) }
     end
 
     context "when it is unsuccesful" do
       before do
-        allow(instance).to receive(:transition_to!)
-          .and_raise(Statesman::GuardFailedError)
+        allow(instance).to receive(:transition_to!).
+          and_raise(Statesman::GuardFailedError)
       end
       it { is_expected.to be_falsey }
     end
 
     context "when a non statesman exception is raised" do
       before do
-        allow(instance).to receive(:transition_to!)
-          .and_raise(RuntimeError, 'user defined exception')
+        allow(instance).to receive(:transition_to!).
+          and_raise(RuntimeError, 'user defined exception')
       end
 
       it "should not rescue the exception" do
-        expect { instance.transition_to(:some_state, metadata) }
-          .to raise_error(RuntimeError, 'user defined exception')
+        expect { instance.transition_to(:some_state, metadata) }.
+          to raise_error(RuntimeError, 'user defined exception')
       end
     end
   end
@@ -647,8 +647,8 @@ describe Statesman::Machine do
 
     context "when the state cannot be transitioned to" do
       it "raises an error" do
-        expect { instance.trigger!(:event_2) }
-          .to raise_error(Statesman::TransitionFailedError)
+        expect { instance.trigger!(:event_2) }.
+          to raise_error(Statesman::TransitionFailedError)
       end
     end
 
@@ -659,11 +659,11 @@ describe Statesman::Machine do
       end
 
       it "creates a new transition object" do
-        expect { instance.trigger!(:event_1) }
-          .to change(instance.history, :count).by(1)
+        expect { instance.trigger!(:event_1) }.
+          to change(instance.history, :count).by(1)
 
-        expect(instance.history.first)
-          .to be_a(Statesman::Adapters::MemoryTransition)
+        expect(instance.history.first).
+          to be_a(Statesman::Adapters::MemoryTransition)
         expect(instance.history.first.to_state).to eq("y")
       end
 
@@ -693,16 +693,16 @@ describe Statesman::Machine do
           let(:instance) { machine.new(my_model) }
 
           it "passes the object to the guard" do
-            expect(guard_cb).to receive(:call).once
-              .with(my_model, instance.last_transition, {}).and_return(true)
+            expect(guard_cb).to receive(:call).once.
+              with(my_model, instance.last_transition, {}).and_return(true)
             instance.trigger!(:event_1)
           end
         end
 
         context "which passes" do
           it "changes state" do
-            expect { instance.trigger!(:event_1) }
-              .to change { instance.current_state }.to("y")
+            expect { instance.trigger!(:event_1) }.
+              to change { instance.current_state }.to("y")
           end
         end
 
@@ -710,8 +710,8 @@ describe Statesman::Machine do
           let(:result) { false }
 
           it "raises an exception" do
-            expect { instance.trigger!(:event_1) }
-              .to raise_error(Statesman::GuardFailedError)
+            expect { instance.trigger!(:event_1) }.
+              to raise_error(Statesman::GuardFailedError)
           end
         end
       end
