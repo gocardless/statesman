@@ -28,6 +28,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "sqlite3",       "~> 1.3"
   spec.add_development_dependency "mongoid",       ">= 3.1"
   spec.add_development_dependency "activerecord",  ">= 3.2"
+  spec.add_development_dependency "sequel",        "~> 4.20.0"
   spec.add_development_dependency "pg",            "~> 0.18"
   spec.add_development_dependency "mysql2",        "~> 0.3"
   spec.add_development_dependency "ammeter",       "~> 1.1"

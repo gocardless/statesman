@@ -11,6 +11,7 @@ module Statesman
              "statesman/adapters/active_record_transition"
     autoload :ActiveRecordQueries,
              "statesman/adapters/active_record_queries"
+    autoload :Sequel, "statesman/adapters/sequel"
     autoload :Mongoid,      "statesman/adapters/mongoid"
     autoload :MongoidTransition,
              "statesman/adapters/mongoid_transition"
