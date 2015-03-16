@@ -6,8 +6,9 @@ module Statesman
       attr_reader :transition_class, :parent_model, :observer
 
       def initialize(transition_class, parent_model, observer)
-        @transition_class, @parent_model, @observer =
-        transition_class, parent_model, observer
+        @transition_class = transition_class
+        @parent_model = parent_model
+        @observer = observer
       end
 
       def transition_class
@@ -23,6 +24,7 @@ module Statesman
       end
 
       def history
+        []
       end
 
       def last
