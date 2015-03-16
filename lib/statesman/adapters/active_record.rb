@@ -27,8 +27,8 @@ module Statesman
         to = to.to_s
         create_transition(from, to, metadata)
       rescue ::ActiveRecord::RecordNotUnique => e
-        if e.message.include?('sort_key') &&
-           e.message.include?(@transition_class.table_name)
+        if e.message.include?(@transition_class.table_name) &&
+           e.message.include?('sort_key') || e.message.include?('most_recent')
           raise TransitionConflictError, e.message
         else raise
         end
@@ -53,12 +53,17 @@ module Statesman
       private
 
       def create_transition(from, to, metadata)
-        transition = transitions_for_parent.build(to_state: to,
-                                                  sort_key: next_sort_key,
-                                                  metadata: metadata)
+        transition_attributes = { to_state: to,
+                                  sort_key: next_sort_key,
+                                  metadata: metadata }
+
+        transition_attributes.merge!(most_recent: true) if most_recent_column?
+
+        transition = transitions_for_parent.build(transition_attributes)
 
         ::ActiveRecord::Base.transaction do
           @observer.execute(:before, from, to, transition)
+          unset_old_most_recent
           transition.save!
           @last_transition = transition
           @observer.execute(:after, from, to, transition)
@@ -70,6 +75,15 @@ module Statesman
 
       def transitions_for_parent
         @parent_model.send(@transition_class.table_name)
+      end
+
+      def unset_old_most_recent
+        return unless most_recent_column?
+        transitions_for_parent.update_all(most_recent: false)
+      end
+
+      def most_recent_column?
+        transition_class.columns_hash.include?("most_recent")
       end
 
       def next_sort_key

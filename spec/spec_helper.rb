@@ -54,6 +54,14 @@ RSpec.configure do |config|
     def prepare_transitions_table
       silence_stream(STDOUT) do
         CreateMyActiveRecordModelTransitionMigration.migrate(:up)
+        MyActiveRecordModelTransition.reset_column_information
+      end
+    end
+
+    def drop_most_recent_column
+      silence_stream(STDOUT) do
+        DropMostRecentColumn.migrate(:up)
+        MyActiveRecordModelTransition.reset_column_information
       end
     end
   end

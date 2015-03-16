@@ -5,7 +5,7 @@ AllCops:
     - Rakefile
     - statesman.gemfile
   Exclude:
-    - vendor/**
+    - vendor/**/*
     - .*/**
 
 StringLiterals:
