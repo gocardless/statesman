@@ -4,6 +4,6 @@ class AddMostRecentTo<%= migration_class_name %> < ActiveRecord::Migration
   end
 
   def down
-    drop_column :<%= table_name %>, :most_recent
+    remove_column :<%= table_name %>, :most_recent
   end
 end

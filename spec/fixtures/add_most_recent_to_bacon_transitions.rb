@@ -4,6 +4,6 @@ class AddMostRecentToBaconTransitions < ActiveRecord::Migration
   end
 
   def down
-    drop_column :bacon_transitions, :most_recent
+    remove_column :bacon_transitions, :most_recent
   end
 end
