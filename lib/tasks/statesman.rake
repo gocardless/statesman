@@ -16,9 +16,11 @@ namespace :statesman do
     parent_class.find_in_batches(batch_size: batch_size) do |models|
       # Set historic transitions to have most_recent FALSE
       #
-      # This selects transitions (initial_t) with a subsequent transition
-      # (subsequent_t), ensuring uniqueness by disallowing intermediate
-      # transitions (intermediate_t), and updates most_recent to be false.
+      # The LEFT JOIN eliminates duplicate entries from the first join,
+      # for example, in:
+      #   initial_t.sort_key = 10, subsequent_t.sort_key = 20
+      #   initial_t.sort_key = 10, subsequent_t.sort_key = 30
+      # it would eliminate the second row.
       ActiveRecord::Base.connection.execute %{
         UPDATE #{transition_class.table_name}
         SET most_recent = false
