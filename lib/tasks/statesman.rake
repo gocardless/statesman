@@ -14,44 +14,17 @@ namespace :statesman do
     batch_size = 500
 
     parent_class.find_in_batches(batch_size: batch_size) do |models|
-      # Set historic transitions to have most_recent FALSE
-      #
-      # The LEFT JOIN eliminates duplicate entries from the first join,
-      # for example, in:
-      #   initial_t.sort_key = 10, subsequent_t.sort_key = 20
-      #   initial_t.sort_key = 10, subsequent_t.sort_key = 30
-      # it would eliminate the second row.
-      ActiveRecord::Base.connection.execute %{
-        UPDATE #{transition_class.table_name}
-        SET most_recent = false
-        FROM
-        (
-            SELECT initial_t.id, subsequent_t.created_at
-            FROM #{transition_class.table_name} initial_t
-            JOIN #{transition_class.table_name} subsequent_t ON
-            (
-                initial_t.#{parent_fk} = subsequent_t.#{parent_fk}
-                AND initial_t.sort_key < subsequent_t.sort_key
-            )
-            LEFT JOIN #{transition_class.table_name} intermediate_t ON
-            (
-                initial_t.#{parent_fk} = intermediate_t.#{parent_fk}
-                AND subsequent_t.sort_key > intermediate_t.sort_key
-                AND intermediate_t.sort_key > initial_t.sort_key
-            )
-            WHERE initial_t.#{parent_fk}
-              IN (#{models.map { |p| "'#{p.id}'" }.join(',')})
-            AND intermediate_t.id is null
-        ) x
-        WHERE #{transition_class.table_name}.id = x.id;
-      }
+      ActiveRecord::Base.transaction do
+        # Set all transitions' most_recent to FALSE
+        transition_class.where(parent_fk => models.map(&:id)).
+          update_all(most_recent: false)
 
-      # Set current transition's most_recent to TRUE
-      ActiveRecord::Base.connection.execute %{
-        UPDATE #{transition_class.table_name}
-        SET most_recent = true
-        FROM
-        (
+        # Set current transition's most_recent to TRUE
+        ActiveRecord::Base.connection.execute %{
+          UPDATE #{transition_class.table_name}
+          SET most_recent = true
+          FROM
+          (
             SELECT initial_t.id, subsequent_t.created_at
             FROM #{transition_class.table_name} initial_t
             LEFT JOIN #{transition_class.table_name} subsequent_t ON
@@ -61,10 +34,11 @@ namespace :statesman do
             )
             WHERE initial_t.#{parent_fk}
               IN (#{models.map { |p| "'#{p.id}'" }.join(',')})
-            AND subsequent_t.id is null
-        ) x
-        WHERE #{transition_class.table_name}.id = x.id
-      }
+            AND subsequent_t.id IS NULL
+          ) x
+          WHERE #{transition_class.table_name}.id = x.id
+        }
+      end
 
       done_models += batch_size
       puts "Updated #{transition_class.name.pluralize} for "\
