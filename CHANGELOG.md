@@ -1,3 +1,17 @@
+## v1.2.0 18 March 2015
+
+*Changes*
+
+- Add a `most_recent` column to transition tables to greatly speed up queries (ActiveRecord adapter only).
+  - All queries are backwards-compatible, so everything still works without the new column.
+  - The upgrade path is:
+    - Generate and run a migration for adding the column, by running `rails generate statesman:add_most_recent <ParentModel> <TransitionModel>`.
+    - Backfill the `most_recent` column on old records by running `rake statesman:backfill_most_recent[ParentModel] `.
+    - Add constraints and indexes to the transition table that make use of the new field, by running `rails g statesman:add_constraints_to_most_recent <ParentModel> <TransitionModel>`.
+  - The upgrade path has been designed to be zero-downtime, even on large tables. As a result, please note that queries will only use the `most_recent` field after the constraints have been added.
+- `ActiveRecordQueries.{not_,}in_state` now accepts an array of states.
+
+
 ## v1.1.0 9 December 2014
 *Fixes*
 
