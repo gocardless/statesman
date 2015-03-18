@@ -119,6 +119,20 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             to change { previous_transition.reload.most_recent }.
             from(true).to(false)
         end
+
+        context "and the parent model is updated in a callback" do
+          before do
+            allow(observer).to receive(:execute) do |phase|
+              if phase == :before
+                model.update_attributes!(current_state: :ready)
+              end
+            end
+          end
+
+          it "doesn't save the transition too early" do
+            expect { create }.to_not raise_exception
+          end
+        end
       end
     end
 
