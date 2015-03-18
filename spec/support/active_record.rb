@@ -68,14 +68,17 @@ class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
     add_index :my_active_record_model_transitions,
               [:my_active_record_model_id, :most_recent],
               unique: true, where: "most_recent",
-              name: "most_recent_index"
+              name: "index_my_active_record_model_transitions_"\
+                    "parent_most_recent"
   end
 end
 # rubocop:enable MethodLength
 
 class DropMostRecentColumn < ActiveRecord::Migration
   def change
-    remove_index  :my_active_record_model_transitions, name: :most_recent_index
+    remove_index :my_active_record_model_transitions,
+                 name: "index_my_active_record_model_transitions_"\
+                       "parent_most_recent"
     remove_column :my_active_record_model_transitions, :most_recent
   end
 end
