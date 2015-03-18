@@ -4,9 +4,11 @@ AllCops:
   Include:
     - Rakefile
     - statesman.gemfile
+    - lib/tasks/*.rake
   Exclude:
     - vendor/**/*
     - .*/**
+    - spec/fixtures/**/*
 
 StringLiterals:
   Enabled: false

@@ -9,7 +9,7 @@ module Statesman
         def in_state(*states)
           states = states.flatten.map(&:to_s)
 
-          if most_recent_column?
+          if use_most_recent_column?
             in_state_with_most_recent(states)
           else
             in_state_without_most_recent(states)
@@ -19,7 +19,7 @@ module Statesman
         def not_in_state(*states)
           states = states.flatten.map(&:to_s)
 
-          if most_recent_column?
+          if use_most_recent_column?
             not_in_state_with_most_recent(states)
           else
             not_in_state_without_most_recent(states)
@@ -101,8 +101,15 @@ module Statesman
           ::ActiveRecord::Base.connection.quote(true)
         end
 
-        def most_recent_column?
-          transition_class.columns_hash.include?("most_recent")
+        # Only use the most_recent column if it has a unique index guaranteeing
+        # it has good data
+        def use_most_recent_column?
+          ::ActiveRecord::Base.connection.index_exists?(
+            transition_name,
+            [model_foreign_key, :most_recent],
+            unique: true,
+            name: "index_#{transition_name}_parent_most_recent"
+          )
         end
       end
     end

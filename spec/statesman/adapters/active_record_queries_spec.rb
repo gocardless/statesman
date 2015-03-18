@@ -51,6 +51,8 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         subject { MyActiveRecordModel.in_state(:succeeded) }
 
         it { is_expected.to include model }
+        it { is_expected.not_to include other_model }
+        its(:to_sql) { is_expected.to include('most_recent') }
       end
 
       context "given multiple states" do
@@ -80,6 +82,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         subject { MyActiveRecordModel.not_in_state(:failed) }
         it { is_expected.to include model }
         it { is_expected.not_to include other_model }
+        its(:to_sql) { is_expected.to include('most_recent') }
       end
 
       context "given multiple states" do
