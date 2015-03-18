@@ -107,7 +107,8 @@ module Statesman
           ::ActiveRecord::Base.connection.index_exists?(
             transition_name,
             [model_foreign_key, :most_recent],
-            unique: true
+            unique: true,
+            name: "index_#{transition_name}_parent_most_recent"
           )
         end
       end
