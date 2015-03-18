@@ -1,15 +1,22 @@
 language: ruby
+
 rvm:
   - 2.1
   - 2.0.0
   - 1.9.3
+
+sudo: false
+
 services: mongodb
+
 before_script:
   - mysql -e 'CREATE DATABASE statesman_test;'
   - psql -c 'CREATE DATABASE statesman_test;' -U postgres
+
 script:
   - bundle exec rubocop
   - bundle exec rake
+
 env:
   - "RAILS_VERSION=3.2.21"
   - "RAILS_VERSION=4.0.12"
