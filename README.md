@@ -1,6 +1,6 @@
 ![Statesman](http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png)
 
-A statesmanlike state machine library for Ruby 1.9.3 and 2.0.
+A statesmanlike state machine library for Ruby 1.9.3 and up.
 
 [![Gem Version](https://badge.fury.io/rb/statesman.png)](http://badge.fury.io/rb/statesman)
 [![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
