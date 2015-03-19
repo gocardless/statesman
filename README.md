@@ -308,7 +308,8 @@ Returns all models not currently in any of the supplied states.
 
 #### Storing the state on the model object
 
-If you wish to store the model state on the model directly, you can keep it up to date using an `after_transition` hook:
+If you wish to store the model state on the model directly, you can keep it up
+to date using an `after_transition` hook:
 
 ```ruby
 after_transition do |model, transition|
@@ -326,6 +327,16 @@ Given a field `foo` that was stored in the metadata, you can access it like so:
 ```ruby
 model_instance.last_transition.metadata["foo"]
 ```
+
+#### Upgrading from 1.1 to 1.2
+
+Statesman 1.2.0 introduced a new `most_recent` column on the transition model,
+which is used to speed up queries.
+
+The change is entirely backwards compatible, but if you'd like the performance
+improvements just follow
+[this guide](https://github.com/gocardless/statesman/wiki/Adding-a-%60most_recent%60-column-to-an-existing-model)
+to add a `most_recent` column to an existing model.
 
 ## Testing Statesman Implementations
 
