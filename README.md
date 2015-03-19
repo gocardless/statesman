@@ -7,20 +7,28 @@ A statesmanlike state machine library for Ruby 1.9.3 and 2.0.
 [![Code Climate](https://codeclimate.com/github/gocardless/statesman.png)](https://codeclimate.com/github/gocardless/statesman)
 [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+Statesman is an opinionated state machine library designed to provide a robust
+audit trail and data integrity. It decouples the state machine logic from the
+underlying model and allows for easy composition with one or more model classes.
 
-Statesman is a little different from other state machine libraries which tack
-state behaviour directly onto a model. A statesman state machine is defined as a
-separate class which is instantiated with the model to which it should
-apply. State transitions are also modelled as a class which can optionally be
-persisted to the database for a full audit history, including JSON metadata
-which can be set during a transition.
-
-This data model allows for interesting things like using a different state
-machine depending on the value of a model attribute.
+As such, the design of statesman is a little different from other state machine
+libraries:
+- State behaviour is defined in a separate, "state machine" class, rather than
+added directly onto a model. State machines are then instantiated with the model
+to which they should apply.
+- State transitions are also modelled as a class, which can optionally be
+persisted to the database for a full audit history. This audit history can
+include JSON metadata set during a transition.
+- Database indicies are used to offer database-level transaction duplication
+protection.
 
 ## TL;DR Usage
 
 ```ruby
+
+#######################
+# State Machine Class #
+#######################
 class OrderStateMachine
   include Statesman::Machine
 
@@ -54,6 +62,9 @@ class OrderStateMachine
   end
 end
 
+##############
+# Your Model #
+##############
 class Order < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordQueries
 
@@ -74,96 +85,26 @@ class Order < ActiveRecord::Base
   end
 end
 
+####################
+# Transition Model #
+####################
 class OrderTransition < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
   belongs_to :order, inverse_of: :order_transitions
 end
 
-Order.first.state_machine.current_state
-# => "pending"
+########################
+# Example method calls #
+########################
+Order.first.state_machine.current_state # => "pending"
+Order.first.state_machine.allowed_transitions # => ["checking_out", "cancelled"]
+Order.first.state_machine.can_transition_to?(:cancelled) # => true/false
+Order.first.state_machine.transition_to(:cancelled, optional: :metadata) # => true/false
+Order.first.state_machine.transition_to!(:cancelled) # => true/exception
 
-Order.first.state_machine.allowed_transitions
-# => ["checking_out", "cancelled"]
-
-Order.first.state_machine.can_transition_to?(:cancelled)
-# => true/false
-
-Order.first.state_machine.transition_to(:cancelled, optional: :metadata)
-# => true/false
-
-Order.in_state(:cancelled)
-# => [#<Order id: "123">]
-
-Order.not_in_state(:checking_out)
-# => [#<Order id: "123">]
-
-Order.first.state_machine.transition_to!(:cancelled)
-# => true/exception
-```
-
-## Events
-
-```ruby
-class TaskStateMachine
-  include Statesman::Machine
-
-  state :unstarted, initial: true
-  state :started
-  state :finished
-  state :delivered
-  state :accepted
-  state :rejected
-
-  event :start do
-    transition from: :unstarted,  to: :started
-  end
-
-  event :finish do
-    transition from: :started,    to: :finished
-  end
-
-  event :deliver do
-    transition from: :finished,   to: :delivered
-    transition from: :started,    to: :delivered
-  end
-
-  event :accept do
-    transition from: :delivered, to: :accepted
-  end
-
-  event :rejected do
-    transition from: :delivered, to: :rejected
-  end
-
-  event :restart do
-    transition from: :rejected,   to: :started
-  end
-
-end
-
-class Task < ActiveRecord::Base
-  delegate :current_state, :trigger!, :available_events, to: :state_machine
-
-  def state_machine
-    @state_machine ||= TaskStateMachine.new(self)
-  end
-
-end
-
-task = Task.new
-
-task.current_state
-# => "unstarted"
-
-task.trigger!(:start)
-# => true/exception
-
-task.current_state
-# => "started"
-
-task.available_events
-# => [:finish, :deliver]
+Order.in_state(:cancelled) # => [#<Order id: "123">]
+Order.not_in_state(:checking_out) # => [#<Order id: "123">]
 
 ```
 
@@ -221,14 +162,6 @@ It is also possible to use the PostgreSQL JSON column if you are using Rails 4. 
 
 * Remove `include Statesman::Adapters::ActiveRecordTransition` statement from your
   transition model
-
-#### Creating transitions without using `#transition_to` with ActiveRecord
-
-By default, Statesman will include a `most_recent` column on the transitions
-table, and update its value each time `#transition_to` is called. If you create
-transitions manually (for example to backfill for a new state) you will need to
-set the `most_recent` attribute manually.
-
 
 ## Configuration
 
@@ -366,10 +299,10 @@ end
 ```
 
 #### `Model.in_state(:state_1, :state_2, etc)`
-Returns all models currently in any of the supplied states. Prior to 1.0 this ignored all models in the initial state, and the `initial_state` class method was not required.
+Returns all models currently in any of the supplied states.
 
 #### `Model.not_in_state(:state_1, :state_2, etc)`
-Returns all models not currently in any of the supplied states. Prior to 1.0 this always excluded models in the initial state, and the `initial_state` class method was not required.
+Returns all models not currently in any of the supplied states.
 
 ## Frequently Asked Questions
 
