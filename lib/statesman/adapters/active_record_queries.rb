@@ -66,23 +66,31 @@ module Statesman
           transition_class.table_name.to_sym
         end
 
+        def transition_reflection
+          reflect_on_association(transition_name)
+        end
+
         def model_foreign_key
-          reflect_on_association(transition_name).foreign_key
+          transition_reflection.foreign_key
+        end
+
+        def model_table
+          transition_reflection.table_name
         end
 
         def transition1_join
-          "LEFT OUTER JOIN #{transition_name} transition1
+          "LEFT OUTER JOIN #{model_table} transition1
              ON transition1.#{model_foreign_key} = #{table_name}.id"
         end
 
         def transition2_join
-          "LEFT OUTER JOIN #{transition_name} transition2
+          "LEFT OUTER JOIN #{model_table} transition2
              ON transition2.#{model_foreign_key} = #{table_name}.id
              AND transition2.sort_key > transition1.sort_key"
         end
 
         def most_recent_transition_join
-          "LEFT OUTER JOIN #{transition_name} AS last_transition
+          "LEFT OUTER JOIN #{model_table} AS last_transition
              ON #{table_name}.id = last_transition.#{model_foreign_key}
              AND last_transition.most_recent = #{db_true}"
         end

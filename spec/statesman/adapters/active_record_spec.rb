@@ -204,4 +204,25 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       end
     end
   end
+
+  context "with a namespaced model" do
+    before do
+      silence_stream(STDOUT) do
+        CreateNamespacedARModelMigration.migrate(:up)
+        CreateNamespacedARModelTransitionMigration.migrate(:up)
+      end
+    end
+
+    before do
+      MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
+    end
+    let(:observer) { double(Statesman::Machine, execute: nil) }
+    let(:model) do
+      MyNamespace::MyActiveRecordModel.create(current_state: :pending)
+    end
+
+    it_behaves_like "an adapter",
+                    described_class, MyNamespace::MyActiveRecordModelTransition,
+                    association_name: :my_active_record_model_transitions
+  end
 end

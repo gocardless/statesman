@@ -6,7 +6,7 @@ module Statesman
       attr_reader :transition_class
       attr_reader :parent_model
 
-      def initialize(transition_class, parent_model, observer)
+      def initialize(transition_class, parent_model, observer, _ = {})
         @transition_class = transition_class
         @parent_model = parent_model
         @observer = observer

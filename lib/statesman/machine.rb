@@ -183,7 +183,7 @@ module Statesman
       @object = object
       @transition_class = options[:transition_class]
       @storage_adapter = adapter_class(@transition_class).new(
-        @transition_class, object, self)
+        @transition_class, object, self, options)
       send(:after_initialize) if respond_to? :after_initialize
     end
 
