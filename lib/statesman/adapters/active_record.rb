@@ -6,13 +6,15 @@ module Statesman
       attr_reader :transition_class
       attr_reader :parent_model
 
+      JSON_COLUMN_TYPES = %w(json jsonb).freeze
+
       def initialize(transition_class, parent_model, observer)
         serialized = serialized?(transition_class)
         column_type = transition_class.columns_hash['metadata'].sql_type
-        if !serialized && column_type != 'json'
+        if !serialized && !JSON_COLUMN_TYPES.include?(column_type)
           raise UnserializedMetadataError,
                 "#{transition_class.name}#metadata is not serialized"
-        elsif serialized && column_type == 'json'
+        elsif serialized && JSON_COLUMN_TYPES.include?(column_type)
           raise IncompatibleSerializationError,
                 "#{transition_class.name}#metadata column type cannot be json
                   and serialized simultaneously"

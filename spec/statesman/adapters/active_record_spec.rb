@@ -64,6 +64,34 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         end.to raise_exception(Statesman::IncompatibleSerializationError)
       end
     end
+
+    context "with serialized metadata and jsonb column type" do
+      before do
+        metadata_column = double
+        allow(metadata_column).to receive_messages(sql_type: 'jsonb')
+        allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
+                                           { 'metadata' => metadata_column })
+        if ::ActiveRecord.respond_to?(:gem_version) &&
+           ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
+          serialized_type = ::ActiveRecord::Type::Serialized.new(
+            '', ::ActiveRecord::Coders::JSON
+          )
+          expect(metadata_column).
+            to receive(:cast_type).
+            and_return(serialized_type)
+        else
+          expect(MyActiveRecordModelTransition).
+            to receive_messages(serialized_attributes: { 'metadata' => '' })
+        end
+      end
+
+      it "raises an exception" do
+        expect do
+          described_class.new(MyActiveRecordModelTransition,
+                              MyActiveRecordModel, observer)
+        end.to raise_exception(Statesman::IncompatibleSerializationError)
+      end
+    end
   end
 
   describe "#create" do
