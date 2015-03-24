@@ -1,3 +1,7 @@
+## v1.2.1 24 March 2015
+
+- Add support for Postgres 9.4's `jsonb` column type (patch by [@isaacseymour](https://github.com/isaacseymour))
+
 ## v1.2.0 18 March 2015
 
 *Changes*
