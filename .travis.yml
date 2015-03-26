@@ -20,8 +20,8 @@ script:
 
 env:
   - "RAILS_VERSION=3.2.21"
-  - "RAILS_VERSION=4.0.12"
-  - "RAILS_VERSION=4.1.8"
-  - "RAILS_VERSION=4.2.0"
-  - "RAILS_VERSION=4.2.0 DATABASE_URL=mysql2://root@localhost/statesman_test"
-  - "RAILS_VERSION=4.2.0 DATABASE_URL=postgres://postgres@localhost/statesman_test"
+  - "RAILS_VERSION=4.0.13"
+  - "RAILS_VERSION=4.1.10"
+  - "RAILS_VERSION=4.2.1"
+  - "RAILS_VERSION=4.2.1 DATABASE_URL=mysql2://root@localhost/statesman_test"
+  - "RAILS_VERSION=4.2.1 DATABASE_URL=postgres://postgres@localhost/statesman_test"
