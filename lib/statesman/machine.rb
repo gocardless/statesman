@@ -262,9 +262,21 @@ module Statesman
 
     def available_events
       state = current_state
-      self.class.events.select do |_, transitions|
-        transitions.key?(state)
-      end.map(&:first)
+      self.class.events.map do |event, transitions|
+        event if transitions.key?(state)
+      end.compact
+    end
+
+    def allowed_events
+      state = current_state
+      allowed_events = []
+      self.class.events.map do |event, transitions|
+        if transitions.key?(state) &&
+           can_transition_to?(transitions[state].first)
+          allowed_events << event
+        end
+      end
+      allowed_events
     end
 
     private
