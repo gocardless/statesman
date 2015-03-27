@@ -267,6 +267,18 @@ module Statesman
       end.compact
     end
 
+    def allowed_events
+      state = current_state
+      allowed_events = []
+      self.class.events.map do |event, transitions|
+        if transitions.key?(state) &&
+           can_transition_to?(transitions[state].first)
+          allowed_events << event
+        end
+      end
+      allowed_events
+    end
+
     private
 
     def adapter_class(transition_class)

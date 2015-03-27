@@ -749,4 +749,51 @@ describe Statesman::Machine do
       expect(instance.available_events).to eq([:event_2, :event_3])
     end
   end
+
+  describe "#allowed_events" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+
+        event :event_1 do
+          transition from: :x, to: :y
+        end
+
+        event :event_2 do
+          transition from: :y, to: :z
+        end
+
+        event :event_3 do
+          transition from: :x, to: :z
+        end
+      end
+    end
+
+    let(:instance) { machine.new(my_model) }
+    subject { instance.allowed_events }
+
+    context "with multiple possible events" do
+      it { is_expected.to eq([:event_1, :event_3]) }
+    end
+
+    context "with one possible event" do
+      before { instance.trigger!(:event_1) }
+      it { is_expected.to eq([:event_2]) }
+    end
+
+    context "with no possible transitions" do
+      before { instance.trigger!(:event_3) }
+      it { is_expected.to eq([]) }
+    end
+
+    context "with guarded transitions" do
+      let(:guard_cb) { ->(*_args) { false } }
+      let(:new_state) { :z }
+      before { machine.guard_transition(to: new_state, &guard_cb) }
+
+      it { is_expected.to eq([:event_1]) }
+    end
+  end
 end
