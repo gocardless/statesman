@@ -262,9 +262,9 @@ module Statesman
 
     def available_events
       state = current_state
-      self.class.events.select do |_, transitions|
-        transitions.key?(state)
-      end.map(&:first)
+      self.class.events.map do |event, transitions|
+        event if transitions.key?(state)
+      end.compact
     end
 
     private
