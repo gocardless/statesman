@@ -260,11 +260,23 @@ module Statesman
       false
     end
 
+    def can_trigger?(event_name)
+      state = current_state
+      transitions = self.class.events[event_name.to_sym]
+      transitions.key?(state) && can_transition_to?(transitions[state].first)
+    end
+
     def available_events
       state = current_state
       self.class.events.map do |event, transitions|
         event if transitions.key?(state)
       end.compact
+    end
+
+    def allowed_events
+      self.class.events.keys.select do |event_name|
+        can_trigger?(event_name)
+      end
     end
 
     private
