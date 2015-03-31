@@ -23,15 +23,10 @@ module Statesman
       end
 
       def create(from, to, metadata = {})
-        from = from.to_s
-        to = to.to_s
-        create_transition(from, to, metadata)
+        create_transition(from.to_s, to.to_s, metadata)
       rescue ::ActiveRecord::RecordNotUnique => e
-        if e.message.include?(@transition_class.table_name) &&
-           e.message.include?('sort_key') || e.message.include?('most_recent')
-          raise TransitionConflictError, e.message
-        else raise
-        end
+        raise TransitionConflictError, e.message if transition_conflict_error? e
+        raise
       ensure
         @last_transition = nil
       end
@@ -98,6 +93,11 @@ module Statesman
         else
           transition_class.serialized_attributes.include?("metadata")
         end
+      end
+
+      def transition_conflict_error?(e)
+        e.message.include?(@transition_class.table_name) &&
+          (e.message.include?('sort_key') || e.message.include?('most_recent'))
       end
     end
   end
