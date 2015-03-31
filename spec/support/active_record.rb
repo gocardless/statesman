@@ -37,7 +37,7 @@ class CreateMyActiveRecordModelMigration < ActiveRecord::Migration
   def change
     create_table :my_active_record_models do |t|
       t.string :current_state
-      t.timestamps(null: false)
+      t.timestamps null: false
     end
   end
 end
@@ -59,7 +59,7 @@ class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
         t.text :metadata, default: '{}'
       end
 
-      t.timestamps(null: false)
+      t.timestamps null: false
     end
 
     add_index :my_active_record_model_transitions,
@@ -80,5 +80,67 @@ class DropMostRecentColumn < ActiveRecord::Migration
                  name: "index_my_active_record_model_transitions_"\
                        "parent_most_recent"
     remove_column :my_active_record_model_transitions, :most_recent
+  end
+end
+
+module MyNamespace
+  class MyActiveRecordModel < ActiveRecord::Base
+    has_many :my_active_record_model_transitions,
+             class_name: "MyNamespace::MyActiveRecordModelTransition"
+
+    def self.table_name_prefix
+      "my_namespace_"
+    end
+
+    def state_machine
+      @state_machine ||= MyStateMachine.new(
+        self, transition_class: MyNameSpace::MyActiveRecordModelTransition,
+              association_name: :my_active_record_model_transitions)
+    end
+
+    def metadata
+      super || {}
+    end
+  end
+
+  class MyActiveRecordModelTransition < ActiveRecord::Base
+    belongs_to :my_active_record_model,
+               class_name: "MyNamespace::MyActiveRecordModel"
+    serialize :metadata, JSON
+
+    def self.table_name_prefix
+      "my_namespace_"
+    end
+  end
+end
+
+class CreateNamespacedARModelMigration < ActiveRecord::Migration
+  def change
+    create_table :my_namespace_my_active_record_models do |t|
+      t.string :current_state
+      t.timestamps null: false
+    end
+  end
+end
+
+class CreateNamespacedARModelTransitionMigration < ActiveRecord::Migration
+  def change
+    create_table :my_namespace_my_active_record_model_transitions do |t|
+      t.string  :to_state
+      t.integer :my_active_record_model_id
+      t.integer :sort_key
+
+      # MySQL doesn't allow default values on text fields
+      if ActiveRecord::Base.connection.adapter_name == 'Mysql2'
+        t.text :metadata
+      else
+        t.text :metadata, default: '{}'
+      end
+
+      t.timestamps null: false
+    end
+
+    add_index :my_namespace_my_active_record_model_transitions, :sort_key,
+              unique: true, name: 'my_namespaced_key'
   end
 end

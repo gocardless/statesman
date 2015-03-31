@@ -6,13 +6,15 @@ module Statesman
       attr_reader :transition_class
       attr_reader :parent_model
 
-      def initialize(transition_class, parent_model, observer)
+      JSON_COLUMN_TYPES = %w(json jsonb).freeze
+
+      def initialize(transition_class, parent_model, observer, options = {})
         serialized = serialized?(transition_class)
         column_type = transition_class.columns_hash['metadata'].sql_type
-        if !serialized && column_type != 'json'
+        if !serialized && !JSON_COLUMN_TYPES.include?(column_type)
           raise UnserializedMetadataError,
                 "#{transition_class.name}#metadata is not serialized"
-        elsif serialized && column_type == 'json'
+        elsif serialized && JSON_COLUMN_TYPES.include?(column_type)
           raise IncompatibleSerializationError,
                 "#{transition_class.name}#metadata column type cannot be json
                   and serialized simultaneously"
@@ -20,6 +22,8 @@ module Statesman
         @transition_class = transition_class
         @parent_model = parent_model
         @observer = observer
+        @association_name =
+          options[:association_name] || @transition_class.table_name
       end
 
       def create(from, to, metadata = {})
@@ -69,7 +73,7 @@ module Statesman
       end
 
       def transitions_for_parent
-        @parent_model.send(@transition_class.table_name)
+        @parent_model.send(@association_name)
       end
 
       def unset_old_most_recent

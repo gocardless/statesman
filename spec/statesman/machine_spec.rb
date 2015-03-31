@@ -316,21 +316,23 @@ describe Statesman::Machine do
     context "transition class" do
       it "sets a default" do
         expect(Statesman.storage_adapter).to receive(:new).once.
-          with(Statesman::Adapters::MemoryTransition, my_model, anything)
+          with(Statesman::Adapters::MemoryTransition,
+               my_model, anything, anything)
         machine.new(my_model)
       end
 
       it "sets the passed class" do
         my_transition_class = Class.new
         expect(Statesman.storage_adapter).to receive(:new).once.
-          with(my_transition_class, my_model, anything)
+          with(my_transition_class, my_model, anything, anything)
         machine.new(my_model, transition_class: my_transition_class)
       end
 
       it "falls back to Memory without transaction_class" do
         allow(Statesman).to receive(:storage_adapter).and_return(Class.new)
         expect(Statesman::Adapters::Memory).to receive(:new).once.
-          with(Statesman::Adapters::MemoryTransition, my_model, anything)
+          with(Statesman::Adapters::MemoryTransition,
+               my_model, anything, anything)
         machine.new(my_model)
       end
     end

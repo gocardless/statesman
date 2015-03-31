@@ -134,11 +134,12 @@ And add an association from the parent model:
 
 ```ruby
 class Order < ActiveRecord::Base
-  has_many :order_transitions
+  has_many :transitions, class_name: "OrderTransition"
 
   # Initialize the state machine
   def state_machine
-    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
+    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition,
+                                                   association_name: :transitions)
   end
 
   # Optionally delegate some methods
@@ -287,6 +288,29 @@ class Order < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordQueries
 
   private
+
+  def self.transition_class
+    OrderTransition
+  end
+
+  def self.initial_state
+    OrderStateMachine.initial_state
+  end
+end
+```
+
+If the transition class-name differs from the association name, you will also
+need to define a corresponding `transition_name` class method:
+
+```ruby
+class Order < ActiveRecord::Base
+  has_many :transitions, class_name: "OrderTransition"
+
+  private
+
+  def self.transition_name
+    :transitions
+  end
 
   def self.transition_class
     OrderTransition
