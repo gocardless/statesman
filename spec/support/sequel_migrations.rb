@@ -15,7 +15,7 @@ class SequelMigrator
   end
 
   def down
-    [MODEL_TABLE, TRANSITION_TABLE].each do |table_name|
+    [TRANSITION_TABLE, MODEL_TABLE].each do |table_name|
       @db.execute("DROP TABLE IF EXISTS #{table_name};")
     end
   end
@@ -35,6 +35,7 @@ class SequelMigrator
       String :to_state
       foreign_key :my_sequel_model_id, :my_sequel_models
       Bignum :sort_key, index: true, unique: true
+      String :metadata
     end
   end
 end

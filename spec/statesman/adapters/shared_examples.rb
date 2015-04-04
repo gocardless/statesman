@@ -4,7 +4,6 @@ require "spec_helper"
 #   initialize:       Accepts a transition class, parent model and state_attr.
 #   transition_class: Returns the transition class object passed to initialize.
 #   parent_model:     Returns the model class object passed to initialize.
-#   state_attr:       Returns the state attribute to set on the parent.
 #   create:           Accepts to_state, before callbacks, after callbacks and
 #                     optional metadata. Creates a new transition class
 #                     instance and saves metadata to it.
@@ -29,7 +28,7 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
     let(:create) { adapter.create(from, to) }
     subject { -> { create } }
 
-    it { is_expected.to change(adapter.history, :count).by(1) }
+    it { is_expected.to change { adapter.history.count }.from(0).to(1) }
 
     context "the new transition" do
       subject { create }

@@ -1,6 +1,7 @@
 require "json"
 require "sequel"
 require_relative "./sequel_migrations"
+require_relative "../../lib/statesman/adapters/sequel_transition"
 
 class SequelStateMachine
   include Statesman::Machine
@@ -27,7 +28,6 @@ class MySequelModel < Sequel::Model
 end
 
 class MySequelModelTransition < Sequel::Model
+  include Statesman::Adapters::SequelTransition
   many_to_one :my_sequel_model
-  # TODO
-  # serialize :metadata, JSON
 end
