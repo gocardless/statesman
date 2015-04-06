@@ -31,7 +31,7 @@ RSpec.configure do |config|
   else
     # Connect to the database for activerecord tests
     db_conn_spec = ENV["DATABASE_URL"]
-    db_conn_spec ||=  { adapter: "sqlite3", database: ":memory:" }
+    db_conn_spec ||= { adapter: "sqlite3", database: ":memory:" }
     ActiveRecord::Base.establish_connection(db_conn_spec)
 
     db_adapter = ActiveRecord::Base.connection.adapter_name

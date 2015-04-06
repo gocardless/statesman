@@ -77,7 +77,7 @@ module Statesman
         if event
           events[event] ||= {}
           events[event][from] ||= []
-          events[event][from]  += to
+          events[event][from] += to
         end
       end
 
