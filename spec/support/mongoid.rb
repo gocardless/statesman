@@ -14,6 +14,7 @@ end
 
 class MyMongoidModelTransition
   include Mongoid::Document
+  include Mongoid::Timestamps
 
   field :to_state, type: String
   field :sort_key, type: Integer
@@ -23,6 +24,5 @@ class MyMongoidModelTransition
 
   belongs_to :my_mongoid_model, index: true
 
-  alias_method :metadata, :statesman_metadata
-  alias_method :metadata=, :statesman_metadata=
+  include Statesman::Adapters::MongoidTransition
 end
