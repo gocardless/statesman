@@ -17,7 +17,7 @@ Documentation:
   Enabled: false
 
 SignalException:
-  Enabled: false
+  EnforcedStyle: only_raise
 
 # Avoid methods longer than 15 lines of code
 MethodLength:
@@ -40,5 +40,5 @@ GuardClause:
 SingleSpaceBeforeFirstArg:
   Enabled: false
 
-Style/DotPosition:
+DotPosition:
   EnforcedStyle: trailing
