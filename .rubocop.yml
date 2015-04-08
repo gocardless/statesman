@@ -41,4 +41,4 @@ SingleSpaceBeforeFirstArg:
   Enabled: false
 
 Style/DotPosition:
-  EnforcedStyle: 'trailing'
+  EnforcedStyle: trailing
