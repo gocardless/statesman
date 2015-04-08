@@ -19,9 +19,9 @@ Documentation:
 SignalException:
   Enabled: false
 
-# Avoid methods longer than 30 lines of code
+# Avoid methods longer than 15 lines of code
 MethodLength:
-  CountComments: false  # count full line comments?
+  CountComments: false
   Max: 15
 
 AbcSize:
