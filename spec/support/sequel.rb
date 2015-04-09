@@ -21,10 +21,6 @@ class MySequelModel < Sequel::Model
     @state_machine ||= SequelStateMachine.new(
       self, transition_class: MySequelModelTransition)
   end
-
-  def metadata
-    super || {}
-  end
 end
 
 class MySequelModelTransition < Sequel::Model

@@ -69,8 +69,12 @@ module Statesman
         @parent_model_class ||= @parent_model.class
       end
 
+      def parent_association_name
+        parent_model_class.table_name.to_s.singularize.to_sym
+      end
+
       def parent_model_foreign_key
-        "#{parent_model_class.table_name.to_s.singularize}_id"
+        @transition_class.association_reflection(parent_association_name)[:key]
       end
     end
   end
