@@ -3,7 +3,8 @@ require "sqlite3"
 require "active_record"
 require "support/active_record"
 require "mongoid"
-require 'rspec/its'
+require "sequel"
+require "rspec/its"
 
 RSpec.configure do |config|
   config.raise_errors_for_deprecations!
@@ -38,6 +39,13 @@ RSpec.configure do |config|
     puts "Running with database adapter '#{db_adapter}'"
   end
 
+  if config.exclusion_filter[:sequel]
+    puts "Skipping Sequel tests"
+  else
+    Sequel::Model.db = Sequel.sqlite
+    require "support/sequel"
+  end
+
   config.before(:each, active_record: true) do
     tables = %w(
       my_active_record_models
@@ -69,5 +77,13 @@ RSpec.configure do |config|
         MyActiveRecordModelTransition.reset_column_information
       end
     end
+  end
+
+  config.before(:each, sequel: true) do
+    SequelMigrator.new(Sequel::Model.db).up
+  end
+
+  config.after(:each, sequel: true)  do
+    SequelMigrator.new(Sequel::Model.db).down
   end
 end
