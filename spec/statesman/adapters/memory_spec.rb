@@ -1,5 +1,5 @@
 require "spec_helper"
-require "statesman/adapters/shared_examples"
+require "statesman/adapters/adapter_behaviour"
 require "statesman/adapters/memory_transition"
 
 describe Statesman::Adapters::Memory do

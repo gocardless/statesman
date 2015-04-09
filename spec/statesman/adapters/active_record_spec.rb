@@ -1,5 +1,6 @@
 require "spec_helper"
-require "statesman/adapters/shared_examples"
+require "statesman/adapters/adapter_behaviour"
+require "statesman/adapters/sql_adapter_behaviour"
 require "statesman/exceptions"
 
 describe Statesman::Adapters::ActiveRecord, active_record: true do
@@ -12,6 +13,10 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
+  it_behaves_like "a SQL adapter",
+                  described_class, MyActiveRecordModelTransition do
+    let(:association_name) { :my_active_record_model_transitions }
+  end
 
   describe "#initialize" do
     context "with unserialized metadata and non json column type" do
@@ -107,25 +112,6 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   describe "#last" do
     let(:adapter) do
       described_class.new(MyActiveRecordModelTransition, model, observer)
-    end
-
-    before { adapter.create(:x, :y) }
-
-    context "with a previously looked up transition" do
-      before { adapter.last }
-
-      it "caches the transition" do
-        expect_any_instance_of(MyActiveRecordModel).
-          to receive(:my_active_record_model_transitions).never
-        adapter.last
-      end
-
-      context "and a new transition" do
-        before { adapter.create(:y, :z, []) }
-        it "retrieves the new transition from the database" do
-          expect(adapter.last.to_state).to eq("z")
-        end
-      end
     end
 
     context "with a pre-fetched transition history" do
