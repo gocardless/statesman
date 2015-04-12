@@ -145,7 +145,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         it "updates the previous transition's most_recent flag" do
           expect { create }.
             to change { previous_transition.reload.most_recent }.
-            from(true).to(false)
+            from(true).to be_falsey
         end
 
         context "and the parent model is updated in a callback" do
@@ -160,6 +160,18 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           it "doesn't save the transition too early" do
             expect { create }.to_not raise_exception
           end
+        end
+      end
+
+      context "with two previous transitions" do
+        let!(:previous_transition) { adapter.create(from, to) }
+        let!(:another_previous_transition) { adapter.create(from, to) }
+        its(:most_recent) { is_expected.to eq(true) }
+
+        it "updates the previous transition's most_recent flag" do
+          expect { create }.
+            to change { another_previous_transition.reload.most_recent }.
+            from(true).to be_falsey
         end
       end
     end

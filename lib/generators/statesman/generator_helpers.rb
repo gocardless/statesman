@@ -36,5 +36,9 @@ module Statesman
       ActiveRecord::Base.configurations[Rails.env].
         try(:[], "adapter").try(:match, /mysql/)
     end
+
+    def database_supports_partial_indexes?
+      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+    end
   end
 end

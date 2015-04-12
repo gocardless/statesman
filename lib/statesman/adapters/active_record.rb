@@ -8,6 +8,15 @@ module Statesman
 
       JSON_COLUMN_TYPES = %w(json jsonb).freeze
 
+      def self.database_supports_partial_indexes?
+        # Rails 3 doesn't implement `supports_partial_index?`
+        if ::ActiveRecord::Base.connection.respond_to?(:supports_partial_index?)
+          ::ActiveRecord::Base.connection.supports_partial_index?
+        else
+          ::ActiveRecord::Base.connection.adapter_name == 'PostgreSQL'
+        end
+      end
+
       def initialize(transition_class, parent_model, observer, options = {})
         serialized = serialized?(transition_class)
         column_type = transition_class.columns_hash['metadata'].sql_type
@@ -78,7 +87,18 @@ module Statesman
 
       def unset_old_most_recent
         return unless most_recent_column?
-        transitions_for_parent.update_all(most_recent: false)
+        # Check whether the `most_recent` column allows null values. If it
+        # doesn't, set old records to `false`, otherwise, set them to `NULL`.
+        #
+        # Some conditioning here is required to support databases that don't
+        # support partial indexes. By doing the conditioning on the column,
+        # rather than Rails' opinion of whether the database supports partial
+        # indexes, we're robust to DBs later adding support for partial indexes.
+        if transition_class.columns_hash['most_recent'].null == false
+          transitions_for_parent.update_all(most_recent: false)
+        else
+          transitions_for_parent.update_all(most_recent: nil)
+        end
       end
 
       def most_recent_column?
