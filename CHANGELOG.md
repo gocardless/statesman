@@ -1,3 +1,7 @@
+## v1.2.3 14 April 2015
+
+- Fix use of most_recent column in MySQL (partial indexes aren't supported) (patch by [@greysteil](https://github.com/greysteil))
+
 ## v1.2.2 24 March 2015
 
 - Add support for namespaced transition models (patch by [@DanielWright](https://github.com/DanielWright))
