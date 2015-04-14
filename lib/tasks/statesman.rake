@@ -15,9 +15,14 @@ namespace :statesman do
 
     parent_class.find_in_batches(batch_size: batch_size) do |models|
       ActiveRecord::Base.transaction do
-        # Set all transitions' most_recent to FALSE
-        transition_class.where(parent_fk => models.map(&:id)).
-          update_all(most_recent: false)
+        if transition_class.columns_hash['most_recent'].null == false
+          # Set all transitions' most_recent to FALSE
+          transition_class.where(parent_fk => models.map(&:id)).
+            update_all(most_recent: false)
+        else
+          transition_class.where(parent_fk => models.map(&:id)).
+            update_all(most_recent: nil)
+        end
 
         # Set current transition's most_recent to TRUE
         ActiveRecord::Base.connection.execute %{

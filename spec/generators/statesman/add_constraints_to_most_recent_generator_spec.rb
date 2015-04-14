@@ -22,8 +22,13 @@ describe Statesman::AddConstraintsToMostRecentGenerator, type: :generator do
     end
 
     let(:fixture_file) do
-      File.read("spec/fixtures/add_constraints_to_most_recent_for_"\
-                "bacon_transitions.rb")
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+        File.read("spec/fixtures/add_constraints_to_most_recent_for_"\
+                  "bacon_transitions_with_partial_index.rb")
+      else
+        File.read("spec/fixtures/add_constraints_to_most_recent_for_"\
+                  "bacon_transitions_without_partial_index.rb")
+      end
     end
 
     before do
