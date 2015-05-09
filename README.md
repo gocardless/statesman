@@ -200,7 +200,7 @@ an array of states (`.transition(from: :some_state, to: [:another_state, :some_o
 
 #### `Machine.guard_transition`
 ```ruby
-Machine.guard_transition(from: :some_state, to: another_state) do |object|
+Machine.guard_transition(from: :some_state, to: :another_state) do |object|
   object.some_boolean?
 end
 ```
@@ -210,7 +210,7 @@ be idempotent as it could be called many times.
 
 #### `Machine.before_transition`
 ```ruby
-Machine.before_transition(from: :some_state, to: another_state) do |object|
+Machine.before_transition(from: :some_state, to: :another_state) do |object|
   object.side_effect
 end
 ```
@@ -220,7 +220,7 @@ have side-effects as it will only be run once immediately before the transition.
 
 #### `Machine.after_transition`
 ```ruby
-Machine.after_transition(from: :some_state, to: another_state) do |object, transition|
+Machine.after_transition(from: :some_state, to: :another_state) do |object, transition|
   object.side_effect
 end
 ```
