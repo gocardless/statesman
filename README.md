@@ -394,9 +394,8 @@ Callbacks are tested by asserting that the action they perform occurs:
 describe "some callback" do
   it "adds one to the count property on the model" do
     expect { some_model.transition_to!(:some_state) }.
-      to change {
-        some_model.reload.count
-      }.by(1)
+      to change { some_model.reload.count }.
+      by(1)
   end
 end
 ```
