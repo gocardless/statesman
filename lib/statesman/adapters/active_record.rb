@@ -21,12 +21,9 @@ module Statesman
         serialized = serialized?(transition_class)
         column_type = transition_class.columns_hash['metadata'].sql_type
         if !serialized && !JSON_COLUMN_TYPES.include?(column_type)
-          raise UnserializedMetadataError,
-                "#{transition_class.name}#metadata is not serialized"
+          raise UnserializedMetadataError.new(transition_class.name)
         elsif serialized && JSON_COLUMN_TYPES.include?(column_type)
-          raise IncompatibleSerializationError,
-                "#{transition_class.name}#metadata column type cannot be json
-                  and serialized simultaneously"
+          raise IncompatibleSerializationError.new(transition_class.name)
         end
         @transition_class = transition_class
         @parent_model = parent_model

@@ -42,3 +42,7 @@ SingleSpaceBeforeFirstArg:
 
 DotPosition:
   EnforcedStyle: trailing
+
+# Allow class and message or instance raises
+Style/RaiseArgs:
+  Enabled: false
