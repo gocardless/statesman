@@ -1,4 +1,5 @@
 require "rails/version"
+require "rspec/rails"
 require "ammeter/init"
 
 TMP_GENERATOR_PATH = File.expand_path('../generator-tmp', __FILE__)

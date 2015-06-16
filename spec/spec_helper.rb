@@ -1,9 +1,15 @@
 require "statesman"
 require "sqlite3"
 require "active_record"
+# We have to include all of Rails to make rspec-rails work
+require "rails"
+require "action_view"
+require "action_dispatch"
+require "action_controller"
+require "rspec/rails"
 require "support/active_record"
 require "mongoid"
-require 'rspec/its'
+require "rspec/its"
 
 RSpec.configure do |config|
   config.raise_errors_for_deprecations!
