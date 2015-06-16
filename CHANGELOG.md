@@ -1,3 +1,7 @@
+## v1.2.4 16 June 2015
+
+- Clarify error messages when misusing `Statesman::Adapters::ActiveRecordTransition` (patch by [@isaacseymour](https://github.com/isaacseymour))
+
 ## v1.2.3 14 April 2015
 
 - Fix use of most_recent column in MySQL (partial indexes aren't supported) (patch by [@greysteil](https://github.com/greysteil))
