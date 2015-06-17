@@ -381,7 +381,7 @@ describe "guards" do
   end
 
   it "can transition from state foo to state baz" do
-    expect { some_model.transition_to!(:baz).to_not raise_error
+    expect { some_model.transition_to!(:baz) }.to_not raise_error
   end
 end
 ```
