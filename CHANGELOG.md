@@ -1,3 +1,7 @@
+## v1.2.5 17 June 2015
+
+- Make `backfill_most_recent` rake task db-agnostic (patch by [@timothyp](https://github.com/timothyp))
+
 ## v1.2.4 16 June 2015
 
 - Clarify error messages when misusing `Statesman::Adapters::ActiveRecordTransition` (patch by [@isaacseymour](https://github.com/isaacseymour))
