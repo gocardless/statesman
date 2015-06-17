@@ -30,26 +30,28 @@ module Statesman
 
         def in_state_with_most_recent(states)
           joins(most_recent_transition_join).
-            where(states_where('last_transition', states), states)
+            where(states_where(most_recent_transition_alias, states), states)
         end
 
         def not_in_state_with_most_recent(states)
           joins(most_recent_transition_join).
-            where("NOT (#{states_where('last_transition', states)})", states)
+            where("NOT (#{states_where(most_recent_transition_alias, states)})",
+                  states)
         end
 
         def in_state_without_most_recent(states)
           joins(transition1_join).
             joins(transition2_join).
-            where(states_where('transition1', states), states).
-            where("transition2.id" => nil)
+            where(states_where(most_recent_transition_alias, states), states).
+            where("#{other_transition_alias}.id" => nil)
         end
 
         def not_in_state_without_most_recent(states)
           joins(transition1_join).
             joins(transition2_join).
-            where("NOT (#{states_where('transition1', states)})", states).
-            where("transition2.id" => nil)
+            where("NOT (#{states_where(most_recent_transition_alias, states)})",
+                  states).
+            where("#{other_transition_alias}.id" => nil)
         end
 
         def transition_class
@@ -79,20 +81,24 @@ module Statesman
         end
 
         def transition1_join
-          "LEFT OUTER JOIN #{model_table} transition1
-             ON transition1.#{model_foreign_key} = #{table_name}.id"
+          "LEFT OUTER JOIN #{model_table} #{most_recent_transition_alias}
+             ON #{most_recent_transition_alias}.#{model_foreign_key} =
+                  #{table_name}.id"
         end
 
         def transition2_join
-          "LEFT OUTER JOIN #{model_table} transition2
-             ON transition2.#{model_foreign_key} = #{table_name}.id
-             AND transition2.sort_key > transition1.sort_key"
+          "LEFT OUTER JOIN #{model_table} #{other_transition_alias}
+             ON #{other_transition_alias}.#{model_foreign_key} =
+                  #{table_name}.id
+             AND #{other_transition_alias}.sort_key >
+                   #{most_recent_transition_alias}.sort_key"
         end
 
         def most_recent_transition_join
-          "LEFT OUTER JOIN #{model_table} AS last_transition
-             ON #{table_name}.id = last_transition.#{model_foreign_key}
-             AND last_transition.most_recent = #{db_true}"
+          "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias}
+             ON #{table_name}.id =
+                  #{most_recent_transition_alias}.#{model_foreign_key}
+             AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
         def states_where(temporary_table_name, states)
@@ -103,6 +109,14 @@ module Statesman
             "#{temporary_table_name}.to_state IN (?) AND " \
             "#{temporary_table_name}.to_state IS NOT NULL"
           end
+        end
+
+        def most_recent_transition_alias
+          "most_recent_#{transition_name.to_s.singularize}"
+        end
+
+        def other_transition_alias
+          "other_#{transition_name.to_s.singularize}"
         end
 
         def db_true

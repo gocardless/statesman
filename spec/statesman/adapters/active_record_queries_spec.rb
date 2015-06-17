@@ -4,6 +4,8 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
   before do
     prepare_model_table
     prepare_transitions_table
+    prepare_other_model_table
+    prepare_other_transitions_table
   end
 
   before do
@@ -22,7 +24,21 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         :initial
       end
     end
+
+    OtherActiveRecordModel.send(:include,
+                                Statesman::Adapters::ActiveRecordQueries)
+    OtherActiveRecordModel.class_eval do
+      def self.transition_class
+        OtherActiveRecordModelTransition
+      end
+
+      def self.initial_state
+        :initial
+      end
+    end
   end
+  before { MyActiveRecordModel.send(:has_one, :other_active_record_model) }
+  before { OtherActiveRecordModel.send(:belongs_to, :my_active_record_model) }
 
   let!(:model) do
     model = MyActiveRecordModel.create
@@ -74,6 +90,16 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
         it { is_expected.to include model }
         it { is_expected.to include other_model }
+      end
+
+      context "merging two queries" do
+        subject do
+          MyActiveRecordModel.in_state(:succeeded).
+            joins(:other_active_record_model).
+            merge(OtherActiveRecordModel.in_state(:initial))
+        end
+
+        it { is_expected.to be_empty }
       end
     end
 
