@@ -50,6 +50,8 @@ RSpec.configure do |config|
       my_active_record_model_transitions
       my_namespace_my_active_record_models
       my_namespace_my_active_record_model_transitions
+      other_active_record_models
+      other_active_record_model_transitions
     )
     tables.each do |table_name|
       sql = "DROP TABLE IF EXISTS #{table_name};"
@@ -75,5 +77,20 @@ RSpec.configure do |config|
         MyActiveRecordModelTransition.reset_column_information
       end
     end
+
+    def prepare_other_model_table
+      silence_stream(STDOUT) do
+        CreateOtherActiveRecordModelMigration.migrate(:up)
+      end
+    end
+
+    def prepare_other_transitions_table
+      silence_stream(STDOUT) do
+        CreateOtherActiveRecordModelTransitionMigration.migrate(:up)
+        OtherActiveRecordModelTransition.reset_column_information
+      end
+    end
+
+    MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
   end
 end

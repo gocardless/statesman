@@ -89,6 +89,83 @@ class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
 end
 # rubocop:enable MethodLength
 
+class OtherActiveRecordModel < ActiveRecord::Base
+  has_many :other_active_record_model_transitions
+  alias_method :transitions, :other_active_record_model_transitions
+
+  def state_machine
+    @state_machine ||= MyStateMachine.new(
+      self, transition_class: OtherActiveRecordModelTransition)
+  end
+
+  def metadata
+    super || {}
+  end
+end
+
+class OtherActiveRecordModelTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
+  belongs_to :other_active_record_model
+  serialize :metadata, JSON
+end
+
+class CreateOtherActiveRecordModelMigration < ActiveRecord::Migration
+  def change
+    create_table :other_active_record_models do |t|
+      t.string :current_state
+      t.integer :my_active_record_model_id
+      t.timestamps null: false
+    end
+  end
+end
+
+# rubocop:disable MethodLength
+class CreateOtherActiveRecordModelTransitionMigration < ActiveRecord::Migration
+  def change
+    create_table :other_active_record_model_transitions do |t|
+      t.string  :to_state
+      t.integer :other_active_record_model_id
+      t.integer :sort_key
+
+      # MySQL doesn't allow default values on text fields
+      if ActiveRecord::Base.connection.adapter_name == 'Mysql2'
+        t.text :metadata
+      else
+        t.text :metadata, default: '{}'
+      end
+
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+        t.boolean :most_recent, default: true, null: false
+      else
+        t.boolean :most_recent, default: true
+      end
+
+      t.timestamps null: false
+    end
+
+    add_index :other_active_record_model_transitions,
+              [:other_active_record_model_id, :sort_key],
+              unique: true, name: "other_sort_key_index"
+
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      add_index :other_active_record_model_transitions,
+                [:other_active_record_model_id, :most_recent],
+                unique: true,
+                where: "most_recent",
+                name: "index_other_active_record_model_transitions_"\
+                      "parent_most_recent"
+    else
+      add_index :other_active_record_model_transitions,
+                [:other_active_record_model_id, :most_recent],
+                unique: true,
+                name: "index_other_active_record_model_transitions_"\
+                      "parent_most_recent"
+    end
+  end
+end
+
+# rubocop:enable MethodLength
 class DropMostRecentColumn < ActiveRecord::Migration
   def change
     remove_index :my_active_record_model_transitions,
