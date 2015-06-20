@@ -1,3 +1,7 @@
+## v1.3.0 20 June 2015
+
+- Rename `last_transition` alias in `ActiveRecordQueries` to `most_recent_#{model_name}`, to allow merging of two such queries (patch by [@isaacseymour](https://github.com/isaacseymour))
+
 ## v1.2.5 17 June 2015
 
 - Make `backfill_most_recent` rake task db-agnostic (patch by [@timothyp](https://github.com/timothyp))
