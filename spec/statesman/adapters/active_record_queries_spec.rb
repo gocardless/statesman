@@ -15,7 +15,14 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
   before do
     MyActiveRecordModel.send(:include, Statesman::Adapters::ActiveRecordQueries)
+    MyActiveRecordModel.send(:has_many,
+                             :transitions,
+                             class_name: 'MyActiveRecordModelTransition')
     MyActiveRecordModel.class_eval do
+      def self.transition_name
+        :transitions
+      end
+
       def self.transition_class
         MyActiveRecordModelTransition
       end
@@ -68,7 +75,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
         it { is_expected.to include model }
         it { is_expected.not_to include other_model }
-        its(:to_sql) { is_expected.to include('most_recent') }
+        its(:to_sql) { is_expected.to include('most_recent =') }
       end
 
       context "given multiple states" do
@@ -108,7 +115,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         subject { MyActiveRecordModel.not_in_state(:failed) }
         it { is_expected.to include model }
         it { is_expected.not_to include other_model }
-        its(:to_sql) { is_expected.to include('most_recent') }
+        its(:to_sql) { is_expected.to include('most_recent =') }
       end
 
       context "given multiple states" do
@@ -137,6 +144,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         subject { MyActiveRecordModel.in_state(:succeeded) }
 
         it { is_expected.to include model }
+        its(:to_sql) { is_expected.not_to include('most_recent =') }
       end
 
       context "given multiple states" do
@@ -166,6 +174,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         subject { MyActiveRecordModel.not_in_state(:failed) }
         it { is_expected.to include model }
         it { is_expected.not_to include other_model }
+        its(:to_sql) { is_expected.not_to include('most_recent =') }
       end
 
       context "given multiple states" do
