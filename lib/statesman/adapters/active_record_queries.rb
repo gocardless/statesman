@@ -127,10 +127,10 @@ module Statesman
         # it has good data
         def use_most_recent_column?
           ::ActiveRecord::Base.connection.index_exists?(
-            transition_name,
+            transition_class.table_name,
             [model_foreign_key, :most_recent],
             unique: true,
-            name: "index_#{transition_name}_parent_most_recent"
+            name: "index_#{transition_class.table_name}_parent_most_recent"
           )
         end
       end
