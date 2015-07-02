@@ -1,7 +1,7 @@
 ## v1.3.1 2 July 2015
 
 - Fix `in_state` queries with a custom `transition_name` (patch by [0tsuki](https://github.com/0tsuki))
-- Fix `backfill_most_recent` rake tast for databases that support partial indexes (patch by [greysteil](https://github.com/greysteil))
+- Fix `backfill_most_recent` rake task for databases that support partial indexes (patch by [greysteil](https://github.com/greysteil))
 
 ## v1.3.0 20 June 2015
 
