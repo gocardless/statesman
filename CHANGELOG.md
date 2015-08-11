@@ -1,3 +1,46 @@
+## v1.3.1 2 July 2015
+
+- Fix `in_state` queries with a custom `transition_name` (patch by [0tsuki](https://github.com/0tsuki))
+- Fix `backfill_most_recent` rake task for databases that support partial indexes (patch by [greysteil](https://github.com/greysteil))
+
+## v1.3.0 20 June 2015
+
+- Rename `last_transition` alias in `ActiveRecordQueries` to `most_recent_#{model_name}`, to allow merging of two such queries (patch by [@isaacseymour](https://github.com/isaacseymour))
+
+## v1.2.5 17 June 2015
+
+- Make `backfill_most_recent` rake task db-agnostic (patch by [@timothyp](https://github.com/timothyp))
+
+## v1.2.4 16 June 2015
+
+- Clarify error messages when misusing `Statesman::Adapters::ActiveRecordTransition` (patch by [@isaacseymour](https://github.com/isaacseymour))
+
+## v1.2.3 14 April 2015
+
+- Fix use of most_recent column in MySQL (partial indexes aren't supported) (patch by [@greysteil](https://github.com/greysteil))
+
+## v1.2.2 24 March 2015
+
+- Add support for namespaced transition models (patch by [@DanielWright](https://github.com/DanielWright))
+
+## v1.2.1 24 March 2015
+
+- Add support for Postgres 9.4's `jsonb` column type (patch by [@isaacseymour](https://github.com/isaacseymour))
+
+## v1.2.0 18 March 2015
+
+*Changes*
+
+- Add a `most_recent` column to transition tables to greatly speed up queries (ActiveRecord adapter only).
+  - All queries are backwards-compatible, so everything still works without the new column.
+  - The upgrade path is:
+    - Generate and run a migration for adding the column, by running `rails generate statesman:add_most_recent <ParentModel> <TransitionModel>`.
+    - Backfill the `most_recent` column on old records by running `rake statesman:backfill_most_recent[ParentModel] `.
+    - Add constraints and indexes to the transition table that make use of the new field, by running `rails g statesman:add_constraints_to_most_recent <ParentModel> <TransitionModel>`.
+  - The upgrade path has been designed to be zero-downtime, even on large tables. As a result, please note that queries will only use the `most_recent` field after the constraints have been added.
+- `ActiveRecordQueries.{not_,}in_state` now accepts an array of states.
+
+
 ## v1.1.0 9 December 2014
 *Fixes*
 

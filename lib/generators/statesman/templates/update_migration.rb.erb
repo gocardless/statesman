@@ -4,10 +4,11 @@ class AddStatesmanTo<%= migration_class_name %> < ActiveRecord::Migration
     add_column :<%= table_name %>, :metadata, :text<%= ", default: \"{}\"" unless mysql? %>
     add_column :<%= table_name %>, :sort_key, :integer, null: false
     add_column :<%= table_name %>, :<%= parent_id %>, :integer, null: false
-    add_column :<%= table_name %>, :created_at, :datetime
-    add_column :<%= table_name %>, :updated_at, :datetime
+    add_column :<%= table_name %>, :most_recent, null: false
+    add_column :<%= table_name %>, :created_at, :datetime, null: false
+    add_column :<%= table_name %>, :updated_at, :datetime, null: false
 
-    add_index :<%= table_name %>, :<%= parent_id %>
-    add_index :<%= table_name %>, [:sort_key, :<%= parent_id %>], unique: true
+    add_index :<%= table_name %>, [:<%= parent_id %>, :sort_key], unique: true, name: "<%= index_name :parent_sort  %>"
+    add_index :<%= table_name %>, [:<%= parent_id %>, :most_recent], unique: true, where: "most_recent", name: "<%= index_name :parent_most_recent %>"
   end
 end

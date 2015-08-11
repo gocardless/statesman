@@ -11,13 +11,16 @@ require "spec_helper"
 #   history:          Returns the full transition history
 #   last:             Returns the latest transition history item
 #
-shared_examples_for "an adapter" do |adapter_class, transition_class|
-  let(:observer) do
-    result = double(Statesman::Machine)
-    allow(result).to receive(:execute)
-    result
+# rubocop:disable Metrics/LineLength
+# NOTE This line cannot reasonably be shortened.
+shared_examples_for "an adapter" do |adapter_class, transition_class, options = {}|
+  # rubocop:enable Metrics/LineLength
+
+  let(:observer) { double(Statesman::Machine, execute: nil) }
+  let(:adapter) do
+    adapter_class.new(transition_class,
+                      model, observer, options)
   end
-  let(:adapter) { adapter_class.new(transition_class, model, observer) }
 
   describe "#initialize" do
     subject { adapter }
@@ -55,8 +58,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
 
     context "with before callbacks" do
       it "is called before the state transition" do
-        expect(observer).to receive(:execute)
-          .with(:before, anything, anything, anything) {
+        expect(observer).to receive(:execute).
+          with(:before, anything, anything, anything) {
             expect(adapter.history.length).to eq(0)
           }.once
         adapter.create(from, to)
@@ -66,9 +69,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
 
     context "with after callbacks" do
       it "is called after the state transition" do
-        expect(observer).to receive(:execute)
-          .with(:after, anything, anything, anything) {
-            |_phase, _from_state, _to_state, transition|
+        expect(observer).to receive(:execute).
+          with(:after, anything, anything, anything) { |_, _, _, transition|
             expect(adapter.last).to eq(transition)
           }.once
         adapter.create(from, to)
@@ -77,9 +79,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
       it "exposes the new transition for subsequent transitions" do
         adapter.create(from, to)
 
-        expect(observer).to receive(:execute)
-          .with(:after, anything, anything, anything) {
-            |_phase, _from_state, _to_state, transition|
+        expect(observer).to receive(:execute).
+          with(:after, anything, anything, anything) { |_, _, _, transition|
             expect(adapter.last).to eq(transition)
           }.once
         adapter.create(to, there)
@@ -104,16 +105,15 @@ shared_examples_for "an adapter" do |adapter_class, transition_class|
       context "sorting" do
         let!(:transition2) { adapter.create(:x, :y) }
         subject { adapter.history }
+
         it { is_expected.to eq(adapter.history.sort_by(&:sort_key)) }
       end
     end
   end
 
   describe "#last" do
-    before do
-      adapter.create(:x, :y)
-      adapter.create(:y, :z)
-    end
+    before { adapter.create(:x, :y) }
+    before { adapter.create(:y, :z) }
     subject { adapter.last }
 
     it { is_expected.to be_a(transition_class) }

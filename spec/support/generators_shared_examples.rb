@@ -1,4 +1,5 @@
 require "rails/version"
+require "rspec/rails"
 require "ammeter/init"
 
 TMP_GENERATOR_PATH = File.expand_path('../generator-tmp', __FILE__)
@@ -10,7 +11,7 @@ shared_examples 'a generator' do
 
   it 'invokes create_model_file method' do
     expect(gen).to receive(:create_model_file)
-    capture(:stdout) { gen.invoke_all }
+    gen.invoke_all
   end
 
   describe 'it runs the generator and check things out' do

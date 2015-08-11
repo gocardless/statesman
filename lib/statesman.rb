@@ -15,6 +15,7 @@ module Statesman
     autoload :MongoidTransition,
              "statesman/adapters/mongoid_transition"
   end
+  require 'statesman/railtie' if defined?(::Rails::Railtie)
 
   # Example:
   #   Statesman.configure do

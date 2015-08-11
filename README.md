@@ -1,26 +1,34 @@
 ![Statesman](http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png)
 
-A statesmanlike state machine library for Ruby 1.9.3 and 2.0.
+A statesmanlike state machine library for Ruby 1.9.3 and up.
 
 [![Gem Version](https://badge.fury.io/rb/statesman.png)](http://badge.fury.io/rb/statesman)
 [![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
 [![Code Climate](https://codeclimate.com/github/gocardless/statesman.png)](https://codeclimate.com/github/gocardless/statesman)
 [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+Statesman is an opinionated state machine library designed to provide a robust
+audit trail and data integrity. It decouples the state machine logic from the
+underlying model and allows for easy composition with one or more model classes.
 
-Statesman is a little different from other state machine libraries which tack
-state behaviour directly onto a model. A statesman state machine is defined as a
-separate class which is instantiated with the model to which it should
-apply. State transitions are also modelled as a class which can optionally be
-persisted to the database for a full audit history, including JSON metadata
-which can be set during a transition.
-
-This data model allows for interesting things like using a different state
-machine depending on the value of a model attribute.
+As such, the design of statesman is a little different from other state machine
+libraries:
+- State behaviour is defined in a separate, "state machine" class, rather than
+added directly onto a model. State machines are then instantiated with the model
+to which they should apply.
+- State transitions are also modelled as a class, which can optionally be
+persisted to the database for a full audit history. This audit history can
+include JSON metadata set during a transition.
+- Database indicies are used to offer database-level transaction duplication
+protection.
 
 ## TL;DR Usage
 
 ```ruby
+
+#######################
+# State Machine Class #
+#######################
 class OrderStateMachine
   include Statesman::Machine
 
@@ -54,13 +62,16 @@ class OrderStateMachine
   end
 end
 
+##############
+# Your Model #
+##############
 class Order < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordQueries
 
   has_many :order_transitions
 
   def state_machine
-    OrderStateMachine.new(self, transition_class: OrderTransition)
+    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
   end
 
   private
@@ -74,96 +85,26 @@ class Order < ActiveRecord::Base
   end
 end
 
+####################
+# Transition Model #
+####################
 class OrderTransition < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
   belongs_to :order, inverse_of: :order_transitions
 end
 
-Order.first.state_machine.current_state
-# => "pending"
+########################
+# Example method calls #
+########################
+Order.first.state_machine.current_state # => "pending"
+Order.first.state_machine.allowed_transitions # => ["checking_out", "cancelled"]
+Order.first.state_machine.can_transition_to?(:cancelled) # => true/false
+Order.first.state_machine.transition_to(:cancelled, optional: :metadata) # => true/false
+Order.first.state_machine.transition_to!(:cancelled) # => true/exception
 
-Order.first.state_machine.allowed_transitions
-# => ["checking_out", "cancelled"]
-
-Order.first.state_machine.can_transition_to?(:cancelled)
-# => true/false
-
-Order.first.state_machine.transition_to(:cancelled, optional: :metadata)
-# => true/false
-
-Order.in_state(:cancelled)
-# => [#<Order id: "123">]
-
-Order.not_in_state(:checking_out)
-# => [#<Order id: "123">]
-
-Order.first.state_machine.transition_to!(:cancelled)
-# => true/exception
-```
-
-## Events
-
-```ruby
-class TaskStateMachine
-  include Statesman::Machine
-
-  state :unstarted, initial: true
-  state :started
-  state :finished
-  state :delivered
-  state :accepted
-  state :rejected
-
-  event :start do
-    transition from: :unstarted,  to: :started
-  end
-
-  event :finish do
-    transition from: :started,    to: :finished
-  end
-
-  event :deliver do
-    transition from: :finished,   to: :delivered
-    transition from: :started,    to: :delivered
-  end
-
-  event :accept do
-    transition from: :delivered, to: :accepted
-  end
-
-  event :rejected do
-    transition from: :delivered, to: :rejected
-  end
-
-  event :restart do
-    transition from: :rejected,   to: :started
-  end
-
-end
-
-class Task < ActiveRecord::Base
-  delegate :current_state, :trigger!, :available_events, to: :state_machine
-
-  def state_machine
-    @state_machine ||= TaskStateMachine.new(self)
-  end
-
-end
-
-task = Task.new
-
-task.current_state
-# => "unstarted"
-
-task.trigger!(:start)
-# => true/exception
-
-task.current_state
-# => "started"
-
-task.available_events
-# => [:finish, :deliver]
+Order.in_state(:cancelled) # => [#<Order id: "123">]
+Order.not_in_state(:checking_out) # => [#<Order id: "123">]
 
 ```
 
@@ -193,11 +134,12 @@ And add an association from the parent model:
 
 ```ruby
 class Order < ActiveRecord::Base
-  has_many :order_transitions
+  has_many :transitions, class_name: "OrderTransition"
 
   # Initialize the state machine
   def state_machine
-    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
+    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition,
+                                                   association_name: :transitions)
   end
 
   # Optionally delegate some methods
@@ -221,7 +163,6 @@ It is also possible to use the PostgreSQL JSON column if you are using Rails 4. 
 
 * Remove `include Statesman::Adapters::ActiveRecordTransition` statement from your
   transition model
-
 
 ## Configuration
 
@@ -259,7 +200,7 @@ an array of states (`.transition(from: :some_state, to: [:another_state, :some_o
 
 #### `Machine.guard_transition`
 ```ruby
-Machine.guard_transition(from: :some_state, to: another_state) do |object|
+Machine.guard_transition(from: :some_state, to: :another_state) do |object|
   object.some_boolean?
 end
 ```
@@ -269,7 +210,7 @@ be idempotent as it could be called many times.
 
 #### `Machine.before_transition`
 ```ruby
-Machine.before_transition(from: :some_state, to: another_state) do |object|
+Machine.before_transition(from: :some_state, to: :another_state) do |object|
   object.side_effect
 end
 ```
@@ -279,7 +220,7 @@ have side-effects as it will only be run once immediately before the transition.
 
 #### `Machine.after_transition`
 ```ruby
-Machine.after_transition(from: :some_state, to: another_state) do |object, transition|
+Machine.after_transition(from: :some_state, to: :another_state) do |object, transition|
   object.side_effect
 end
 ```
@@ -288,6 +229,9 @@ parameters are optional, a nil parameter means run after all transitions. The
 model object and transition object are passed as arguments to the callback.
 This callback can have side-effects as it will only be run once immediately
 after the transition.
+
+If you specify `after_commit: true`, the callback will be executed once the
+transition has been committed to the database.
 
 #### `Machine.new`
 ```ruby
@@ -355,17 +299,41 @@ class Order < ActiveRecord::Base
 end
 ```
 
+If the transition class-name differs from the association name, you will also
+need to define a corresponding `transition_name` class method:
+
+```ruby
+class Order < ActiveRecord::Base
+  has_many :transitions, class_name: "OrderTransition"
+
+  private
+
+  def self.transition_name
+    :transitions
+  end
+
+  def self.transition_class
+    OrderTransition
+  end
+
+  def self.initial_state
+    OrderStateMachine.initial_state
+  end
+end
+```
+
 #### `Model.in_state(:state_1, :state_2, etc)`
-Returns all models currently in any of the supplied states. Prior to 1.0 this ignored all models in the initial state, and the `initial_state` class method was not required.
+Returns all models currently in any of the supplied states.
 
 #### `Model.not_in_state(:state_1, :state_2, etc)`
-Returns all models not currently in any of the supplied states. Prior to 1.0 this always excluded models in the initial state, and the `initial_state` class method was not required.
+Returns all models not currently in any of the supplied states.
 
 ## Frequently Asked Questions
 
 #### Storing the state on the model object
 
-If you wish to store the model state on the model directly, you can keep it up to date using an `after_transition` hook:
+If you wish to store the model state on the model directly, you can keep it up
+to date using an `after_transition` hook:
 
 ```ruby
 after_transition do |model, transition|
@@ -383,6 +351,16 @@ Given a field `foo` that was stored in the metadata, you can access it like so:
 ```ruby
 model_instance.last_transition.metadata["foo"]
 ```
+
+#### Upgrading from 1.1 to 1.2
+
+Statesman 1.2.0 introduced a new `most_recent` column on the transition model,
+which is used to speed up queries.
+
+The change is entirely backwards compatible, but if you'd like the performance
+improvements just follow
+[this guide](https://github.com/gocardless/statesman/wiki/Adding-a-%60most_recent%60-column-to-an-existing-model)
+to add a `most_recent` column to an existing model.
 
 ## Testing Statesman Implementations
 
@@ -403,7 +381,7 @@ describe "guards" do
   end
 
   it "can transition from state foo to state baz" do
-    expect { some_model.transition_to!(:baz).to_not raise_error
+    expect { some_model.transition_to!(:baz) }.to_not raise_error
   end
 end
 ```
@@ -416,45 +394,10 @@ Callbacks are tested by asserting that the action they perform occurs:
 describe "some callback" do
   it "adds one to the count property on the model" do
     expect { some_model.transition_to!(:some_state) }.
-      to change {
-        some_model.reload.count
-      }.by(1)
+      to change { some_model.reload.count }.
+      by(1)
   end
 end
-```
-
-#### Creating models in certain states
-
-Sometimes you'll want to test a guard/transition from one state to another, where the state you want to go from is not the initial state of the model. In this instance you'll need to construct a model instance in the state required. However, if you have strict guards, this can be a pain. One way to get around this in tests is to directly create the transitions in the database, hence avoiding the guards.
-
-We use [FactoryGirl](https://github.com/thoughtbot/factory_girl) for creating our test objects. Given an `Order` model that is backed by Statesman, we can easily set it up to be in a particular state:
-
-```ruby
-factory :order do
-  property "value"
-  ...
-
-  trait :shipped do
-    after(:create) do |order|
-      FactoryGirl.create(:order_transition, :shipped, order: order)
-    end
-  end
-end
-
-factory :order_transition do
-  order
-  ...
-
-  trait :shipped do
-    to_state "shipped"
-  end
-end
-```
-
-This means you can easily create an `Order` in the `shipped` state:
-
-```ruby
-let(:shipped_order) { FactoryGirl.create(:order, :shipped) }
 ```
 
 ---

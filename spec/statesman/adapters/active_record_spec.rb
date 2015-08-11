@@ -2,18 +2,14 @@ require "spec_helper"
 require "statesman/adapters/shared_examples"
 require "statesman/exceptions"
 
-describe Statesman::Adapters::ActiveRecord do
+describe Statesman::Adapters::ActiveRecord, active_record: true do
   before do
     prepare_model_table
     prepare_transitions_table
   end
 
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
-  let(:observer) do
-    result = double(Statesman::Machine)
-    allow(result).to receive(:execute)
-    result
-  end
+  let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
 
@@ -24,11 +20,12 @@ describe Statesman::Adapters::ActiveRecord do
         allow(metadata_column).to receive_messages(sql_type: '')
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { 'metadata' => metadata_column })
-        if ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
+        if ::ActiveRecord.respond_to?(:gem_version) &&
+           ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
           allow(metadata_column).to receive_messages(cast_type: '')
         else
-          allow(MyActiveRecordModelTransition)
-            .to receive_messages(serialized_attributes: {})
+          allow(MyActiveRecordModelTransition).
+            to receive_messages(serialized_attributes: {})
         end
       end
 
@@ -46,16 +43,45 @@ describe Statesman::Adapters::ActiveRecord do
         allow(metadata_column).to receive_messages(sql_type: 'json')
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { 'metadata' => metadata_column })
-        if ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
+        if ::ActiveRecord.respond_to?(:gem_version) &&
+           ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
           serialized_type = ::ActiveRecord::Type::Serialized.new(
             '', ::ActiveRecord::Coders::JSON
           )
-          expect(metadata_column)
-            .to receive(:cast_type)
-            .and_return(serialized_type)
+          expect(metadata_column).
+            to receive(:cast_type).
+            and_return(serialized_type)
         else
-          expect(MyActiveRecordModelTransition)
-            .to receive_messages(serialized_attributes: { 'metadata' => '' })
+          expect(MyActiveRecordModelTransition).
+            to receive_messages(serialized_attributes: { 'metadata' => '' })
+        end
+      end
+
+      it "raises an exception" do
+        expect do
+          described_class.new(MyActiveRecordModelTransition,
+                              MyActiveRecordModel, observer)
+        end.to raise_exception(Statesman::IncompatibleSerializationError)
+      end
+    end
+
+    context "with serialized metadata and jsonb column type" do
+      before do
+        metadata_column = double
+        allow(metadata_column).to receive_messages(sql_type: 'jsonb')
+        allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
+                                           { 'metadata' => metadata_column })
+        if ::ActiveRecord.respond_to?(:gem_version) &&
+           ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
+          serialized_type = ::ActiveRecord::Type::Serialized.new(
+            '', ::ActiveRecord::Coders::JSON
+          )
+          expect(metadata_column).
+            to receive(:cast_type).
+            and_return(serialized_type)
+        else
+          expect(MyActiveRecordModelTransition).
+            to receive_messages(serialized_attributes: { 'metadata' => '' })
         end
       end
 
@@ -83,15 +109,15 @@ describe Statesman::Adapters::ActiveRecord do
         adapter2.create(:x, :y)
         adapter.last
         adapter2.create(:y, :z)
-        expect { adapter.create(:y, :z) }
-          .to raise_exception(Statesman::TransitionConflictError)
+        expect { adapter.create(:y, :z) }.
+          to raise_exception(Statesman::TransitionConflictError)
       end
     end
 
     context "when other exceptions occur" do
       before do
-        allow_any_instance_of(MyActiveRecordModelTransition)
-          .to receive(:save!).and_raise(error)
+        allow_any_instance_of(MyActiveRecordModelTransition).
+          to receive(:save!).and_raise(error)
       end
 
       context "ActiveRecord::RecordNotUnique unrelated to this transition" do
@@ -104,6 +130,56 @@ describe Statesman::Adapters::ActiveRecord do
         it { is_expected.to raise_exception(StandardError) }
       end
     end
+
+    context "when the transition_class has a most_recent column" do
+      subject { create }
+
+      context "with no previous transition" do
+        its(:most_recent) { is_expected.to eq(true) }
+      end
+
+      context "with a previous transition" do
+        let!(:previous_transition) { adapter.create(from, to) }
+        its(:most_recent) { is_expected.to eq(true) }
+
+        it "updates the previous transition's most_recent flag" do
+          expect { create }.
+            to change { previous_transition.reload.most_recent }.
+            from(true).to be_falsey
+        end
+
+        context "and the parent model is updated in a callback" do
+          before do
+            allow(observer).to receive(:execute) do |phase|
+              if phase == :before
+                model.update_attributes!(current_state: :ready)
+              end
+            end
+          end
+
+          it "doesn't save the transition too early" do
+            expect { create }.to_not raise_exception
+          end
+        end
+      end
+
+      context "with two previous transitions" do
+        let!(:previous_transition) { adapter.create(from, to) }
+        let!(:another_previous_transition) { adapter.create(from, to) }
+        its(:most_recent) { is_expected.to eq(true) }
+
+        it "updates the previous transition's most_recent flag" do
+          expect { create }.
+            to change { another_previous_transition.reload.most_recent }.
+            from(true).to be_falsey
+        end
+      end
+    end
+
+    context "when the transition_class doesn't have a most_recent column" do
+      before { drop_most_recent_column }
+      it { is_expected.to_not raise_exception }
+    end
   end
 
   describe "#last" do
@@ -111,18 +187,14 @@ describe Statesman::Adapters::ActiveRecord do
       described_class.new(MyActiveRecordModelTransition, model, observer)
     end
 
-    before do
-      adapter.create(:x, :y)
-    end
+    before { adapter.create(:x, :y) }
 
     context "with a previously looked up transition" do
-      before do
-        adapter.last
-      end
+      before { adapter.last }
 
       it "caches the transition" do
-        expect_any_instance_of(MyActiveRecordModel)
-          .to receive(:my_active_record_model_transitions).never
+        expect_any_instance_of(MyActiveRecordModel).
+          to receive(:my_active_record_model_transitions).never
         adapter.last
       end
 
@@ -135,15 +207,34 @@ describe Statesman::Adapters::ActiveRecord do
     end
 
     context "with a pre-fetched transition history" do
-      before do
-        adapter.create(:x, :y)
-        model.my_active_record_model_transitions.load_target
-      end
+      before { adapter.create(:x, :y) }
+      before { model.my_active_record_model_transitions.load_target }
 
       it "doesn't query the database" do
         expect(MyActiveRecordModelTransition).not_to receive(:connection)
         expect(adapter.last.to_state).to eq("y")
       end
     end
+  end
+
+  context "with a namespaced model" do
+    before do
+      silence_stream(STDOUT) do
+        CreateNamespacedARModelMigration.migrate(:up)
+        CreateNamespacedARModelTransitionMigration.migrate(:up)
+      end
+    end
+
+    before do
+      MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
+    end
+    let(:observer) { double(Statesman::Machine, execute: nil) }
+    let(:model) do
+      MyNamespace::MyActiveRecordModel.create(current_state: :pending)
+    end
+
+    it_behaves_like "an adapter",
+                    described_class, MyNamespace::MyActiveRecordModelTransition,
+                    association_name: :my_active_record_model_transitions
   end
 end

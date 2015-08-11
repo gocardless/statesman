@@ -38,7 +38,7 @@ module Statesman
     end
 
     def matches_from_state(from, to)
-      (from == self.from  && (to.nil? || self.to.empty?))
+      (from == self.from && (to.nil? || self.to.empty?))
     end
 
     def matches_to_state(from, to)
