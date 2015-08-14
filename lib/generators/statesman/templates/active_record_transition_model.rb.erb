@@ -5,4 +5,14 @@ class <%= klass %> < ActiveRecord::Base
   attr_accessible :to_state, :metadata, :sort_key
 <% end %>
   belongs_to :<%= parent_name %><%= class_name_option %>, inverse_of: :<%= table_name %>
+
+  after_destroy :update_most_recent
+
+  private
+
+  def update_most_recent
+    last_transition = <%= parent_name %>.<%= table_name %>.order(:sort_key).last
+    return unless last_transition.present?
+    last_transition.update_column(:most_recent, true)
+  end
 end
