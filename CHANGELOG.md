@@ -1,3 +1,6 @@
+## Unreleased
+- Add after_destroy hook to ActiveRecord transition model templates
+
 ## v1.3.1 2 July 2015
 
 - Fix `in_state` queries with a custom `transition_name` (patch by [0tsuki](https://github.com/0tsuki))
