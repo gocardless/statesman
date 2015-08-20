@@ -148,17 +148,31 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             from(true).to be_falsey
         end
 
-        context "and the parent model is updated in a callback" do
-          before do
-            allow(observer).to receive(:execute) do |phase|
-              if phase == :before
-                model.update_attributes!(current_state: :ready)
+        context "and a query on the parent model's state is made" do
+          context "in a before action" do
+            it "still has the old state" do
+              allow(observer).to receive(:execute) do |phase|
+                next unless phase == :before
+                expect(
+                  model.transitions.where(most_recent: true).first.to_state
+                ).to eq("y")
               end
+
+              adapter.create(:y, :z)
             end
           end
 
-          it "doesn't save the transition too early" do
-            expect { create }.to_not raise_exception
+          context "in an after action" do
+            it "still has the old state" do
+              allow(observer).to receive(:execute) do |phase|
+                next unless phase == :after
+                expect(
+                  model.transitions.where(most_recent: true).first.to_state
+                ).to eq("z")
+              end
+
+              adapter.create(:y, :z)
+            end
           end
         end
       end
