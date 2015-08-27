@@ -62,7 +62,7 @@ module Statesman
                                   sort_key: next_sort_key,
                                   metadata: metadata }
 
-        transition_attributes.merge!(most_recent: true) if most_recent_column?
+        transition_attributes.merge!(most_recent: true)
 
         transition = transitions_for_parent.build(transition_attributes)
 
@@ -83,7 +83,6 @@ module Statesman
       end
 
       def unset_old_most_recent
-        return unless most_recent_column?
         # Check whether the `most_recent` column allows null values. If it
         # doesn't, set old records to `false`, otherwise, set them to `NULL`.
         #
@@ -96,10 +95,6 @@ module Statesman
         else
           transitions_for_parent.update_all(most_recent: nil)
         end
-      end
-
-      def most_recent_column?
-        transition_class.columns_hash.include?("most_recent")
       end
 
       def next_sort_key

@@ -164,8 +164,8 @@ class CreateOtherActiveRecordModelTransitionMigration < ActiveRecord::Migration
     end
   end
 end
-
 # rubocop:enable MethodLength
+
 class DropMostRecentColumn < ActiveRecord::Migration
   def change
     remove_index :my_active_record_model_transitions,
@@ -216,6 +216,7 @@ class CreateNamespacedARModelMigration < ActiveRecord::Migration
   end
 end
 
+# rubocop:disable MethodLength
 class CreateNamespacedARModelTransitionMigration < ActiveRecord::Migration
   def change
     create_table :my_namespace_my_active_record_model_transitions do |t|
@@ -230,10 +231,32 @@ class CreateNamespacedARModelTransitionMigration < ActiveRecord::Migration
         t.text :metadata, default: '{}'
       end
 
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+        t.boolean :most_recent, default: true, null: false
+      else
+        t.boolean :most_recent, default: true
+      end
+
       t.timestamps null: false
     end
 
     add_index :my_namespace_my_active_record_model_transitions, :sort_key,
               unique: true, name: 'my_namespaced_key'
+
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      add_index :my_namespace_my_active_record_model_transitions,
+                [:my_active_record_model_id, :most_recent],
+                unique: true,
+                where: "most_recent",
+                name: "index_namespace_model_transitions_"\
+                      "parent_most_recent"
+    else
+      add_index :my_namespace_my_active_record_model_transitions,
+                [:my_active_record_model_id, :most_recent],
+                unique: true,
+                name: "index_namespace_model_transitions_"\
+                      "parent_most_recent"
+    end
   end
+  # rubocop:enable MethodLength
 end

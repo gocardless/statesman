@@ -61,129 +61,66 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     model
   end
 
-  context "with a most_recent column" do
-    describe ".in_state" do
-      context "given a single state" do
-        subject { MyActiveRecordModel.in_state(:succeeded) }
+  describe ".in_state" do
+    context "given a single state" do
+      subject { MyActiveRecordModel.in_state(:succeeded) }
 
-        it { is_expected.to include model }
-        it { is_expected.not_to include other_model }
-        its(:to_sql) { is_expected.to include('.most_recent ') }
-      end
-
-      context "given multiple states" do
-        subject { MyActiveRecordModel.in_state(:succeeded, :failed) }
-
-        it { is_expected.to include model }
-        it { is_expected.to include other_model }
-      end
-
-      context "given the initial state" do
-        subject { MyActiveRecordModel.in_state(:initial) }
-
-        it { is_expected.to include initial_state_model }
-        it { is_expected.to include returned_to_initial_model }
-      end
-
-      context "given an array of states" do
-        subject { MyActiveRecordModel.in_state([:succeeded, :failed]) }
-
-        it { is_expected.to include model }
-        it { is_expected.to include other_model }
-      end
-
-      context "merging two queries" do
-        subject do
-          MyActiveRecordModel.in_state(:succeeded).
-            joins(:other_active_record_model).
-            merge(OtherActiveRecordModel.in_state(:initial))
-        end
-
-        it { is_expected.to be_empty }
-      end
+      it { is_expected.to include model }
+      it { is_expected.not_to include other_model }
     end
 
-    describe ".not_in_state" do
-      context "given a single state" do
-        subject { MyActiveRecordModel.not_in_state(:failed) }
-        it { is_expected.to include model }
-        it { is_expected.not_to include other_model }
-        its(:to_sql) { is_expected.to include('.most_recent ') }
+    context "given multiple states" do
+      subject { MyActiveRecordModel.in_state(:succeeded, :failed) }
+
+      it { is_expected.to include model }
+      it { is_expected.to include other_model }
+    end
+
+    context "given the initial state" do
+      subject { MyActiveRecordModel.in_state(:initial) }
+
+      it { is_expected.to include initial_state_model }
+      it { is_expected.to include returned_to_initial_model }
+    end
+
+    context "given an array of states" do
+      subject { MyActiveRecordModel.in_state([:succeeded, :failed]) }
+
+      it { is_expected.to include model }
+      it { is_expected.to include other_model }
+    end
+
+    context "merging two queries" do
+      subject do
+        MyActiveRecordModel.in_state(:succeeded).
+          joins(:other_active_record_model).
+          merge(OtherActiveRecordModel.in_state(:initial))
       end
 
-      context "given multiple states" do
-        subject { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
-        it do
-          is_expected.to match_array([initial_state_model,
-                                      returned_to_initial_model])
-        end
-      end
-
-      context "given an array of states" do
-        subject { MyActiveRecordModel.not_in_state([:succeeded, :failed]) }
-        it do
-          is_expected.to match_array([initial_state_model,
-                                      returned_to_initial_model])
-        end
-      end
+      it { is_expected.to be_empty }
     end
   end
 
-  context "without a most_recent column" do
-    before { drop_most_recent_column }
+  describe ".not_in_state" do
+    context "given a single state" do
+      subject { MyActiveRecordModel.not_in_state(:failed) }
+      it { is_expected.to include model }
+      it { is_expected.not_to include other_model }
+    end
 
-    describe ".in_state" do
-      context "given a single state" do
-        subject { MyActiveRecordModel.in_state(:succeeded) }
-
-        it { is_expected.to include model }
-        its(:to_sql) { is_expected.not_to include('.most_recent ') }
-      end
-
-      context "given multiple states" do
-        subject { MyActiveRecordModel.in_state(:succeeded, :failed) }
-
-        it { is_expected.to include model }
-        it { is_expected.to include other_model }
-      end
-
-      context "given the initial state" do
-        subject { MyActiveRecordModel.in_state(:initial) }
-
-        it { is_expected.to include initial_state_model }
-        it { is_expected.to include returned_to_initial_model }
-      end
-
-      context "given an array of states" do
-        subject { MyActiveRecordModel.in_state([:succeeded, :failed]) }
-
-        it { is_expected.to include model }
-        it { is_expected.to include other_model }
+    context "given multiple states" do
+      subject { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
+      it do
+        is_expected.to match_array([initial_state_model,
+                                    returned_to_initial_model])
       end
     end
 
-    describe ".not_in_state" do
-      context "given a single state" do
-        subject { MyActiveRecordModel.not_in_state(:failed) }
-        it { is_expected.to include model }
-        it { is_expected.not_to include other_model }
-        its(:to_sql) { is_expected.not_to include('.most_recent ') }
-      end
-
-      context "given multiple states" do
-        subject { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
-        it do
-          is_expected.to match_array([initial_state_model,
-                                      returned_to_initial_model])
-        end
-      end
-
-      context "given an array of states" do
-        subject { MyActiveRecordModel.not_in_state([:succeeded, :failed]) }
-        it do
-          is_expected.to match_array([initial_state_model,
-                                      returned_to_initial_model])
-        end
+    context "given an array of states" do
+      subject { MyActiveRecordModel.not_in_state([:succeeded, :failed]) }
+      it do
+        is_expected.to match_array([initial_state_model,
+                                    returned_to_initial_model])
       end
     end
   end
@@ -200,20 +137,9 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
       end
     end
 
-    context "with a most_recent column" do
-      describe ".in_state" do
-        subject(:query) { MyActiveRecordModel.in_state(:succeeded) }
-        specify { expect { query }.to_not raise_error }
-      end
-    end
-
-    context "without a most_recent column" do
-      before { drop_most_recent_column }
-
-      describe ".in_state" do
-        subject(:query) { MyActiveRecordModel.in_state(:succeeded) }
-        specify { expect { query }.to_not raise_error }
-      end
+    describe ".in_state" do
+      subject(:query) { MyActiveRecordModel.in_state(:succeeded) }
+      specify { expect { query }.to_not raise_error }
     end
   end
 end
