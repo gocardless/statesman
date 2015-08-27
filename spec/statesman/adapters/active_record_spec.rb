@@ -131,7 +131,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       end
     end
 
-    context "when the transition_class has a most_recent column" do
+    describe "updating the most_recent column" do
       subject { create }
 
       context "with no previous transition" do
@@ -188,11 +188,6 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             from(true).to be_falsey
         end
       end
-    end
-
-    context "when the transition_class doesn't have a most_recent column" do
-      before { drop_most_recent_column }
-      it { is_expected.to_not raise_exception }
     end
   end
 

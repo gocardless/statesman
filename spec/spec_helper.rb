@@ -71,13 +71,6 @@ RSpec.configure do |config|
       end
     end
 
-    def drop_most_recent_column
-      silence_stream(STDOUT) do
-        DropMostRecentColumn.migrate(:up)
-        MyActiveRecordModelTransition.reset_column_information
-      end
-    end
-
     def prepare_other_model_table
       silence_stream(STDOUT) do
         CreateOtherActiveRecordModelMigration.migrate(:up)
