@@ -1,9 +1,0 @@
-class AddMostRecentTo<%= migration_class_name %> < ActiveRecord::Migration
-  def up
-    add_column :<%= table_name %>, :most_recent, :boolean, null: true
-  end
-
-  def down
-    remove_column :<%= table_name %>, :most_recent
-  end
-end
