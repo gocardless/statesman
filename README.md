@@ -68,7 +68,7 @@ end
 class Order < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordQueries
 
-  has_many :order_transitions
+  has_many :order_transitions, autosave: false
 
   def state_machine
     @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
@@ -134,7 +134,7 @@ And add an association from the parent model:
 
 ```ruby
 class Order < ActiveRecord::Base
-  has_many :transitions, class_name: "OrderTransition"
+  has_many :transitions, class_name: "OrderTransition", autosave: false
 
   # Initialize the state machine
   def state_machine
@@ -304,7 +304,7 @@ need to define a corresponding `transition_name` class method:
 
 ```ruby
 class Order < ActiveRecord::Base
-  has_many :transitions, class_name: "OrderTransition"
+  has_many :transitions, class_name: "OrderTransition", autosave: false
 
   private
 

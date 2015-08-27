@@ -13,7 +13,7 @@ class MyStateMachine
 end
 
 class MyActiveRecordModel < ActiveRecord::Base
-  has_many :my_active_record_model_transitions
+  has_many :my_active_record_model_transitions, autosave: false
   alias_method :transitions, :my_active_record_model_transitions
 
   def state_machine
@@ -90,7 +90,7 @@ end
 # rubocop:enable MethodLength
 
 class OtherActiveRecordModel < ActiveRecord::Base
-  has_many :other_active_record_model_transitions
+  has_many :other_active_record_model_transitions, autosave: false
   alias_method :transitions, :other_active_record_model_transitions
 
   def state_machine
@@ -178,7 +178,8 @@ end
 module MyNamespace
   class MyActiveRecordModel < ActiveRecord::Base
     has_many :my_active_record_model_transitions,
-             class_name: "MyNamespace::MyActiveRecordModelTransition"
+             class_name: "MyNamespace::MyActiveRecordModelTransition",
+             autosave: false
 
     def self.table_name_prefix
       "my_namespace_"
