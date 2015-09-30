@@ -6,7 +6,7 @@ class <%= klass %> < ActiveRecord::Base
 <% end %>
   belongs_to :<%= parent_name %><%= class_name_option %>, inverse_of: :<%= table_name %>
 
-  after_destroy :update_most_recent
+  after_destroy :update_most_recent, if: :most_recent?
 
   private
 
