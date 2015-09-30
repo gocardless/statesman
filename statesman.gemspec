@@ -30,6 +30,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "mongoid",       ">= 3.1"
   spec.add_development_dependency "rails",         ">= 3.2"
   spec.add_development_dependency "pg",            "~> 0.18"
-  spec.add_development_dependency "mysql2",        "~> 0.3"
+  spec.add_development_dependency "mysql2",        "~> 0.4"
   spec.add_development_dependency "ammeter",       "~> 1.1"
 end
