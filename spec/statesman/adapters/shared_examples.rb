@@ -47,12 +47,12 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
       end
 
       context "with no previous transition" do
-        its(:sort_key) { is_expected.to be(0) }
+        its(:sort_key) { is_expected.to be(10) }
       end
 
       context "with a previous transition" do
         before { adapter.create(from, to) }
-        its(:sort_key) { is_expected.to be(10) }
+        its(:sort_key) { is_expected.to be(20) }
       end
     end
 

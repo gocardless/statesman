@@ -55,7 +55,7 @@ module Statesman
       end
 
       def next_sort_key
-        (last && last.sort_key + 10) || 0
+        (last && last.sort_key + 10) || 10
       end
     end
   end
