@@ -177,9 +177,9 @@ module Statesman
     end
 
     def initialize(object,
-                      options = {
-                        transition_class: Statesman::Adapters::MemoryTransition
-                      })
+                   options = {
+                     transition_class: Statesman::Adapters::MemoryTransition
+                   })
       @object = object
       @transition_class = options[:transition_class]
       @storage_adapter = adapter_class(@transition_class).new(
@@ -190,6 +190,10 @@ module Statesman
     def current_state
       last_action = last_transition
       last_action ? last_action.to_state : self.class.initial_state
+    end
+
+    def in_state?(*states)
+      states.flatten.any? { |state| current_state == state.to_s }
     end
 
     def allowed_transitions

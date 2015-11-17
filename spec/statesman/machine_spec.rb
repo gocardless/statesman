@@ -374,6 +374,61 @@ describe Statesman::Machine do
     end
   end
 
+  describe "#in_state?" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        transition from: :x, to: :y
+      end
+    end
+
+    let(:instance) { machine.new(my_model) }
+    subject { instance.in_state?(state) }
+    before { instance.transition_to!(:y) }
+
+    context "when machine is in given state" do
+      let(:state) { "y" }
+      it { is_expected.to eq(true) }
+    end
+
+    context "when machine is not in given state" do
+      let(:state) { "x" }
+      it { is_expected.to eq(false) }
+    end
+
+    context "when given a symbol" do
+      let(:state) { :y }
+      it { is_expected.to eq(true) }
+    end
+
+    context "when given multiple states" do
+      context "when given multiple arguments" do
+        context "when one of the states is the current state" do
+          subject { instance.in_state?(:x, :y) }
+          it { is_expected.to eq(true) }
+        end
+
+        context "when none of the states are the current state" do
+          subject { instance.in_state?(:x, :z) }
+          it { is_expected.to eq(false) }
+        end
+      end
+
+      context "when given an array" do
+        context "when one of the states is the current state" do
+          subject { instance.in_state?([:x, :y]) }
+          it { is_expected.to eq(true) }
+        end
+
+        context "when none of the states are the current state" do
+          subject { instance.in_state?([:x, :z]) }
+          it { is_expected.to eq(false) }
+        end
+      end
+    end
+  end
+
   describe "#allowed_transitions" do
     before do
       machine.class_eval do
