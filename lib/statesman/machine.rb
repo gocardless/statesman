@@ -228,8 +228,6 @@ module Statesman
                           metadata: metadata)
 
       @storage_adapter.create(initial_state, new_state, metadata)
-
-      true
     end
 
     def trigger!(event_name, metadata = {})
@@ -244,7 +242,6 @@ module Statesman
       end
 
       transition_to!(new_state.first, metadata)
-      true
     end
 
     def execute(phase, initial_state, new_state, transition)
