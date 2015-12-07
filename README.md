@@ -355,6 +355,22 @@ Given a field `foo` that was stored in the metadata, you can access it like so:
 model_instance.last_transition.metadata["foo"]
 ```
 
+#### Events
+
+Used to using a state machine with "events"? Support for events is provided by
+the [statesman-events](https://github.com/gocardless/statesman-events) gem. Once
+that's included in your Gemfile you can include event functionality in your
+state machine as follows:
+
+```ruby
+class OrderStateMachine
+  include Statesman::Machine
+  include Statesman::Events
+
+  ...
+end
+```
+
 ## Testing Statesman Implementations
 
 This answer was abstracted from [this issue](https://github.com/gocardless/statesman/issues/77).

@@ -13,6 +13,10 @@
   - A zero-downtime migration path is outlined in the changelog for v1.2.0. You should use that migration path **before** upgrading to v2.0.0
 - Increase default initial sort key to 10
 - Drop support for Ruby 1.9.3, which reached end-of-life in February 2015
+- Move support for events to a companion gem
+  - Previously, Statesman supported the use of "events" to trigger transitions
+  - To keep Statesman lightweight we've moved event functionality into the `statesman-events` gem
+  - If you are using events, add `statesman-events` to your gemfile and include `Statesman::Events` in your state machines
 
 *Changes*
 
