@@ -1,9 +1,0 @@
-machine:
-  ruby:
-    version: 2.0.0-p353
-test:
-  pre:
-    - bundle exec rubocop
-database:
-  override:
-    - echo "no database step needed"
