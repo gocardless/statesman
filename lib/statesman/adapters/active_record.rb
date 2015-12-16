@@ -51,8 +51,12 @@ module Statesman
         end
       end
 
-      def last
-        @last_transition ||= history.last
+      def last(force_reload: false)
+        if force_reload
+          @last_transition = history.last
+        else
+          @last_transition ||= history.last
+        end
       end
 
       private

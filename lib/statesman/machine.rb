@@ -187,8 +187,8 @@ module Statesman
       send(:after_initialize) if respond_to? :after_initialize
     end
 
-    def current_state
-      last_action = last_transition
+    def current_state(force_reload: false)
+      last_action = last_transition(force_reload: force_reload)
       last_action ? last_action.to_state : self.class.initial_state
     end
 
@@ -202,8 +202,8 @@ module Statesman
       end
     end
 
-    def last_transition
-      @storage_adapter.last
+    def last_transition(force_reload: false)
+      @storage_adapter.last(force_reload: force_reload)
     end
 
     def can_transition_to?(new_state, metadata = {})
