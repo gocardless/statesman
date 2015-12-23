@@ -118,5 +118,8 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
 
     it { is_expected.to be_a(transition_class) }
     specify { expect(adapter.last.to_state.to_sym).to eq(:z) }
+    specify do
+      expect(adapter.last(force_reload: true).to_state.to_sym).to eq(:z)
+    end
   end
 end

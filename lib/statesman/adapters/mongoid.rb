@@ -36,8 +36,12 @@ module Statesman
         transitions_for_parent.asc(:sort_key)
       end
 
-      def last
-        @last_transition ||= history.last
+      def last(force_reload: false)
+        if force_reload
+          @last_transition = history.last
+        else
+          @last_transition ||= history.last
+        end
       end
 
       private

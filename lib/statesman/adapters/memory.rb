@@ -28,7 +28,7 @@ module Statesman
         transition
       end
 
-      def last
+      def last(*)
         @history.sort_by(&:sort_key).last
       end
 
