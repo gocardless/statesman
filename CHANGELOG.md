@@ -1,4 +1,4 @@
-## v2.0.0 (Unreleased)
+## v2.0.0, 23 December 2015
 
 *Breaking changes*
 
@@ -22,37 +22,38 @@
 
 - Add after_destroy hook to ActiveRecord transition model templates
 - Add `in_state?` instance method to `Statesman::Machine`
+- Add `force_reload` option to `Statesman::Machine#last_transition`
 
-## v1.3.1 2 July 2015
+## v1.3.1, 2 July 2015
 
 - Fix `in_state` queries with a custom `transition_name` (patch by [0tsuki](https://github.com/0tsuki))
 - Fix `backfill_most_recent` rake task for databases that support partial indexes (patch by [greysteil](https://github.com/greysteil))
 
-## v1.3.0 20 June 2015
+## v1.3.0, 20 June 2015
 
 - Rename `last_transition` alias in `ActiveRecordQueries` to `most_recent_#{model_name}`, to allow merging of two such queries (patch by [@isaacseymour](https://github.com/isaacseymour))
 
-## v1.2.5 17 June 2015
+## v1.2.5, 17 June 2015
 
 - Make `backfill_most_recent` rake task db-agnostic (patch by [@timothyp](https://github.com/timothyp))
 
-## v1.2.4 16 June 2015
+## v1.2.4, 16 June 2015
 
 - Clarify error messages when misusing `Statesman::Adapters::ActiveRecordTransition` (patch by [@isaacseymour](https://github.com/isaacseymour))
 
-## v1.2.3 14 April 2015
+## v1.2.3, 14 April 2015
 
 - Fix use of most_recent column in MySQL (partial indexes aren't supported) (patch by [@greysteil](https://github.com/greysteil))
 
-## v1.2.2 24 March 2015
+## v1.2.2, 24 March 2015
 
 - Add support for namespaced transition models (patch by [@DanielWright](https://github.com/DanielWright))
 
-## v1.2.1 24 March 2015
+## v1.2.1, 24 March 2015
 
 - Add support for Postgres 9.4's `jsonb` column type (patch by [@isaacseymour](https://github.com/isaacseymour))
 
-## v1.2.0 18 March 2015
+## v1.2.0, 18 March 2015
 
 *Changes*
 
@@ -66,7 +67,7 @@
 - `ActiveRecordQueries.{not_,}in_state` now accepts an array of states.
 
 
-## v1.1.0 9 December 2014
+## v1.1.0, 9 December 2014
 *Fixes*
 
 - Support for Rails 4.2.0.rc2:
@@ -78,16 +79,16 @@
 
 - Transition metadata now defaults to `{}` rather than `nil`. (patch by [@greysteil](https://github.com/greysteil))
 
-## v1.0.0 21 November 2014
+## v1.0.0, 21 November 2014
 
 No changes from v1.0.0.beta2
 
-## v1.0.0.beta2 10 October 2014
+## v1.0.0.beta2, 10 October 2014
 *Breaking changes*
 
 - Rename `ActiveRecordModel` to `ActiveRecordQueries`, to reflect the fact that it mixes in some helpful scopes, but is not required.
 
-## v1.0.0.beta1 9 October 2014
+## v1.0.0.beta1, 9 October 2014
 *Breaking changes*
 
 - Classes which include `ActiveRecordModel` must define an `initial_state` class method.
@@ -101,33 +102,33 @@ No changes from v1.0.0.beta2
 - Transition tables created by generated migrations have `NOT NULL` constraints on `to_state`, `sort_key` and foreign key columns (patch by [@greysteil](https://github.com/greysteil))
 - `before_transition` and `after_transition` allow an array of to states (patch by [@isaacseymour](https://github.com/isaacseymour))
 
-## v0.8.3 2 September 2014
+## v0.8.3, 2 September 2014
 *Fixes*
 
 - Optimisation for Machine#available_events (patch by [@pacso](https://github.com/pacso))
 
-## v0.8.2 2 September 2014
+## v0.8.2, 2 September 2014
 *Fixes*
 
 - Stop generating a default value for the metadata column if using MySQL.
 
-## v0.8.1 19 August 2014
+## v0.8.1, 19 August 2014
 *Fixes*
 
 - Adds check in Machine#transition to make sure the 'to' state is not an empty array (patch by [@barisbalic](https://github.com/barisbalic))
 
-## v0.8.0 29 June 2014
+## v0.8.0, 29 June 2014
 *Additions*
 
 - Events. Machines can now define events as a logical grouping of transitions (patch by [@iurimatias](https://github.com/iurimatias))
 - Retries. Individual transitions can be executed with a retry policy by wrapping the method call in a `Machine.retry_conflicts {}` block (patch by [@greysteil](https://github.com/greysteil))
 
-## v0.7.0 25 June 2014
+## v0.7.0, 25 June 2014
 *Additions*
 
 - `Adapters::ActiveRecord` now handles `ActiveRecord::RecordNotUnique` errors explicitly and re-raises with a `Statesman::TransitionConflictError` if it is due to duplicate sort_keys (patch by [@greysteil](https://github.com/greysteil))
 
-## v0.6.1 21 May 2014
+## v0.6.1, 21 May 2014
 *Fixes*
 - Fixes an issue where the wrong transition was passed to after_transition callbacks for the second and subsequent transition of a given state machine (patch by [@alan](https://github.com/alan))
 
