@@ -1,6 +1,6 @@
 ![Statesman](http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png)
 
-A statesmanlike state machine library for Ruby 1.9.3 and up.
+A statesmanlike state machine library for Ruby 2.0.0 and up.
 
 [![Gem Version](https://badge.fury.io/rb/statesman.png)](http://badge.fury.io/rb/statesman)
 [![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
@@ -355,15 +355,21 @@ Given a field `foo` that was stored in the metadata, you can access it like so:
 model_instance.last_transition.metadata["foo"]
 ```
 
-#### Upgrading from 1.1 to 1.2
+#### Events
 
-Statesman 1.2.0 introduced a new `most_recent` column on the transition model,
-which is used to speed up queries.
+Used to using a state machine with "events"? Support for events is provided by
+the [statesman-events](https://github.com/gocardless/statesman-events) gem. Once
+that's included in your Gemfile you can include event functionality in your
+state machine as follows:
 
-The change is entirely backwards compatible, but if you'd like the performance
-improvements just follow
-[this guide](https://github.com/gocardless/statesman/wiki/Adding-a-%60most_recent%60-column-to-an-existing-model)
-to add a `most_recent` column to an existing model.
+```ruby
+class OrderStateMachine
+  include Statesman::Machine
+  include Statesman::Events
+
+  ...
+end
+```
 
 ## Testing Statesman Implementations
 
