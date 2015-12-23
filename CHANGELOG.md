@@ -1,4 +1,4 @@
-## v2.0.0, 23 December 2015
+## v2.0.0.rc1, 23 December 2015
 
 *Breaking changes*
 
