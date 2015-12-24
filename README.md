@@ -255,7 +255,7 @@ number of retry attempts (defaults to 1).
 #### `Machine#current_state`
 Returns the current state based on existing transition objects.
 
-### `Machine#in_state?(:state_1, :state_2, ...)`
+#### `Machine#in_state?(:state_1, :state_2, ...)`
 Returns true if the machine is in any of the given states.
 
 #### `Machine#history`
