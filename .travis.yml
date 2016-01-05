@@ -21,7 +21,15 @@ script:
 env:
   - "RAILS_VERSION=3.2.21"
   - "RAILS_VERSION=4.0.13"
-  - "RAILS_VERSION=4.1.10"
-  - "RAILS_VERSION=4.2.2"
-  - "RAILS_VERSION=4.2.2 DATABASE_URL=mysql2://root@localhost/statesman_test"
-  - "RAILS_VERSION=4.2.2 DATABASE_URL=postgres://postgres@localhost/statesman_test"
+  - "RAILS_VERSION=4.1.14"
+  - "RAILS_VERSION=4.2.5"
+  - "RAILS_VERSION=4.2.5 DATABASE_URL=mysql2://root@localhost/statesman_test"
+  - "RAILS_VERSION=4.2.5 DATABASE_URL=postgres://postgres@localhost/statesman_test"
+  - "RAILS_VERSION=5.0.0.beta3"
+
+matrix:
+  exclude:
+    - rvm: 2.1
+      env: "RAILS_VERSION=5.0.0.beta3"
+    - rvm: 2.0.0
+      env: "RAILS_VERSION=5.0.0.beta3"
