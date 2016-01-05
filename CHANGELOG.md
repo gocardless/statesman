@@ -1,3 +1,7 @@
+## v2.0.0, 5 January 2016
+
+- No changes from v2.0.0.rc1
+
 ## v2.0.0.rc1, 23 December 2015
 
 *Breaking changes*
