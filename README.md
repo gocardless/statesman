@@ -19,7 +19,7 @@ to which they should apply.
 - State transitions are also modelled as a class, which can optionally be
 persisted to the database for a full audit history. This audit history can
 include JSON metadata set during a transition.
-- Database indicies are used to offer database-level transaction duplication
+- Database indices are used to offer database-level transaction duplication
 protection.
 
 ## TL;DR Usage
