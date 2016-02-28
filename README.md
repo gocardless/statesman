@@ -74,15 +74,15 @@ class Order < ActiveRecord::Base
     @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
   end
 
-  private
-
   def self.transition_class
     OrderTransition
   end
+  private_class_method :transition_class
 
   def self.initial_state
     :pending
   end
+  private_class_method :initial_state
 end
 
 ####################
@@ -290,15 +290,15 @@ model and define `transition_class` and `initial_state` class methods:
 class Order < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordQueries
 
-  private
-
   def self.transition_class
     OrderTransition
   end
+  private_class_method :transition_class
 
   def self.initial_state
     OrderStateMachine.initial_state
   end
+  private_class_method :initial_state
 end
 ```
 
@@ -309,8 +309,6 @@ need to define a corresponding `transition_name` class method:
 class Order < ActiveRecord::Base
   has_many :transitions, class_name: "OrderTransition", autosave: false
 
-  private
-
   def self.transition_name
     :transitions
   end
@@ -318,10 +316,12 @@ class Order < ActiveRecord::Base
   def self.transition_class
     OrderTransition
   end
+  private_class_method :transition_class
 
   def self.initial_state
     OrderStateMachine.initial_state
   end
+  private_class_method :initial_state
 end
 ```
 
