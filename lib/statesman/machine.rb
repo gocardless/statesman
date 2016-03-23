@@ -66,25 +66,21 @@ module Statesman
         successors[from] += to
       end
 
-      def before_transition(options = { from: nil, to: nil }, &block)
-        add_callback(
-          options.merge(callback_class: Callback, callback_type: :before),
-          &block)
+      def before_transition(options = {}, &block)
+        add_callback(callback_type: :before, callback_class: Callback,
+                     from: options[:from], to: options[:to], &block)
       end
 
-      def guard_transition(options = { from: nil, to: nil }, &block)
-        add_callback(
-          options.merge(callback_class: Guard, callback_type: :guards),
-          &block)
+      def guard_transition(options = {}, &block)
+        add_callback(callback_type: :guards, callback_class: Guard,
+                     from: options[:from], to: options[:to], &block)
       end
 
-      def after_transition(options = { from: nil, to: nil,
-                                       after_commit: false }, &block)
+      def after_transition(options = { after_commit: false }, &block)
         callback_type = options[:after_commit] ? :after_commit : :after
 
-        add_callback(
-          options.merge(callback_class: Callback, callback_type: callback_type),
-          &block)
+        add_callback(callback_type: callback_type, callback_class: Callback,
+                     from: options[:from], to: options[:to], &block)
       end
 
       def validate_callback_condition(options = { from: nil, to: nil })
@@ -128,15 +124,26 @@ module Statesman
 
       private
 
-      def add_callback(options, &block)
-        from = to_s_or_nil(options[:from])
-        to   = array_to_s_or_nil(options[:to])
-        callback_klass = options.fetch(:callback_class)
-        callback_type = options.fetch(:callback_type)
+      def add_callback(callback_type: nil, callback_class: nil,
+                       from: nil, to: nil, &block)
+        validate_callback_type_and_class(callback_type, callback_class)
+
+        from = to_s_or_nil(from)
+        to   = array_to_s_or_nil(to)
 
         validate_callback_condition(from: from, to: to)
+
         callbacks[callback_type] <<
-          callback_klass.new(from: from, to: to, callback: block)
+          callback_class.new(from: from, to: to, callback: block)
+      end
+
+      def validate_callback_type_and_class(callback_type, callback_class)
+        if callback_type.nil?
+          raise ArgumentError.new("missing keyword: callback_type")
+        end
+        if callback_class.nil?
+          raise ArgumentError.new("missing keyword: callback_class")
+        end
       end
 
       def validate_state(state)
