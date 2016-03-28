@@ -250,10 +250,8 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
 
   context "with a namespaced model" do
     before do
-      silence_stream(STDOUT) do
-        CreateNamespacedARModelMigration.migrate(:up)
-        CreateNamespacedARModelTransitionMigration.migrate(:up)
-      end
+      CreateNamespacedARModelMigration.migrate(:up)
+      CreateNamespacedARModelTransitionMigration.migrate(:up)
     end
 
     before do

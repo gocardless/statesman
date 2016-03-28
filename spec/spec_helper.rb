@@ -61,6 +61,9 @@ RSpec.configure do |config|
 
     db_adapter = ActiveRecord::Base.connection.adapter_name
     puts "Running with database adapter '#{db_adapter}'"
+
+    # Silence migration output
+    ActiveRecord::Migration.verbose = false
   end
 
   config.before(:each, active_record: true) do
@@ -78,29 +81,21 @@ RSpec.configure do |config|
     end
 
     def prepare_model_table
-      silence_stream(STDOUT) do
-        CreateMyActiveRecordModelMigration.migrate(:up)
-      end
+      CreateMyActiveRecordModelMigration.migrate(:up)
     end
 
     def prepare_transitions_table
-      silence_stream(STDOUT) do
-        CreateMyActiveRecordModelTransitionMigration.migrate(:up)
-        MyActiveRecordModelTransition.reset_column_information
-      end
+      CreateMyActiveRecordModelTransitionMigration.migrate(:up)
+      MyActiveRecordModelTransition.reset_column_information
     end
 
     def prepare_other_model_table
-      silence_stream(STDOUT) do
-        CreateOtherActiveRecordModelMigration.migrate(:up)
-      end
+      CreateOtherActiveRecordModelMigration.migrate(:up)
     end
 
     def prepare_other_transitions_table
-      silence_stream(STDOUT) do
-        CreateOtherActiveRecordModelTransitionMigration.migrate(:up)
-        OtherActiveRecordModelTransition.reset_column_information
-      end
+      CreateOtherActiveRecordModelTransitionMigration.migrate(:up)
+      OtherActiveRecordModelTransition.reset_column_information
     end
 
     MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
