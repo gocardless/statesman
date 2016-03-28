@@ -22,9 +22,11 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
                                            { 'metadata' => metadata_column })
         if ::ActiveRecord.respond_to?(:gem_version) &&
            ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
-          allow(metadata_column).to receive_messages(cast_type: '')
+          expect(MyActiveRecordModelTransition).
+            to receive(:type_for_attribute).with("metadata").
+            and_return(ActiveRecord::Type::Value.new)
         else
-          allow(MyActiveRecordModelTransition).
+          expect(MyActiveRecordModelTransition).
             to receive_messages(serialized_attributes: {})
         end
       end
@@ -48,8 +50,8 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           serialized_type = ::ActiveRecord::Type::Serialized.new(
             '', ::ActiveRecord::Coders::JSON
           )
-          expect(metadata_column).
-            to receive(:cast_type).
+          expect(MyActiveRecordModelTransition).
+            to receive(:type_for_attribute).with("metadata").
             and_return(serialized_type)
         else
           expect(MyActiveRecordModelTransition).
@@ -76,8 +78,8 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           serialized_type = ::ActiveRecord::Type::Serialized.new(
             '', ::ActiveRecord::Coders::JSON
           )
-          expect(metadata_column).
-            to receive(:cast_type).
+          expect(MyActiveRecordModelTransition).
+            to receive(:type_for_attribute).with("metadata").
             and_return(serialized_type)
         else
           expect(MyActiveRecordModelTransition).
