@@ -2,7 +2,6 @@ require "statesman"
 require "sqlite3"
 require "mysql2"
 require "pg"
-require "mongoid"
 require "active_record"
 # We have to include all of Rails to make rspec-rails work
 require "rails"
@@ -27,23 +26,29 @@ RSpec.configure do |config|
     end
   end
 
-  # Try a mongo connection at the start of the suite and raise if it fails
-  begin
-    Mongoid.configure do |mongo_config|
-      if defined?(Moped)
-        mongo_config.connect_to("statesman_test")
-        mongo_config.sessions["default"]["options"]["max_retries"] = 2
-      else
-        mongo_config.connect_to("statesman_test", server_selection_timeout: 2)
+  if config.exclusion_filter[:mongo]
+    puts "Skipping Mongo tests"
+  else
+    require "mongoid"
+
+    # Try a mongo connection at the start of the suite and raise if it fails
+    begin
+      Mongoid.configure do |mongo_config|
+        if defined?(Moped)
+          mongo_config.connect_to("statesman_test")
+          mongo_config.sessions["default"]["options"]["max_retries"] = 2
+        else
+          mongo_config.connect_to("statesman_test", server_selection_timeout: 2)
+        end
       end
+      # Attempting a mongo operation will trigger 2 retries then throw an
+      # exception if mongo is not running.
+      Mongoid.purge!
+    rescue connection_failure => error
+      puts "The spec suite requires MongoDB to be installed and running locally"
+      puts "Mongo dependent specs can be filtered with rspec --tag '~mongo'"
+      raise(error)
     end
-    # Attempting a mongo operation will trigger 2 retries then throw an
-    # exception if mongo is not running.
-    Mongoid.purge! unless config.exclusion_filter[:mongo]
-  rescue connection_failure => error
-    puts "The spec suite requires MongoDB to be installed and running locally"
-    puts "Mongo dependent specs can be filtered with rspec --tag '~mongo'"
-    raise(error)
   end
 
   if config.exclusion_filter[:active_record]
@@ -56,6 +61,9 @@ RSpec.configure do |config|
 
     db_adapter = ActiveRecord::Base.connection.adapter_name
     puts "Running with database adapter '#{db_adapter}'"
+
+    # Silence migration output
+    ActiveRecord::Migration.verbose = false
   end
 
   config.before(:each, active_record: true) do
@@ -73,29 +81,21 @@ RSpec.configure do |config|
     end
 
     def prepare_model_table
-      silence_stream(STDOUT) do
-        CreateMyActiveRecordModelMigration.migrate(:up)
-      end
+      CreateMyActiveRecordModelMigration.migrate(:up)
     end
 
     def prepare_transitions_table
-      silence_stream(STDOUT) do
-        CreateMyActiveRecordModelTransitionMigration.migrate(:up)
-        MyActiveRecordModelTransition.reset_column_information
-      end
+      CreateMyActiveRecordModelTransitionMigration.migrate(:up)
+      MyActiveRecordModelTransition.reset_column_information
     end
 
     def prepare_other_model_table
-      silence_stream(STDOUT) do
-        CreateOtherActiveRecordModelMigration.migrate(:up)
-      end
+      CreateOtherActiveRecordModelMigration.migrate(:up)
     end
 
     def prepare_other_transitions_table
-      silence_stream(STDOUT) do
-        CreateOtherActiveRecordModelTransitionMigration.migrate(:up)
-        OtherActiveRecordModelTransition.reset_column_information
-      end
+      CreateOtherActiveRecordModelTransitionMigration.migrate(:up)
+      OtherActiveRecordModelTransition.reset_column_information
     end
 
     MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
