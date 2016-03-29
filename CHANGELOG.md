@@ -2,7 +2,6 @@
 
 - Add support for Rails 5 (excluding Mongoid adapter)
 
-
 ## v2.0.0, 5 January 2016
 
 - No changes from v2.0.0.rc1
