@@ -2,7 +2,6 @@ require_relative "version"
 require_relative "exceptions"
 require_relative "guard"
 require_relative "callback"
-require_relative "adapters/memory_transition"
 
 module Statesman
   # The main module, that should be `extend`ed in to state machine classes.
