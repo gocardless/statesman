@@ -9,7 +9,6 @@ require "action_view"
 require "action_dispatch"
 require "action_controller"
 require "rspec/rails"
-require "support/active_record"
 require "rspec/its"
 
 RSpec.configure do |config|
