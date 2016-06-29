@@ -121,6 +121,12 @@ module Statesman
         end
       end
 
+      def validate_state(state)
+        unless states.include?(state.to_s)
+          raise InvalidStateError, "Invalid state '#{state}'"
+        end
+      end
+
       private
 
       def add_callback(callback_type: nil, callback_class: nil,
@@ -145,12 +151,6 @@ module Statesman
         end
       end
 
-      def validate_state(state)
-        unless states.include?(state.to_s)
-          raise InvalidStateError, "Invalid state '#{state}'"
-        end
-      end
-
       def validate_initial_state(state)
         unless initial_state.nil?
           raise InvalidStateError, "Cannot set initial state to '#{state}', " \
@@ -167,20 +167,18 @@ module Statesman
       end
     end
 
-    def initialize(object,
-                   options = {
-                     transition_class: Statesman::Adapters::MemoryTransition
-                   })
-      @object = object
-      @transition_class = options[:transition_class]
-      @storage_adapter = adapter_class(@transition_class).new(
-        @transition_class, object, self, options)
-      send(:after_initialize) if respond_to? :after_initialize
-    end
+    attr_reader :current_state
 
-    def current_state(force_reload: false)
-      last_action = last_transition(force_reload: force_reload)
-      last_action ? last_action.to_state : self.class.initial_state
+    def initialize(object, options = {})
+      @object = object
+
+      if (new_state = options[:current_state].try(:to_s))
+        self.class.validate_state(new_state)
+        @current_state = new_state
+      else
+        @current_state = self.class.initial_state
+      end
+      send(:after_initialize) if respond_to? :after_initialize
     end
 
     def in_state?(*states)
@@ -214,8 +212,7 @@ module Statesman
                           to: new_state,
                           metadata: metadata)
 
-      @storage_adapter.create(initial_state, new_state, metadata)
-
+      @current_state = new_state
       true
     end
 

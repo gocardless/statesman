@@ -308,32 +308,38 @@ describe Statesman::Machine do
   end
 
   describe "#initialize" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+      end
+    end
+
     it "accepts an object to manipulate" do
       machine_instance = machine.new(my_model)
       expect(machine_instance.object).to be(my_model)
     end
 
-    context "transition class" do
-      it "sets a default" do
-        expect(Statesman.storage_adapter).to receive(:new).once.
-          with(Statesman::Adapters::MemoryTransition,
-               my_model, anything, anything)
-        machine.new(my_model)
+    context "with a current_state option given" do
+      context "and the option is a valid state" do
+        it "sets the current_state to the supplied current_state option" do
+          machine_instance = machine.new(my_model, current_state: :y)
+          expect(machine_instance.current_state).to eq("y")
+        end
       end
 
-      it "sets the passed class" do
-        my_transition_class = Class.new
-        expect(Statesman.storage_adapter).to receive(:new).once.
-          with(my_transition_class, my_model, anything, anything)
-        machine.new(my_model, transition_class: my_transition_class)
+      context "and the option is not a valid state" do
+        it "raises an InvalidStateError" do
+          expect { machine.new(my_model, current_state: :xyz) }
+            .to raise_error(Statesman::InvalidStateError)
+        end
       end
+    end
 
-      it "falls back to Memory without transaction_class" do
-        allow(Statesman).to receive(:storage_adapter).and_return(Class.new)
-        expect(Statesman::Adapters::Memory).to receive(:new).once.
-          with(Statesman::Adapters::MemoryTransition,
-               my_model, anything, anything)
-        machine.new(my_model)
+    context "without a current_state option given" do
+      it "sets the current_state to the class defined initial state" do
+        machine_instance = machine.new(my_model)
+        expect(machine_instance.current_state).to eq("x")
       end
     end
   end
