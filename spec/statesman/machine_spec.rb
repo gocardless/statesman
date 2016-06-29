@@ -320,23 +320,23 @@ describe Statesman::Machine do
       expect(machine_instance.object).to be(my_model)
     end
 
-    context "with a current_state option given" do
+    context "with a state option given" do
       context "and the option is a valid state" do
-        it "sets the current_state to the supplied current_state option" do
-          machine_instance = machine.new(my_model, current_state: :y)
+        it "sets the current_state to the supplied state option" do
+          machine_instance = machine.new(my_model, state: :y)
           expect(machine_instance.current_state).to eq("y")
         end
       end
 
       context "and the option is not a valid state" do
         it "raises an InvalidStateError" do
-          expect { machine.new(my_model, current_state: :xyz) }
+          expect { machine.new(my_model, state: :xyz) }
             .to raise_error(Statesman::InvalidStateError)
         end
       end
     end
 
-    context "without a current_state option given" do
+    context "without a state option given" do
       it "sets the current_state to the class defined initial state" do
         machine_instance = machine.new(my_model)
         expect(machine_instance.current_state).to eq("x")

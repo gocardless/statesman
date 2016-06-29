@@ -172,7 +172,7 @@ module Statesman
     def initialize(object, options = {})
       @object = object
 
-      if (new_state = options[:current_state] && options[:current_state].to_s)
+      if (new_state = options[:state] && options[:state].to_s)
         self.class.validate_state(new_state)
         @current_state = new_state
       else
