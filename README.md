@@ -1,11 +1,17 @@
+## Statesmin
+
+Statesmin is a fork of [stateman](https://github.com/gocardless/statesman) that
+uses a machete to rip out all of the database related code leaving you with a
+simple, robust, and well tested DSL for defining state machines in your
+application.
+
+The following is an adapted version of the original Statesman README.
+
+---
+
 ![Statesman](http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png)
 
 A statesmanlike state machine library for Ruby 2.0.0 and up.
-
-[![Gem Version](https://badge.fury.io/rb/statesman.png)](http://badge.fury.io/rb/statesman)
-[![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
-[![Code Climate](https://codeclimate.com/github/gocardless/statesman.png)](https://codeclimate.com/github/gocardless/statesman)
-[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Statesman is an opinionated state machine library designed to provide a robust
 audit trail and data integrity. It decouples the state machine logic from the
@@ -16,11 +22,12 @@ libraries:
 - State behaviour is defined in a separate, "state machine" class, rather than
 added directly onto a model. State machines are then instantiated with the model
 to which they should apply.
-- State transitions are also modelled as a class, which can optionally be
+- ~~State transitions are also modelled as a class, which can optionally be
 persisted to the database for a full audit history. This audit history can
-include JSON metadata set during a transition.
-- Database indices are used to offer database-level transaction duplication
-protection.
+include JSON metadata set during a transition.~~
+- ~~Database indices are used to offer database-level transaction duplication
+protection.~~
+- Free to define your own transition logic for your application!
 
 ## TL;DR Usage
 
@@ -108,79 +115,6 @@ Order.not_in_state(:checking_out) # => [#<Order id: "123">]
 
 ```
 
-## Persistence
-
-By default Statesman stores transition history in memory only. It can be
-persisted by configuring Statesman to use a different adapter. For example,
-ActiveRecord within Rails:
-
-`config/initializers/statesman.rb`:
-
-```ruby
-Statesman.configure do
-  storage_adapter(Statesman::Adapters::ActiveRecord)
-end
-```
-
-Generate the transition model:
-
-```bash
-$ rails g statesman:active_record_transition Order OrderTransition
-```
-
-And add an association from the parent model:
-
-`app/models/order.rb`:
-
-```ruby
-class Order < ActiveRecord::Base
-  has_many :transitions, class_name: "OrderTransition", autosave: false
-
-  # Initialize the state machine
-  def state_machine
-    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition,
-                                                   association_name: :transitions)
-  end
-
-  # Optionally delegate some methods
-  delegate :can_transition_to?, :transition_to!, :transition_to, :current_state,
-           to: :state_machine
-end
-```
-#### Using PostgreSQL JSON column
-
-By default, Statesman uses `serialize` to store the metadata in JSON format.
-It is also possible to use the PostgreSQL JSON column if you are using Rails 4. To do that
-
-* Change `metadata` column type in the transition model migration to `json`
-
-  ```ruby
-  # Before
-  t.text :metadata, default: "{}"
-  # After
-  t.json :metadata, default: "{}"
-  ```
-
-* Remove `include Statesman::Adapters::ActiveRecordTransition` statement from your
-  transition model
-
-## Configuration
-
-#### `storage_adapter`
-
-```ruby
-Statesman.configure do
-  storage_adapter(Statesman::Adapters::ActiveRecord)
-  # ...or
-  storage_adapter(Statesman::Adapters::Mongoid)
-end
-```
-Statesman defaults to storing transitions in memory. If you're using rails, you
-can instead configure it to persist transitions to the database by using the
-ActiveRecord or Mongoid adapter.
-
-Statesman will fallback to memory unless you specify a transition_class when instantiating your state machine. This allows you to only persist transitions on certain state machines in your app.
-
 
 ## Class methods
 
@@ -235,11 +169,9 @@ transition has been committed to the database.
 
 #### `Machine.new`
 ```ruby
-my_machine = Machine.new(my_model, transition_class: MyTransitionModel)
+my_machine = Machine.new(my_model)
 ```
-Initialize a new state machine instance. `my_model` is required. If using the
-ActiveRecord adapter `my_model` should have a `has_many` association with
-`MyTransitionModel`.
+Initialize a new state machine instance. `my_model` is required.
 
 #### `Machine.retry_conflicts`
 ```ruby
@@ -258,12 +190,6 @@ Returns the current state based on existing transition objects.
 #### `Machine#in_state?(:state_1, :state_2, ...)`
 Returns true if the machine is in any of the given states.
 
-#### `Machine#history`
-Returns a sorted array of all transition objects.
-
-#### `Machine#last_transition`
-Returns the most recent transition object.
-
 #### `Machine#allowed_transitions`
 Returns an array of states you can `transition_to` from current state.
 
@@ -279,57 +205,6 @@ Transition to the passed state, returning `true` on success. Raises
 Transition to the passed state, returning `true` on success. Swallows all
 Statesman exceptions and returns false on failure. (NB. if your guard or
 callback code throws an exception, it will not be caught.)
-
-## Model scopes
-
-A mixin is provided for the ActiveRecord adapter which adds scopes to easily
-find all models currently in (or not in) a given state. Include it into your
-model and define `transition_class` and `initial_state` class methods:
-
-```ruby
-class Order < ActiveRecord::Base
-  include Statesman::Adapters::ActiveRecordQueries
-
-  def self.transition_class
-    OrderTransition
-  end
-  private_class_method :transition_class
-
-  def self.initial_state
-    OrderStateMachine.initial_state
-  end
-  private_class_method :initial_state
-end
-```
-
-If the transition class-name differs from the association name, you will also
-need to define a corresponding `transition_name` class method:
-
-```ruby
-class Order < ActiveRecord::Base
-  has_many :transitions, class_name: "OrderTransition", autosave: false
-
-  def self.transition_name
-    :transitions
-  end
-
-  def self.transition_class
-    OrderTransition
-  end
-  private_class_method :transition_class
-
-  def self.initial_state
-    OrderStateMachine.initial_state
-  end
-  private_class_method :initial_state
-end
-```
-
-#### `Model.in_state(:state_1, :state_2, etc)`
-Returns all models currently in any of the supplied states.
-
-#### `Model.not_in_state(:state_1, :state_2, etc)`
-Returns all models not currently in any of the supplied states.
 
 ## Frequently Asked Questions
 

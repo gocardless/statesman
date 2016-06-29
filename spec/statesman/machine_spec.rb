@@ -308,32 +308,38 @@ describe Statesman::Machine do
   end
 
   describe "#initialize" do
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+      end
+    end
+
     it "accepts an object to manipulate" do
       machine_instance = machine.new(my_model)
       expect(machine_instance.object).to be(my_model)
     end
 
-    context "transition class" do
-      it "sets a default" do
-        expect(Statesman.storage_adapter).to receive(:new).once.
-          with(Statesman::Adapters::MemoryTransition,
-               my_model, anything, anything)
-        machine.new(my_model)
+    context "with a state option given" do
+      context "and the option is a valid state" do
+        it "sets the current_state to the supplied state option" do
+          machine_instance = machine.new(my_model, state: :y)
+          expect(machine_instance.current_state).to eq("y")
+        end
       end
 
-      it "sets the passed class" do
-        my_transition_class = Class.new
-        expect(Statesman.storage_adapter).to receive(:new).once.
-          with(my_transition_class, my_model, anything, anything)
-        machine.new(my_model, transition_class: my_transition_class)
+      context "and the option is not a valid state" do
+        it "raises an InvalidStateError" do
+          expect { machine.new(my_model, state: :xyz) }
+            .to raise_error(Statesman::InvalidStateError)
+        end
       end
+    end
 
-      it "falls back to Memory without transaction_class" do
-        allow(Statesman).to receive(:storage_adapter).and_return(Class.new)
-        expect(Statesman::Adapters::Memory).to receive(:new).once.
-          with(Statesman::Adapters::MemoryTransition,
-               my_model, anything, anything)
-        machine.new(my_model)
+    context "without a state option given" do
+      it "sets the current_state to the class defined initial state" do
+        machine_instance = machine.new(my_model)
+        expect(machine_instance.current_state).to eq("x")
       end
     end
   end
@@ -458,17 +464,6 @@ describe Statesman::Machine do
     end
   end
 
-  describe "#last_transition" do
-    let(:instance) { machine.new(my_model) }
-    let(:last_action) { "Whatever" }
-
-    it "delegates to the storage adapter" do
-      expect_any_instance_of(Statesman.storage_adapter).to receive(:last).once.
-        and_return(last_action)
-      expect(instance.last_transition).to be(last_action)
-    end
-  end
-
   describe "#can_transition_to?" do
     before do
       machine.class_eval do
@@ -544,26 +539,6 @@ describe Statesman::Machine do
         expect(instance.current_state).to eq("y")
       end
 
-      it "creates a new transition object" do
-        expect { instance.transition_to!(:y) }.
-          to change(instance.history, :count).by(1)
-
-        expect(instance.history.first).
-          to be_a(Statesman::Adapters::MemoryTransition)
-        expect(instance.history.first.to_state).to eq("y")
-      end
-
-      it "sends metadata to the transition object" do
-        meta = { "my" => "hash" }
-        instance.transition_to!(:y, meta)
-        expect(instance.history.first.metadata).to eq(meta)
-      end
-
-      it "sets an empty hash as the metadata if not specified" do
-        instance.transition_to!(:y)
-        expect(instance.history.first.metadata).to eq({})
-      end
-
       specify { expect(instance.transition_to!(:y)).to be_truthy }
 
       context "with a guard" do
@@ -576,7 +551,7 @@ describe Statesman::Machine do
 
           it "passes the object to the guard" do
             expect(guard_cb).to receive(:call).once.
-              with(my_model, instance.last_transition, {}).and_return(true)
+              with(my_model, {}).and_return(true)
             instance.transition_to!(:y)
           end
         end
