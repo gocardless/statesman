@@ -191,10 +191,6 @@ module Statesman
       end
     end
 
-    def last_transition(force_reload: false)
-      @storage_adapter.last(force_reload: force_reload)
-    end
-
     def can_transition_to?(new_state, metadata = {})
       validate_transition(from: current_state,
                           to: new_state,
@@ -267,7 +263,7 @@ module Statesman
 
       # Call all guards, they raise exceptions if they fail
       guards_for(from: from, to: to).each do |guard|
-        guard.call(@object, last_transition, options[:metadata])
+        guard.call(@object, options[:metadata])
       end
     end
 

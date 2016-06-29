@@ -241,12 +241,6 @@ Returns the current state based on existing transition objects.
 #### `Machine#in_state?(:state_1, :state_2, ...)`
 Returns true if the machine is in any of the given states.
 
-#### `Machine#history`
-Returns a sorted array of all transition objects.
-
-#### `Machine#last_transition`
-Returns the most recent transition object.
-
 #### `Machine#allowed_transitions`
 Returns an array of states you can `transition_to` from current state.
 
