@@ -206,10 +206,6 @@ module Statesman
       false
     end
 
-    def history
-      @storage_adapter.history
-    end
-
     def transition_to!(new_state, metadata = {})
       initial_state = current_state
       new_state = new_state.to_s

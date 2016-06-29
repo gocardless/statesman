@@ -544,26 +544,6 @@ describe Statesman::Machine do
         expect(instance.current_state).to eq("y")
       end
 
-      it "creates a new transition object" do
-        expect { instance.transition_to!(:y) }.
-          to change(instance.history, :count).by(1)
-
-        expect(instance.history.first).
-          to be_a(Statesman::Adapters::MemoryTransition)
-        expect(instance.history.first.to_state).to eq("y")
-      end
-
-      it "sends metadata to the transition object" do
-        meta = { "my" => "hash" }
-        instance.transition_to!(:y, meta)
-        expect(instance.history.first.metadata).to eq(meta)
-      end
-
-      it "sets an empty hash as the metadata if not specified" do
-        instance.transition_to!(:y)
-        expect(instance.history.first.metadata).to eq({})
-      end
-
       specify { expect(instance.transition_to!(:y)).to be_truthy }
 
       context "with a guard" do
