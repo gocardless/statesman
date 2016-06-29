@@ -1,3 +1,14 @@
+## Statesmin
+
+Statesmin is a fork of [stateman](https://github.com/gocardless/statesman) that
+uses a machete to rip out all of the database related code leaving you with a
+simple, robust, and well tested DSL for defining state machines in your
+application.
+
+The following is an adapted version of the original Statesman README.
+
+---
+
 ![Statesman](http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png)
 
 A statesmanlike state machine library for Ruby 2.0.0 and up.
