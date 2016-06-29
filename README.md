@@ -164,23 +164,6 @@ It is also possible to use the PostgreSQL JSON column if you are using Rails 4. 
 * Remove `include Statesman::Adapters::ActiveRecordTransition` statement from your
   transition model
 
-## Configuration
-
-#### `storage_adapter`
-
-```ruby
-Statesman.configure do
-  storage_adapter(Statesman::Adapters::ActiveRecord)
-  # ...or
-  storage_adapter(Statesman::Adapters::Mongoid)
-end
-```
-Statesman defaults to storing transitions in memory. If you're using rails, you
-can instead configure it to persist transitions to the database by using the
-ActiveRecord or Mongoid adapter.
-
-Statesman will fallback to memory unless you specify a transition_class when instantiating your state machine. This allows you to only persist transitions on certain state machines in your app.
-
 
 ## Class methods
 
