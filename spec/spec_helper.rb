@@ -1,10 +1,4 @@
 require "statesman"
-# We have to include all of Rails to make rspec-rails work
-require "rails"
-require "action_view"
-require "action_dispatch"
-require "action_controller"
-require "rspec/rails"
 require "rspec/its"
 
 RSpec.configure do |config|
