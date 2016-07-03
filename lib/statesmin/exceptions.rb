@@ -1,4 +1,4 @@
-module Statesman
+module Statesmin
   class InvalidStateError < StandardError; end
   class InvalidTransitionError < StandardError; end
   class InvalidCallbackError < StandardError; end

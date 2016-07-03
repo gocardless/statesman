@@ -1,4 +1,4 @@
-module Statesman
+module Statesmin
   autoload :Machine,    'statesman/machine'
   autoload :Callback,   'statesman/callback'
   autoload :Guard,      'statesman/guard'

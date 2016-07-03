@@ -1,7 +1,7 @@
 require_relative "callback"
 require_relative "exceptions"
 
-module Statesman
+module Statesmin
   class Guard < Callback
     def call(*args)
       unless super(*args)

@@ -3,7 +3,7 @@ require_relative "exceptions"
 require_relative "guard"
 require_relative "callback"
 
-module Statesman
+module Statesmin
   # The main module, that should be `extend`ed in to state machine classes.
   module Machine
     def self.included(base)
@@ -226,10 +226,10 @@ module Statesman
     private
 
     def adapter_class(transition_class)
-      if transition_class == Statesman::Adapters::MemoryTransition
+      if transition_class == Statesmin::Adapters::MemoryTransition
         Adapters::Memory
       else
-        Statesman.storage_adapter
+        Statesmin.storage_adapter
       end
     end
 
