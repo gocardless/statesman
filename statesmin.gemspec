@@ -6,11 +6,11 @@ require 'statesmin/version'
 Gem::Specification.new do |spec|
   spec.name          = "statesmin"
   spec.version       = Statesmin::VERSION
-  spec.authors       = ["Harry Marr", "Andy Appleton"]
-  spec.email         = ["developers@gocardless.com"]
-  spec.description   = %q{A statesminlike state machine library}
+  spec.authors       = ["Chris Ewald"]
+  spec.email         = ["chrisewald@gmail.com"]
+  spec.description   = %q{A minimal statesmanlike state machine library}
   spec.summary       = spec.description
-  spec.homepage      = "https://github.com/gocardless/statesman"
+  spec.homepage      = "https://github.com/mkcode/statesmin"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
