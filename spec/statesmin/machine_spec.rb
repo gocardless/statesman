@@ -596,7 +596,7 @@ describe Statesmin::Machine do
       it { is_expected.to be_falsey }
     end
 
-    context "when a non statesman exception is raised" do
+    context "when a non statesmin exception is raised" do
       before do
         allow(instance).to receive(:transition_to!).
           and_raise(RuntimeError, 'user defined exception')

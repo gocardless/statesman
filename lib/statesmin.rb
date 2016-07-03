@@ -1,7 +1,7 @@
 module Statesmin
-  autoload :Machine,    'statesman/machine'
-  autoload :Callback,   'statesman/callback'
-  autoload :Guard,      'statesman/guard'
-  autoload :Version,    'statesman/version'
-  require 'statesman/railtie' if defined?(::Rails::Railtie)
+  autoload :Machine,    'statesmin/machine'
+  autoload :Callback,   'statesmin/callback'
+  autoload :Guard,      'statesmin/guard'
+  autoload :Version,    'statesmin/version'
+  require 'statesmin/railtie' if defined?(::Rails::Railtie)
 end
