@@ -1,3 +1,5 @@
+require_relative "exceptions"
+
 module Statesmin
   module TransitionHelper
     # Methods to delegate to `state_machine`
@@ -30,13 +32,11 @@ module Statesmin
     private
 
     def state_machine
-      raise "'state_machine' method is not defined in '#{self.class.name}'." \
-            "Either define this method or do not include 'TransitionHelper'."
+      raise Statesmin::NotImplementedError.new('state_machine', self.class.name)
     end
 
     def raise_transition_not_defined_error
-      raise "'transition' method is not defined in '#{self.class.name}'." \
-            "Either define this method or do not include 'TransitionHelper'."
+      raise Statesmin::NotImplementedError.new('transition', self.class.name)
     end
 
     def guard_transitions_to_invalid_states!(next_state)
