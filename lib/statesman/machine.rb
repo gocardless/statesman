@@ -2,7 +2,6 @@ require_relative "version"
 require_relative "exceptions"
 require_relative "guard"
 require_relative "callback"
-require_relative "adapters/memory_transition"
 
 module Statesman
   # The main module, that should be `extend`ed in to state machine classes.
@@ -122,6 +121,12 @@ module Statesman
         end
       end
 
+      def validate_state(state)
+        unless states.include?(state.to_s)
+          raise InvalidStateError, "Invalid state '#{state}'"
+        end
+      end
+
       private
 
       def add_callback(callback_type: nil, callback_class: nil,
@@ -146,12 +151,6 @@ module Statesman
         end
       end
 
-      def validate_state(state)
-        unless states.include?(state.to_s)
-          raise InvalidStateError, "Invalid state '#{state}'"
-        end
-      end
-
       def validate_initial_state(state)
         unless initial_state.nil?
           raise InvalidStateError, "Cannot set initial state to '#{state}', " \
@@ -168,20 +167,18 @@ module Statesman
       end
     end
 
-    def initialize(object,
-                   options = {
-                     transition_class: Statesman::Adapters::MemoryTransition
-                   })
-      @object = object
-      @transition_class = options[:transition_class]
-      @storage_adapter = adapter_class(@transition_class).new(
-        @transition_class, object, self, options)
-      send(:after_initialize) if respond_to? :after_initialize
-    end
+    attr_reader :current_state
 
-    def current_state(force_reload: false)
-      last_action = last_transition(force_reload: force_reload)
-      last_action ? last_action.to_state : self.class.initial_state
+    def initialize(object, options = {})
+      @object = object
+
+      if (new_state = options[:state] && options[:state].to_s)
+        self.class.validate_state(new_state)
+        @current_state = new_state
+      else
+        @current_state = self.class.initial_state
+      end
+      send(:after_initialize) if respond_to? :after_initialize
     end
 
     def in_state?(*states)
@@ -194,10 +191,6 @@ module Statesman
       end
     end
 
-    def last_transition(force_reload: false)
-      @storage_adapter.last(force_reload: force_reload)
-    end
-
     def can_transition_to?(new_state, metadata = {})
       validate_transition(from: current_state,
                           to: new_state,
@@ -205,10 +198,6 @@ module Statesman
       true
     rescue TransitionFailedError, GuardFailedError
       false
-    end
-
-    def history
-      @storage_adapter.history
     end
 
     def transition_to!(new_state, metadata = {})
@@ -219,8 +208,7 @@ module Statesman
                           to: new_state,
                           metadata: metadata)
 
-      @storage_adapter.create(initial_state, new_state, metadata)
-
+      @current_state = new_state
       true
     end
 
@@ -275,7 +263,7 @@ module Statesman
 
       # Call all guards, they raise exceptions if they fail
       guards_for(from: from, to: to).each do |guard|
-        guard.call(@object, last_transition, options[:metadata])
+        guard.call(@object, options[:metadata])
       end
     end
 
