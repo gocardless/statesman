@@ -11,10 +11,3 @@ sudo: false
 script:
   - bundle exec rubocop
   - bundle exec rake
-
-env:
-  - "RAILS_VERSION=3.2.21"
-  - "RAILS_VERSION=4.0.13"
-  - "RAILS_VERSION=4.1.14"
-  - "RAILS_VERSION=4.2.5"
-  - "RAILS_VERSION=5.0.0"
