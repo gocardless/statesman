@@ -1,5 +1,4 @@
 require "spec_helper"
-require 'pry'
 
 describe Statesmin::TransitionHelper do
   let(:transition_class)  { Class.new { include Statesmin::TransitionHelper } }
