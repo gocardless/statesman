@@ -1,16 +1,16 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'statesman/version'
+require 'statesmin/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "statesman"
-  spec.version       = Statesman::VERSION
-  spec.authors       = ["Harry Marr", "Andy Appleton"]
-  spec.email         = ["developers@gocardless.com"]
-  spec.description   = %q{A statesmanlike state machine library}
+  spec.name          = "statesmin"
+  spec.version       = Statesmin::VERSION
+  spec.authors       = ["Chris Ewald"]
+  spec.email         = ["chrisewald@gmail.com"]
+  spec.description   = %q{A minimal statesmanlike state machine library}
   spec.summary       = spec.description
-  spec.homepage      = "https://github.com/gocardless/statesman"
+  spec.homepage      = "https://github.com/mkcode/statesmin"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)

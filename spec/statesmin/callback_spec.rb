@@ -1,9 +1,9 @@
 require "spec_helper"
 
-describe Statesman::Callback do
+describe Statesmin::Callback do
   let(:cb_lambda) { -> {} }
   let(:callback) do
-    Statesman::Callback.new(from: nil, to: nil, callback: cb_lambda)
+    Statesmin::Callback.new(from: nil, to: nil, callback: cb_lambda)
   end
 
   describe "#initialize" do
@@ -11,7 +11,7 @@ describe Statesman::Callback do
       let(:cb_lambda) { nil }
 
       it "raises an error" do
-        expect { callback }.to raise_error(Statesman::InvalidCallbackError)
+        expect { callback }.to raise_error(Statesmin::InvalidCallbackError)
       end
     end
   end
@@ -28,7 +28,7 @@ describe Statesman::Callback do
 
   describe "#applies_to" do
     let(:callback) do
-      Statesman::Callback.new(from: :x, to: :y, callback: cb_lambda)
+      Statesmin::Callback.new(from: :x, to: :y, callback: cb_lambda)
     end
     subject { callback.applies_to?(from: from, to: to) }
 
@@ -61,7 +61,7 @@ describe Statesman::Callback do
     end
 
     context "with any to and any from value on the callback" do
-      let(:callback) { Statesman::Callback.new(callback: cb_lambda) }
+      let(:callback) { Statesmin::Callback.new(callback: cb_lambda) }
       let(:from) { :x }
       let(:to) { :y }
 
@@ -70,7 +70,7 @@ describe Statesman::Callback do
 
     context "with any from value on the callback" do
       let(:callback) do
-        Statesman::Callback.new(to: [:y, :z], callback: cb_lambda)
+        Statesmin::Callback.new(to: [:y, :z], callback: cb_lambda)
       end
       let(:from) { :x }
 
@@ -91,7 +91,7 @@ describe Statesman::Callback do
     end
 
     context "with any to value on the callback" do
-      let(:callback) { Statesman::Callback.new(from: :x, callback: cb_lambda) }
+      let(:callback) { Statesmin::Callback.new(from: :x, callback: cb_lambda) }
       let(:to) { :y }
 
       context "and an allowed to value" do

@@ -1,10 +1,10 @@
 require "spec_helper"
 
-describe Statesman::Guard do
+describe Statesmin::Guard do
   let(:callback) { -> {} }
-  let(:guard) { Statesman::Guard.new(from: nil, to: nil, callback: callback) }
+  let(:guard) { Statesmin::Guard.new(from: nil, to: nil, callback: callback) }
 
-  specify { expect(guard).to be_a(Statesman::Callback) }
+  specify { expect(guard).to be_a(Statesmin::Callback) }
 
   describe "#call" do
     subject(:call) { guard.call }
@@ -16,7 +16,7 @@ describe Statesman::Guard do
 
     context "error" do
       let(:callback) { -> { false } }
-      specify { expect { call }.to raise_error(Statesman::GuardFailedError) }
+      specify { expect { call }.to raise_error(Statesmin::GuardFailedError) }
     end
   end
 end

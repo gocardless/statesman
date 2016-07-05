@@ -5,15 +5,15 @@ uses a machete to rip out all of the database related code leaving you with a
 simple, robust, and well tested DSL for defining state machines in your
 application.
 
-The following is an adapted version of the original Statesman README.
+The following is an adapted version of the original Statesmin README.
 
 ---
 
-![Statesman](http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png)
+![Statesmin](http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png)
 
 A statesmanlike state machine library for Ruby 2.0.0 and up.
 
-Statesman is an opinionated state machine library designed to provide a robust
+Statesmin is an opinionated state machine library designed to provide a robust
 audit trail and data integrity. It decouples the state machine logic from the
 underlying model and allows for easy composition with one or more model classes.
 
@@ -37,7 +37,7 @@ protection.~~
 # State Machine Class #
 #######################
 class OrderStateMachine
-  include Statesman::Machine
+  include Statesmin::Machine
 
   state :pending, initial: true
   state :checking_out
@@ -73,7 +73,7 @@ end
 # Your Model #
 ##############
 class Order < ActiveRecord::Base
-  include Statesman::Adapters::ActiveRecordQueries
+  include Statesmin::Adapters::ActiveRecordQueries
 
   has_many :order_transitions, autosave: false
 
@@ -96,7 +96,7 @@ end
 # Transition Model #
 ####################
 class OrderTransition < ActiveRecord::Base
-  include Statesman::Adapters::ActiveRecordTransition
+  include Statesmin::Adapters::ActiveRecordTransition
 
   belongs_to :order, inverse_of: :order_transitions
 end
@@ -199,11 +199,11 @@ applicable guards pass.
 
 #### `Machine#transition_to!(:state)`
 Transition to the passed state, returning `true` on success. Raises
-`Statesman::GuardFailedError` or `Statesman::TransitionFailedError` on failure.
+`Statesmin::GuardFailedError` or `Statesmin::TransitionFailedError` on failure.
 
 #### `Machine#transition_to(:state)`
 Transition to the passed state, returning `true` on success. Swallows all
-Statesman exceptions and returns false on failure. (NB. if your guard or
+Statesmin exceptions and returns false on failure. (NB. if your guard or
 callback code throws an exception, it will not be caught.)
 
 ## Frequently Asked Questions
@@ -239,14 +239,14 @@ state machine as follows:
 
 ```ruby
 class OrderStateMachine
-  include Statesman::Machine
-  include Statesman::Events
+  include Statesmin::Machine
+  include Statesmin::Events
 
   ...
 end
 ```
 
-## Testing Statesman Implementations
+## Testing Statesmin Implementations
 
 This answer was abstracted from [this issue](https://github.com/gocardless/statesman/issues/77).
 
@@ -256,12 +256,12 @@ At GoCardless we focus on testing that:
 
 #### Testing Guards
 
-Guards can be tested by asserting that `transition_to!` does or does not raise a `Statesman::GuardFailedError`:
+Guards can be tested by asserting that `transition_to!` does or does not raise a `Statesmin::GuardFailedError`:
 
 ```ruby
 describe "guards" do
   it "cannot transition from state foo to state bar" do
-    expect { some_model.transition_to!(:bar) }.to raise_error(Statesman::GuardFailedError)
+    expect { some_model.transition_to!(:bar) }.to raise_error(Statesmin::GuardFailedError)
   end
 
   it "can transition from state foo to state baz" do

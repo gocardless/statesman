@@ -1,6 +1,6 @@
 require_relative "exceptions"
 
-module Statesman
+module Statesmin
   class Callback
     attr_reader :from
     attr_reader :to

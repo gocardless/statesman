@@ -1,4 +1,4 @@
-Thanks for taking an interest in contributing to Statesman, here are a few
+Thanks for taking an interest in contributing to Statesmin, here are a few
 ways you can help make this project better!
 
 # Contribute.md

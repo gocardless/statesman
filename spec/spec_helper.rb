@@ -1,4 +1,4 @@
-require "statesman"
+require "statesmin"
 require "rspec/its"
 
 RSpec.configure do |config|
