@@ -11,3 +11,5 @@ sudo: false
 script:
   - bundle exec rubocop
   - bundle exec rake
+
+cache: bundler
