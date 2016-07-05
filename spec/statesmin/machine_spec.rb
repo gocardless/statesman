@@ -330,8 +330,8 @@ describe Statesmin::Machine do
 
       context "and the option is not a valid state" do
         it "raises an InvalidStateError" do
-          expect { machine.new(my_model, state: :xyz) }
-            .to raise_error(Statesmin::InvalidStateError)
+          expect { machine.new(my_model, state: :xyz) }.
+            to raise_error(Statesmin::InvalidStateError)
         end
       end
     end
