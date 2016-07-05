@@ -8,28 +8,8 @@ rvm:
 
 sudo: false
 
-services: mongodb
-
-before_script:
-  - mysql -e 'CREATE DATABASE statesman_test;'
-  - psql -c 'CREATE DATABASE statesman_test;' -U postgres
-
 script:
   - bundle exec rubocop
   - bundle exec rake
 
-env:
-  - "RAILS_VERSION=3.2.21"
-  - "RAILS_VERSION=4.0.13"
-  - "RAILS_VERSION=4.1.14"
-  - "RAILS_VERSION=4.2.5"
-  - "RAILS_VERSION=4.2.5 DATABASE_URL=mysql2://root@localhost/statesman_test"
-  - "RAILS_VERSION=4.2.5 DATABASE_URL=postgres://postgres@localhost/statesman_test"
-  - "RAILS_VERSION=5.0.0.rc1 EXCLUDE_MONGOID=true"
-
-matrix:
-  exclude:
-    - rvm: 2.1
-      env: "RAILS_VERSION=5.0.0.rc1 EXCLUDE_MONGOID=true"
-    - rvm: 2.0.0
-      env: "RAILS_VERSION=5.0.0.rc1 EXCLUDE_MONGOID=true"
+cache: bundler
