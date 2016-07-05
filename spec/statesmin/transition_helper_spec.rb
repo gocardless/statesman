@@ -15,9 +15,9 @@ describe Statesmin::TransitionHelper do
 
       Statesmin::TransitionHelper::DELEGATED_METHODS.each do |method_name|
         describe "##{method_name}" do
-          it 'raises a RuntimeError' do
+          it 'raises a NotImplementedError' do
             expect { unimplemented_instance.send(method_name) }.
-              to raise_error(RuntimeError)
+              to raise_error(Statesmin::NotImplementedError)
           end
         end
       end
@@ -37,8 +37,9 @@ describe Statesmin::TransitionHelper do
 
   shared_examples 'a transition method' do |method|
     context 'when no transition method is defined' do
-      it 'raises a RuntimeError' do
-        expect { instance.send(method, :next) }.to raise_error(RuntimeError)
+      it 'raises a NotImplementedError' do
+        expect { instance.send(method, :next) }.
+          to raise_error(Statesmin::NotImplementedError)
       end
     end
 
@@ -108,8 +109,8 @@ describe Statesmin::TransitionHelper do
           allow(state_machine).to receive(:current_state).and_return('new')
         end
 
-        it 'raises an error' do
-          expect { instance.transition_to!(:next) }.to raise_error
+        it 'raises a RuntimeError' do
+          expect { instance.transition_to!(:next) }.to raise_error(RuntimeError)
         end
       end
     end
