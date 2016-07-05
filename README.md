@@ -1,5 +1,7 @@
 ## Statesmin
 
+[![Build Status](https://travis-ci.org/mkcode/statesmin.svg?branch=master)](https://travis-ci.org/mkcode/statesmin)
+
 Statesmin is a fork of [stateman](https://github.com/gocardless/statesman) that
 uses a machete to rip out all of the database related code leaving you with a
 simple, robust, and well tested DSL for defining state machines in your
