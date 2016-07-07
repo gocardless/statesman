@@ -412,6 +412,12 @@ describe "some callback" do
 end
 ```
 
+## Alternative minimal version
+
+If you love everything about statesman except for the hardcoded Transitions
+model, check out [statemin](https://github.com/mkcode/statesmin) - a minimal
+version of statesman.
+
 ---
 
 GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/jobs#software-engineer).
