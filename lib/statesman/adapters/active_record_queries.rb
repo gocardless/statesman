@@ -38,7 +38,13 @@ module Statesman
         end
 
         def transition_reflection
-          reflect_on_association(transition_name)
+          reflect_on_all_associations(:has_many).each do |value|
+            return value if value.klass == transition_class
+          end
+
+          raise MissingTransitionAssociation,
+                "Could not find has_many association between #{self.class} " \
+                "and #{transition_class}."
         end
 
         def model_foreign_key

@@ -5,6 +5,7 @@ module Statesman
   class GuardFailedError < StandardError; end
   class TransitionFailedError < StandardError; end
   class TransitionConflictError < StandardError; end
+  class MissingTransitionAssociation < StandardError; end
 
   class UnserializedMetadataError < StandardError
     def initialize(transition_class_name)
