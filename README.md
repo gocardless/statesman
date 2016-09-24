@@ -153,7 +153,7 @@ By default, Statesman uses `serialize` to store the metadata in JSON format.
 It is also possible to use the PostgreSQL JSON column if you are using Rails 4
 or 5. To do that
 
-* Change `metadata` column type in the transition model migration to `json`
+* Change `metadata` column type in the transition model migration to `json` or `jsonb`
 
   ```ruby
   # Before
