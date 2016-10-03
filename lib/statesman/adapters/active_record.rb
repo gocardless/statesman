@@ -70,7 +70,7 @@ module Statesman
 
         transition = transitions_for_parent.build(transition_attributes)
 
-        ::ActiveRecord::Base.transaction do
+        @parent_model.with_lock do
           @observer.execute(:before, from, to, transition)
           unset_old_most_recent
           transition.save!
