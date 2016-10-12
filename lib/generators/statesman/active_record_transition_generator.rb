@@ -27,9 +27,5 @@ module Statesman
     def under_rails_4?
       Rails::VERSION::MAJOR < 4
     end
-
-    def under_rails_5?
-      Rails::VERSION::MAJOR < 5
-    end
   end
 end
