@@ -6,13 +6,15 @@ module Statesman
       attr_reader :transition_class
       attr_reader :parent_model
 
-      def initialize(transition_class, parent_model, observer, _ = {})
+      def initialize(transition_class, parent_model, observer, options = {})
         @transition_class = transition_class
         @parent_model = parent_model
         @observer = observer
         unless transition_class_hash_fields.include?('statesman_metadata')
           raise UnserializedMetadataError, metadata_field_error_message
         end
+        @association_name =
+          options[:association_name] || @transition_class.collection_name
       end
 
       def create(from, to, metadata = {})
@@ -55,7 +57,7 @@ module Statesman
       end
 
       def transitions_for_parent
-        @parent_model.send(@transition_class.collection_name)
+        @parent_model.send(@association_name)
       end
 
       def next_sort_key
