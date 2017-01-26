@@ -187,7 +187,7 @@ module MyNamespace
 
     def state_machine
       @state_machine ||= MyStateMachine.new(
-        self, transition_class: MyNameSpace::MyActiveRecordModelTransition,
+        self, transition_class: MyNamespace::MyActiveRecordModelTransition,
               association_name: :my_active_record_model_transitions)
     end
 
