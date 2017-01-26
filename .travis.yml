@@ -10,6 +10,10 @@ sudo: false
 
 services: mongodb
 
+branches:
+  only:
+    - "master"
+
 before_script:
   - mysql -e 'CREATE DATABASE statesman_test;'
   - psql -c 'CREATE DATABASE statesman_test;' -U postgres
