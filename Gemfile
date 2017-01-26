@@ -4,6 +4,10 @@ gemspec
 
 gem "rails", "~> #{ENV["RAILS_VERSION"]}" if ENV["RAILS_VERSION"]
 
+if ENV["NOKOGIRI_VERSION"]
+  gem "nokogiri", "~> #{ENV["NOKOGIRI_VERSION"]}"
+end
+
 group :development do
   gem "mongoid", ">= 3.1" unless ENV["EXCLUDE_MONGOID"]
 
