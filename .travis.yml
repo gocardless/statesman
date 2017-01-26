@@ -13,6 +13,10 @@ before_install:
  - gem update --system
  - gem install bundler
 
+branches:
+  only:
+    - "master"
+
 before_script:
   - mysql -e 'CREATE DATABASE statesman_test;'
   - psql -c 'CREATE DATABASE statesman_test;' -U postgres
