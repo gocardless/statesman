@@ -2,9 +2,9 @@
 
 A statesmanlike state machine library for Ruby 2.0.0 and up.
 
-[![Gem Version](https://badge.fury.io/rb/statesman.png)](http://badge.fury.io/rb/statesman)
-[![Build Status](https://travis-ci.org/gocardless/statesman.png?branch=master)](https://travis-ci.org/gocardless/statesman)
-[![Code Climate](https://codeclimate.com/github/gocardless/statesman.png)](https://codeclimate.com/github/gocardless/statesman)
+[![Gem Version](https://badge.fury.io/rb/statesman.svg)](http://badge.fury.io/rb/statesman)
+[![Build Status](https://travis-ci.org/gocardless/statesman.svg?branch=master)](https://travis-ci.org/gocardless/statesman)
+[![Code Climate](https://codeclimate.com/github/gocardless/statesman.svg)](https://codeclimate.com/github/gocardless/statesman)
 [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Statesman is an opinionated state machine library designed to provide a robust
