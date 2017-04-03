@@ -33,7 +33,7 @@ class MyActiveRecordModelTransition < ActiveRecord::Base
   serialize :metadata, JSON
 end
 
-class CreateMyActiveRecordModelMigration < ActiveRecord::Migration
+class CreateMyActiveRecordModelMigration < ActiveRecord::Migration[4.2]
   def change
     create_table :my_active_record_models do |t|
       t.string :current_state
@@ -44,7 +44,7 @@ end
 
 # TODO: make this a module we can extend from the app? Or a generator?
 # rubocop:disable MethodLength
-class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
+class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration[4.2]
   def change
     create_table :my_active_record_model_transitions do |t|
       t.string  :to_state
@@ -110,7 +110,7 @@ class OtherActiveRecordModelTransition < ActiveRecord::Base
   serialize :metadata, JSON
 end
 
-class CreateOtherActiveRecordModelMigration < ActiveRecord::Migration
+class CreateOtherActiveRecordModelMigration < ActiveRecord::Migration[4.2]
   def change
     create_table :other_active_record_models do |t|
       t.string :current_state
@@ -121,7 +121,7 @@ class CreateOtherActiveRecordModelMigration < ActiveRecord::Migration
 end
 
 # rubocop:disable MethodLength
-class CreateOtherActiveRecordModelTransitionMigration < ActiveRecord::Migration
+class CreateOtherActiveRecordModelTransitionMigration < ActiveRecord::Migration[4.2]
   def change
     create_table :other_active_record_model_transitions do |t|
       t.string  :to_state
@@ -166,7 +166,7 @@ class CreateOtherActiveRecordModelTransitionMigration < ActiveRecord::Migration
 end
 # rubocop:enable MethodLength
 
-class DropMostRecentColumn < ActiveRecord::Migration
+class DropMostRecentColumn < ActiveRecord::Migration[4.2]
   def change
     remove_index :my_active_record_model_transitions,
                  name: "index_my_active_record_model_transitions_"\
@@ -207,7 +207,7 @@ module MyNamespace
   end
 end
 
-class CreateNamespacedARModelMigration < ActiveRecord::Migration
+class CreateNamespacedARModelMigration < ActiveRecord::Migration[4.2]
   def change
     create_table :my_namespace_my_active_record_models do |t|
       t.string :current_state
@@ -217,7 +217,7 @@ class CreateNamespacedARModelMigration < ActiveRecord::Migration
 end
 
 # rubocop:disable MethodLength
-class CreateNamespacedARModelTransitionMigration < ActiveRecord::Migration
+class CreateNamespacedARModelTransitionMigration < ActiveRecord::Migration[4.2]
   def change
     create_table :my_namespace_my_active_record_model_transitions do |t|
       t.string  :to_state

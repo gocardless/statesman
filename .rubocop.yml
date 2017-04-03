@@ -32,7 +32,7 @@ Encoding:
   Enabled: false
 
 LineLength:
-  Max: 80
+  Max: 85
 
 GuardClause:
   Enabled: false

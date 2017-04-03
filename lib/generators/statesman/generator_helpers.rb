@@ -40,5 +40,9 @@ module Statesman
     def database_supports_partial_indexes?
       Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
     end
+
+    def under_rails_5?
+      Rails::VERSION::MAJOR < 5
+    end
   end
 end
