@@ -412,6 +412,33 @@ describe "some callback" do
 end
 ```
 
+## Testing with RSpec
+```ruby
+require 'spec_helper'
+describe OrderStateMachine do
+  describe 'states' do
+    before :each do
+      @order = create(:order)
+      @state_machine = OrderStateMachine.new(@order, transition_class: OrderTransition)
+    end
+
+    it 'has initial state pending' do
+      expect(@state_machine.current_state).to eql "pending"
+    end
+
+    context "pending" do
+      it "transitions to checking_out" do
+        @state_machine.transition_to!(:checking_out)
+        expect(@state_machine.current_state).to eql "checking_out"
+      end
+      it "transitions to cancelled" do
+        @state_machine.transition_to!(:cancelled)
+        expect(@state_machine.current_state).to eql "cancelled"
+      end
+    end
+  end
+end
+```
 ---
 
 GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/about/jobs/software-engineer).
