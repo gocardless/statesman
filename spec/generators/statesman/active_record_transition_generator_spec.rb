@@ -23,4 +23,11 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     it { is_expected.not_to contain(/class_name:/) }
     it { is_expected.to contain(/class BaconTransition/) }
   end
+
+  describe "it doesn't create any double-spacing" do
+    before { run_generator %w(Yummy::Bacon Yummy::BaconTransition) }
+    subject { file('app/models/yummy/bacon_transition.rb') }
+
+    it { is_expected.to_not contain(/\n\n\n/) }
+  end
 end
