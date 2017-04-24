@@ -24,7 +24,7 @@ module Statesman
       "db/migrate/#{next_migration_number}_create_#{table_name}.rb"
     end
 
-    def rails_4?
+    def rails_4_or_higher?
       Rails.version.split(".").map(&:to_i).first >= 4
     end
   end

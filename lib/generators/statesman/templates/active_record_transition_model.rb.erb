@@ -1,9 +1,10 @@
 class <%= klass %> < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
-<% unless rails_4? %>
+<%- unless rails_4_or_higher? -%>
   attr_accessible :to_state, :metadata, :sort_key
-<% end %>
+
+<%- end -%>
   belongs_to :<%= parent_name %><%= class_name_option %>, inverse_of: :<%= table_name %>
 
   after_destroy :update_most_recent, if: :most_recent?
