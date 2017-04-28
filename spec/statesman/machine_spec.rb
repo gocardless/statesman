@@ -596,6 +596,23 @@ describe Statesman::Machine do
               to raise_error(Statesman::GuardFailedError)
           end
         end
+
+        context "when passing skip_guard" do
+          let(:result) { false }
+
+          it "should not skip the guard if nil" do
+            expect do
+              instance.transition_to!(:y)
+            end.to raise_error(Statesman::GuardFailedError)
+          end
+
+          it "should skip the guard if true" do
+            expect do
+              instance.transition_to!(:y, skip_guard: true)
+            end.to_not raise_error
+            expect(instance.current_state).to eq("y")
+          end
+        end
       end
     end
   end

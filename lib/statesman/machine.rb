@@ -273,9 +273,11 @@ module Statesman
               "Cannot transition from '#{from}' to '#{to}'"
       end
 
-      # Call all guards, they raise exceptions if they fail
-      guards_for(from: from, to: to).each do |guard|
-        guard.call(@object, last_transition, options[:metadata])
+      unless options[:metadata] && options[:metadata][:skip_guard]
+        # Call all guards, they raise exceptions if they fail
+        guards_for(from: from, to: to).each do |guard|
+          guard.call(@object, last_transition, options[:metadata])
+        end
       end
     end
 
