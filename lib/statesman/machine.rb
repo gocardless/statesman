@@ -234,8 +234,27 @@ module Statesman
     rescue TransitionFailedError, GuardFailedError
       false
     end
+    
+    def transitions_to(to_state, opts = {})
+      states_to_transition(current_state.to_s, to_state.to_s)[1..-1]&.each do |state|
+        transition_to(to_state, opts)
+      end
+    end
 
     private
+    
+    def states_to_transition(from, to, states = [])
+      states = states.dup + [from]
+
+      return states if states.last == to || !self.class.successors[from]
+
+      paths =
+        self.class.successors[from].map do |after|
+          states_to_transition(after, to, states)
+        end
+
+      paths.find { |p| p&.last == to }
+    end
 
     def adapter_class(transition_class)
       if transition_class == Statesman::Adapters::MemoryTransition
