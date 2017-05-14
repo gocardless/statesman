@@ -1,7 +1,7 @@
-class AddStatesmanTo<%= migration_class_name %> < ActiveRecord::Migration
+class AddStatesmanTo<%= migration_class_name %> < ActiveRecord::Migration<%= "[#{ActiveRecord::Migration.current_version}]" if rails_5_or_higher? %>
   def change
     add_column :<%= table_name %>, :to_state, :string, null: false
-    add_column :<%= table_name %>, :metadata, :text<%= ", default: \"{}\"" unless mysql? %>
+    add_column :<%= table_name %>, :metadata, :text<%= ", default: #{metadata_default_value}" unless mysql? %>
     add_column :<%= table_name %>, :sort_key, :integer, null: false
     add_column :<%= table_name %>, :<%= parent_id %>, :integer, null: false
     add_column :<%= table_name %>, :most_recent, null: false
