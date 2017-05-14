@@ -27,5 +27,9 @@ module Statesman
     def rails_4_or_higher?
       Rails.version.split(".").map(&:to_i).first >= 4
     end
+
+    def rails_5_or_higher?
+      Rails.version.split(".").map(&:to_i).first >= 5
+    end
   end
 end
