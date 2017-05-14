@@ -1,5 +1,11 @@
-require "support/active_record"
 require "json"
+
+MIGRATION_CLASS = if Rails.version.split(".").map(&:to_i).first >= 5
+                    migration_version = ActiveRecord::Migration.current_version
+                    ActiveRecord::Migration[migration_version]
+                  else
+                    ActiveRecord::Migration
+                  end
 
 class MyStateMachine
   include Statesman::Machine
@@ -33,7 +39,7 @@ class MyActiveRecordModelTransition < ActiveRecord::Base
   serialize :metadata, JSON
 end
 
-class CreateMyActiveRecordModelMigration < ActiveRecord::Migration
+class CreateMyActiveRecordModelMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_models do |t|
       t.string :current_state
@@ -44,7 +50,7 @@ end
 
 # TODO: make this a module we can extend from the app? Or a generator?
 # rubocop:disable MethodLength
-class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
+class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_model_transitions do |t|
       t.string  :to_state
@@ -110,7 +116,7 @@ class OtherActiveRecordModelTransition < ActiveRecord::Base
   serialize :metadata, JSON
 end
 
-class CreateOtherActiveRecordModelMigration < ActiveRecord::Migration
+class CreateOtherActiveRecordModelMigration < MIGRATION_CLASS
   def change
     create_table :other_active_record_models do |t|
       t.string :current_state
@@ -121,7 +127,7 @@ class CreateOtherActiveRecordModelMigration < ActiveRecord::Migration
 end
 
 # rubocop:disable MethodLength
-class CreateOtherActiveRecordModelTransitionMigration < ActiveRecord::Migration
+class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :other_active_record_model_transitions do |t|
       t.string  :to_state
@@ -166,7 +172,7 @@ class CreateOtherActiveRecordModelTransitionMigration < ActiveRecord::Migration
 end
 # rubocop:enable MethodLength
 
-class DropMostRecentColumn < ActiveRecord::Migration
+class DropMostRecentColumn < MIGRATION_CLASS
   def change
     remove_index :my_active_record_model_transitions,
                  name: "index_my_active_record_model_transitions_"\
@@ -207,7 +213,7 @@ module MyNamespace
   end
 end
 
-class CreateNamespacedARModelMigration < ActiveRecord::Migration
+class CreateNamespacedARModelMigration < MIGRATION_CLASS
   def change
     create_table :my_namespace_my_active_record_models do |t|
       t.string :current_state
@@ -217,7 +223,7 @@ class CreateNamespacedARModelMigration < ActiveRecord::Migration
 end
 
 # rubocop:disable MethodLength
-class CreateNamespacedARModelTransitionMigration < ActiveRecord::Migration
+class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :my_namespace_my_active_record_model_transitions do |t|
       t.string  :to_state
