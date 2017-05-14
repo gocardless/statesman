@@ -123,7 +123,14 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       end
 
       context "ActiveRecord::RecordNotUnique unrelated to this transition" do
-        let(:error) { ActiveRecord::RecordNotUnique.new("unrelated", nil) }
+        let(:error) do
+          if ::ActiveRecord.respond_to?(:gem_version) &&
+             ::ActiveRecord.gem_version >= Gem::Version.new('4.0.0')
+            ActiveRecord::RecordNotUnique.new("unrelated")
+          else
+            ActiveRecord::RecordNotUnique.new("unrelated", nil)
+          end
+        end
         it { is_expected.to raise_exception(ActiveRecord::RecordNotUnique) }
       end
 
