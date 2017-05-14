@@ -9,6 +9,6 @@ class AddStatesmanTo<%= migration_class_name %> < ActiveRecord::Migration
     add_column :<%= table_name %>, :updated_at, :datetime, null: false
 
     add_index :<%= table_name %>, [:<%= parent_id %>, :sort_key], unique: true, name: "<%= index_name :parent_sort  %>"
-    add_index :<%= table_name %>, [:<%= parent_id %>, :most_recent], unique: true, where: "most_recent", name: "<%= index_name :parent_most_recent %>"
+    add_index :<%= table_name %>, [:<%= parent_id %>, :most_recent], unique: true, <%= "where: 'most_recent', " if database_supports_partial_indexes? %>name: "<%= index_name :parent_most_recent %>"
   end
 end
