@@ -28,10 +28,11 @@ script:
   - bundle exec rake
 
 env:
-  - "RAILS_VERSION=4.2.8"
-  - "RAILS_VERSION=4.2.8 DATABASE_URL=mysql2://root@localhost/statesman_test"
-  - "RAILS_VERSION=4.2.8 DATABASE_URL=postgres://postgres@localhost/statesman_test"
-  - "RAILS_VERSION=5.0.3 EXCLUDE_MONGOID=true"
+  - "RAILS_VERSION=4.2.9"
+  - "RAILS_VERSION=4.2.9 DATABASE_URL=mysql2://root@localhost/statesman_test"
+  - "RAILS_VERSION=4.2.9 DATABASE_URL=postgres://postgres@localhost/statesman_test"
+  - "RAILS_VERSION=5.0.5 EXCLUDE_MONGOID=true"
+  - "RAILS_VERSION=5.1.3 EXCLUDE_MONGOID=true"
 
 matrix:
   exclude: []
