@@ -125,14 +125,18 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
   end
 
-  context "with a transition name" do
+  context "with a custom name for the transition association" do
     before do
+      # Switch to using OtherActiveRecordModelTransition, so the existing
+      # relation with MyActiveRecordModelTransition doesn't interfere with
+      # this spec.
       MyActiveRecordModel.send(:has_many,
                                :custom_name,
-                               class_name: 'MyActiveRecordModelTransition')
+                               class_name: 'OtherActiveRecordModelTransition')
+
       MyActiveRecordModel.class_eval do
-        def self.transition_name
-          :custom_name
+        def self.transition_class
+          OtherActiveRecordModelTransition
         end
       end
     end
@@ -140,6 +144,26 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     describe ".in_state" do
       subject(:query) { MyActiveRecordModel.in_state(:succeeded) }
       specify { expect { query }.to_not raise_error }
+    end
+  end
+
+  context "with no association with the transition class" do
+    before do
+      class UnknownModelTransition < OtherActiveRecordModelTransition; end
+
+      MyActiveRecordModel.class_eval do
+        def self.transition_class
+          UnknownModelTransition
+        end
+      end
+    end
+
+    describe ".in_state" do
+      subject(:query) { MyActiveRecordModel.in_state(:succeeded) }
+
+      it "raises a helpful error" do
+        expect { query }.to raise_error(Statesman::MissingTransitionAssociation)
+      end
     end
   end
 end
