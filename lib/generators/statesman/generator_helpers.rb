@@ -20,6 +20,10 @@ module Statesman
       parent.demodulize.underscore
     end
 
+    def parent_table_name
+      parent.demodulize.underscore.pluralize
+    end
+
     def parent_id
       parent_name + "_id"
     end
