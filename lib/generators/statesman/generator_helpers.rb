@@ -45,8 +45,18 @@ module Statesman
       rails_5_or_higher? ? "{}" : "{}".inspect
     end
 
+    def rails_4_or_higher?
+      rails_major_version >= 4
+    end
+
     def rails_5_or_higher?
-      Rails.version.split(".").map(&:to_i).first >= 5
+      rails_major_version >= 5
+    end
+
+    private
+
+    def rails_major_version
+      @_rails_major_version ||= Rails.version.split(".").map(&:to_i).first
     end
   end
 end
