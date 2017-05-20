@@ -23,13 +23,5 @@ module Statesman
     def migration_file_name
       "db/migrate/#{next_migration_number}_create_#{table_name}.rb"
     end
-
-    def rails_4_or_higher?
-      Rails.version.split(".").map(&:to_i).first >= 4
-    end
-
-    def rails_5_or_higher?
-      Rails.version.split(".").map(&:to_i).first >= 5
-    end
   end
 end
