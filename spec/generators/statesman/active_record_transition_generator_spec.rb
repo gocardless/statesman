@@ -7,6 +7,20 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     let(:migration_name) { 'db/migrate/create_bacon_transitions.rb' }
   end
 
+  describe 'creates a migration' do
+    subject { file("db/migrate/#{time}_create_bacon_transitions.rb") }
+
+    before { allow(Time).to receive(:now).and_return(mock_time) }
+    before { run_generator %w(Yummy::Bacon Yummy::BaconTransition) }
+
+    let(:mock_time) { double('Time', utc: double('UTCTime', strftime: time)) }
+    let(:time) { '5678309' }
+
+    it "includes a foreign key" do
+      expect(subject).to contain("add_foreign_key :bacon_transitions, :bacons")
+    end
+  end
+
   describe 'properly adds class names' do
     before { run_generator %w(Yummy::Bacon Yummy::BaconTransition) }
     subject { file('app/models/yummy/bacon_transition.rb') }
