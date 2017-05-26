@@ -6,7 +6,6 @@ rvm:
   - 2.4.1
   - 2.3.3
   - 2.2.6
-  - 2.1.9
 
 sudo: false
 
@@ -29,21 +28,10 @@ script:
   - bundle exec rake
 
 env:
-  - "RAILS_VERSION=3.2.21"
-  - "RAILS_VERSION=4.0.13"
-  - "RAILS_VERSION=4.1.14"
   - "RAILS_VERSION=4.2.8"
   - "RAILS_VERSION=4.2.8 DATABASE_URL=mysql2://root@localhost/statesman_test"
   - "RAILS_VERSION=4.2.8 DATABASE_URL=postgres://postgres@localhost/statesman_test"
   - "RAILS_VERSION=5.0.0 EXCLUDE_MONGOID=true"
 
 matrix:
-  exclude:
-    - rvm: 2.1.9
-      env: "RAILS_VERSION=5.0.0 EXCLUDE_MONGOID=true"
-    - rvm: 2.4.1
-      env: "RAILS_VERSION=3.2.21"
-    - rvm: 2.4.1
-      env: "RAILS_VERSION=4.0.13"
-    - rvm: 2.4.1
-      env: "RAILS_VERSION=4.1.14"
+  exclude: []
