@@ -412,6 +412,10 @@ describe "some callback" do
 end
 ```
 
+# Third-party extensions
+
+[statesman-sequel](https://github.com/badosu/statesman-sequel) - An adapter to make Statesman work with [Sequel](https://github.com/jeremyevans/sequel)
+
 ---
 
 GoCardless ♥ open source. If you do too, come [join us](https://gocardless.com/about/jobs/software-engineer).
