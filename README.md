@@ -77,7 +77,6 @@ class Order < ActiveRecord::Base
   def self.transition_class
     OrderTransition
   end
-  private_class_method :transition_class
 
   def self.initial_state
     :pending
@@ -319,7 +318,6 @@ class Order < ActiveRecord::Base
   def self.transition_class
     OrderTransition
   end
-  private_class_method :transition_class
 
   def self.initial_state
     OrderStateMachine.initial_state
