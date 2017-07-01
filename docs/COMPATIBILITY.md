@@ -4,7 +4,7 @@ Our goal as Statesman maintainers is for the library to be compatible with all s
 
 Specifically, any CRuby/MRI version that has not received an End of Life notice ([e.g. this notice for Ruby 2.1](https://www.ruby-lang.org/en/news/2017/04/01/support-of-ruby-2-1-has-ended/)) is supported. Similarly, any version of Rails listed as currently supported on [this page](http://guides.rubyonrails.org/maintenance_policy.html) is one we aim to support in Statesman.
 
-To that end, [our build matrix](.travis.yml) includes all these versions.
+To that end, [our build matrix](../.travis.yml) includes all these versions.
 
 Any time Statesman doesn't work on a supported combination of Ruby and Rails, it's a bug, and can be reported [here](https://github.com/gocardless/statesman/issues).
 
