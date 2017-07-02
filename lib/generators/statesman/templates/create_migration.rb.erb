@@ -1,8 +1,8 @@
-class Create<%= migration_class_name %> < ActiveRecord::Migration
+class Create<%= migration_class_name %> < ActiveRecord::Migration<%= "[#{ActiveRecord::Migration.current_version}]" if rails_5_or_higher? %>
   def change
     create_table :<%= table_name %> do |t|
       t.string :to_state, null: false
-      t.text :metadata<%= ", default: \"{}\"" unless mysql? %>
+      t.text :metadata<%= ", default: #{metadata_default_value}" unless mysql? %>
       t.integer :sort_key, null: false
       t.integer :<%= parent_id %>, null: false
       t.boolean :most_recent<%= ", null: false" if database_supports_partial_indexes? %>

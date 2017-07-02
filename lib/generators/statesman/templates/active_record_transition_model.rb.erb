@@ -1,4 +1,4 @@
-class <%= klass %> < ActiveRecord::Base
+class <%= klass %> < <%= rails_5_or_higher? ? 'ApplicationRecord' : 'ActiveRecord::Base' %>
   include Statesman::Adapters::ActiveRecordTransition
 
 <%- unless rails_4_or_higher? -%>
