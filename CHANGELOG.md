@@ -7,6 +7,12 @@
 
 For details on our compatibility policy, see `docs/COMPATIBILITY.md`.
 
+*Changes*
+
+- Better handling of custom transition association names (patch by [@greysteil](https://github.com/greysteil))
+- Add foreign keys to transition table generator (patch by [@greysteil](https://github.com/greysteil))
+- Support partial indexes in transition table update generator (patch by [@kenchan0130](https://github.com/kenchan0130))
+
 ## v2.0.1, 29 March 2016
 
 - Add support for Rails 5 (excluding Mongoid adapter)
