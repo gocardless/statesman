@@ -1,3 +1,12 @@
+## v3.0.0, 3 July 2017
+
+*Breaking changes*
+
+- Drop support for Rails < 4.2
+- Drop support for Ruby < 2.2
+
+For details on our compatibility policy, see `docs/COMPATIBILITY.md`.
+
 ## v2.0.1, 29 March 2016
 
 - Add support for Rails 5 (excluding Mongoid adapter)
