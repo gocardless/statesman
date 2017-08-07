@@ -259,6 +259,16 @@ Returns an array of all possible state names as strings.
 
 #### `Machine.successors`
 Returns a hash of states and the states it is valid for them to transition to.
+```ruby
+Machine.successors
+
+{
+  "pending" => ["checking_out", "cancelled"],
+  "checking_out" => ["purchased", "cancelled"],
+  "purchased" => ["shipped", "failed"],
+  "shipped" => ["refunded"]
+}
+```
 
 ## Instance methods
 
