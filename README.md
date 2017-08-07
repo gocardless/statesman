@@ -254,6 +254,22 @@ If you know you want to retry a transition if it fails due to a race condition
 call it from within this block. Takes an (optional) argument for the maximum
 number of retry attempts (defaults to 1).
 
+#### `Machine.states`
+Returns an array of all possible state names as strings.
+
+#### `Machine.successors`
+Returns a hash of states and the states it is valid for them to transition to.
+```ruby
+Machine.successors
+
+{
+  "pending" => ["checking_out", "cancelled"],
+  "checking_out" => ["purchased", "cancelled"],
+  "purchased" => ["shipped", "failed"],
+  "shipped" => ["refunded"]
+}
+```
+
 ## Instance methods
 
 #### `Machine#current_state`
