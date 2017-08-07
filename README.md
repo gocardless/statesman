@@ -258,7 +258,7 @@ number of retry attempts (defaults to 1).
 Returns an array of all possible state names as strings.
 
 #### `Machine.successors`
-Returns a hash of states and the states it is valid for them to transition too.
+Returns a hash of states and the states it is valid for them to transition to.
 
 ## Instance methods
 
