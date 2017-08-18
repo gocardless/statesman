@@ -51,3 +51,8 @@ Style/RaiseArgs:
 Metrics/BlockLength:
   Exclude:
     - spec/**/*
+
+Style/FileName:
+  Exclude:
+    - Gemfile
+    - Guardfile
