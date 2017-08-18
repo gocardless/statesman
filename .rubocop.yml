@@ -47,3 +47,7 @@ DotPosition:
 # Allow class and message or instance raises
 Style/RaiseArgs:
   Enabled: false
+
+Metrics/BlockLength:
+  Exclude:
+    - spec/**/*
