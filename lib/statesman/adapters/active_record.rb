@@ -6,7 +6,7 @@ module Statesman
       attr_reader :transition_class
       attr_reader :parent_model
 
-      JSON_COLUMN_TYPES = %w(json jsonb).freeze
+      JSON_COLUMN_TYPES = %w[json jsonb].freeze
 
       def self.database_supports_partial_indexes?
         # Rails 3 doesn't implement `supports_partial_index?`
@@ -66,7 +66,7 @@ module Statesman
                                   sort_key: next_sort_key,
                                   metadata: metadata }
 
-        transition_attributes.merge!(most_recent: true)
+        transition_attributes[:most_recent] = true
 
         transition = transitions_for_parent.build(transition_attributes)
 

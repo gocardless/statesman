@@ -84,7 +84,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
 
     context "given an array of states" do
-      subject { MyActiveRecordModel.in_state([:succeeded, :failed]) }
+      subject { MyActiveRecordModel.in_state(%i[succeeded failed]) }
 
       it { is_expected.to include model }
       it { is_expected.to include other_model }
@@ -117,7 +117,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
 
     context "given an array of states" do
-      subject { MyActiveRecordModel.not_in_state([:succeeded, :failed]) }
+      subject { MyActiveRecordModel.not_in_state(%i[succeeded failed]) }
       it do
         is_expected.to match_array([initial_state_model,
                                     returned_to_initial_model])

@@ -8,17 +8,18 @@ class MyStateMachine
   state :succeeded
   state :failed
 
-  transition from: :initial, to: [:succeeded, :failed]
+  transition from: :initial, to: %i[succeeded failed]
   transition from: :failed,  to: :initial
 end
 
 class MyActiveRecordModel < ActiveRecord::Base
   has_many :my_active_record_model_transitions, autosave: false
-  alias_method :transitions, :my_active_record_model_transitions
+  alias transitions my_active_record_model_transitions
 
   def state_machine
     @state_machine ||= MyStateMachine.new(
-      self, transition_class: MyActiveRecordModelTransition)
+      self, transition_class: MyActiveRecordModelTransition
+    )
   end
 
   def metadata
@@ -68,19 +69,19 @@ class CreateMyActiveRecordModelTransitionMigration < ActiveRecord::Migration
     end
 
     add_index :my_active_record_model_transitions,
-              [:my_active_record_model_id, :sort_key],
+              %i[my_active_record_model_id sort_key],
               unique: true, name: "sort_key_index"
 
     if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
       add_index :my_active_record_model_transitions,
-                [:my_active_record_model_id, :most_recent],
+                %i[my_active_record_model_id most_recent],
                 unique: true,
                 where: "most_recent",
                 name: "index_my_active_record_model_transitions_"\
                       "parent_most_recent"
     else
       add_index :my_active_record_model_transitions,
-                [:my_active_record_model_id, :most_recent],
+                %i[my_active_record_model_id most_recent],
                 unique: true,
                 name: "index_my_active_record_model_transitions_"\
                       "parent_most_recent"
@@ -91,11 +92,12 @@ end
 
 class OtherActiveRecordModel < ActiveRecord::Base
   has_many :other_active_record_model_transitions, autosave: false
-  alias_method :transitions, :other_active_record_model_transitions
+  alias transitions other_active_record_model_transitions
 
   def state_machine
     @state_machine ||= MyStateMachine.new(
-      self, transition_class: OtherActiveRecordModelTransition)
+      self, transition_class: OtherActiveRecordModelTransition
+    )
   end
 
   def metadata
@@ -145,19 +147,19 @@ class CreateOtherActiveRecordModelTransitionMigration < ActiveRecord::Migration
     end
 
     add_index :other_active_record_model_transitions,
-              [:other_active_record_model_id, :sort_key],
+              %i[other_active_record_model_id sort_key],
               unique: true, name: "other_sort_key_index"
 
     if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
       add_index :other_active_record_model_transitions,
-                [:other_active_record_model_id, :most_recent],
+                %i[other_active_record_model_id most_recent],
                 unique: true,
                 where: "most_recent",
                 name: "index_other_active_record_model_transitions_"\
                       "parent_most_recent"
     else
       add_index :other_active_record_model_transitions,
-                [:other_active_record_model_id, :most_recent],
+                %i[other_active_record_model_id most_recent],
                 unique: true,
                 name: "index_other_active_record_model_transitions_"\
                       "parent_most_recent"
@@ -188,7 +190,8 @@ module MyNamespace
     def state_machine
       @state_machine ||= MyStateMachine.new(
         self, transition_class: MyNamespace::MyActiveRecordModelTransition,
-              association_name: :my_active_record_model_transitions)
+              association_name: :my_active_record_model_transitions
+      )
     end
 
     def metadata
@@ -245,14 +248,14 @@ class CreateNamespacedARModelTransitionMigration < ActiveRecord::Migration
 
     if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
       add_index :my_namespace_my_active_record_model_transitions,
-                [:my_active_record_model_id, :most_recent],
+                %i[my_active_record_model_id most_recent],
                 unique: true,
                 where: "most_recent",
                 name: "index_namespace_model_transitions_"\
                       "parent_most_recent"
     else
       add_index :my_namespace_my_active_record_model_transitions,
-                [:my_active_record_model_id, :most_recent],
+                %i[my_active_record_model_id most_recent],
                 unique: true,
                 name: "index_namespace_model_transitions_"\
                       "parent_most_recent"

@@ -11,7 +11,7 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     subject { file("db/migrate/#{time}_create_bacon_transitions.rb") }
 
     before { allow(Time).to receive(:now).and_return(mock_time) }
-    before { run_generator %w(Yummy::Bacon Yummy::BaconTransition) }
+    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
 
     let(:mock_time) { double('Time', utc: double('UTCTime', strftime: time)) }
     let(:time) { '5678309' }
@@ -22,7 +22,7 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
   end
 
   describe 'properly adds class names' do
-    before { run_generator %w(Yummy::Bacon Yummy::BaconTransition) }
+    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
     subject { file('app/models/yummy/bacon_transition.rb') }
 
     it { is_expected.to contain(/:bacon_transition/) }
@@ -31,7 +31,7 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
   end
 
   describe 'properly formats without class names' do
-    before { run_generator %w(Bacon BaconTransition) }
+    before { run_generator %w[Bacon BaconTransition] }
     subject { file('app/models/bacon_transition.rb') }
 
     it { is_expected.not_to contain(/class_name:/) }
@@ -39,7 +39,7 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
   end
 
   describe "it doesn't create any double-spacing" do
-    before { run_generator %w(Yummy::Bacon Yummy::BaconTransition) }
+    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
     subject { file('app/models/yummy/bacon_transition.rb') }
 
     it { is_expected.to_not contain(/\n\n\n/) }

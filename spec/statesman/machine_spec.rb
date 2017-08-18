@@ -7,7 +7,7 @@ describe Statesman::Machine do
   describe ".state" do
     before { machine.state(:x) }
     before { machine.state(:y) }
-    specify { expect(machine.states).to eq(%w(x y)) }
+    specify { expect(machine.states).to eq(%w[x y]) }
 
     context "initial" do
       before { machine.state(:x, initial: true) }
@@ -151,7 +151,7 @@ describe Statesman::Machine do
       it "records the transition" do
         machine.transition(from: :x, to: :y)
         machine.transition(from: :x, to: :z)
-        expect(machine.successors).to eq("x" => %w(y z))
+        expect(machine.successors).to eq("x" => %w[y z])
       end
     end
   end
@@ -208,7 +208,7 @@ describe Statesman::Machine do
         state :x, initial: true
         state :y
         state :z
-        transition from: :x, to: [:y, :z]
+        transition from: :x, to: %i[y z]
       end
     end
 
@@ -262,12 +262,12 @@ describe Statesman::Machine do
       end
 
       context "from a terminal state and to multiple states" do
-        let(:options) { { from: :y, to: [:x, :z] } }
+        let(:options) { { from: :y, to: %i[x z] } }
         it_behaves_like "fails", Statesman::InvalidTransitionError
       end
 
       context "to an initial state and other states" do
-        let(:options) { { from: nil, to: [:y, :x, :z] } }
+        let(:options) { { from: nil, to: %i[y x z] } }
         it_behaves_like "fails", Statesman::InvalidTransitionError
       end
     end
@@ -284,12 +284,12 @@ describe Statesman::Machine do
       end
 
       context "to several" do
-        let(:options) { { from: :x, to: [:y, :z] } }
+        let(:options) { { from: :x, to: %i[y z] } }
         it_behaves_like "adds callback"
       end
 
       context "from any to several" do
-        let(:options) { { from: nil, to: [:y, :z] } }
+        let(:options) { { from: nil, to: %i[y z] } }
         it_behaves_like "adds callback"
       end
     end
@@ -417,12 +417,12 @@ describe Statesman::Machine do
 
       context "when given an array" do
         context "when one of the states is the current state" do
-          subject { instance.in_state?([:x, :y]) }
+          subject { instance.in_state?(%i[x y]) }
           it { is_expected.to eq(true) }
         end
 
         context "when none of the states are the current state" do
-          subject { instance.in_state?([:x, :z]) }
+          subject { instance.in_state?(%i[x z]) }
           it { is_expected.to eq(false) }
         end
       end
@@ -435,7 +435,7 @@ describe Statesman::Machine do
         state :x, initial: true
         state :y
         state :z
-        transition from: :x, to: [:y, :z]
+        transition from: :x, to: %i[y z]
         transition from: :y, to: :z
       end
     end
@@ -444,7 +444,7 @@ describe Statesman::Machine do
     subject { instance.allowed_transitions }
 
     context "with multiple possible states" do
-      it { is_expected.to eq(%w(y z)) }
+      it { is_expected.to eq(%w[y z]) }
     end
 
     context "with one possible state" do
