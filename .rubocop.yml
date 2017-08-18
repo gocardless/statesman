@@ -37,7 +37,7 @@ LineLength:
 GuardClause:
   Enabled: false
 
-SingleSpaceBeforeFirstArg:
+Layout/SpaceBeforeFirstArg:
   Enabled: false
 
 DotPosition:
