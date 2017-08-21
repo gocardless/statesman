@@ -70,7 +70,7 @@ describe Statesman::Callback do
 
     context "with any from value on the callback" do
       let(:callback) do
-        Statesman::Callback.new(to: [:y, :z], callback: cb_lambda)
+        Statesman::Callback.new(to: %i[y z], callback: cb_lambda)
       end
       let(:from) { :x }
 

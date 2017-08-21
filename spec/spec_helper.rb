@@ -67,14 +67,14 @@ RSpec.configure do |config|
   end
 
   config.before(:each, active_record: true) do
-    tables = %w(
+    tables = %w[
       my_active_record_models
       my_active_record_model_transitions
       my_namespace_my_active_record_models
       my_namespace_my_active_record_model_transitions
       other_active_record_models
       other_active_record_model_transitions
-    )
+    ]
     tables.each do |table_name|
       sql = "DROP TABLE IF EXISTS #{table_name};"
       ActiveRecord::Base.connection.execute(sql)

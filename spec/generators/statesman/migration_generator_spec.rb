@@ -22,7 +22,7 @@ describe Statesman::MigrationGenerator, type: :generator do
 
     before do
       allow(Time).to receive(:now).and_return(mock_time)
-      run_generator %w(Yummy::Bacon Yummy::BaconTransition)
+      run_generator %w[Yummy::Bacon Yummy::BaconTransition]
     end
 
     it { is_expected.to contain(/:bacon_transition/) }

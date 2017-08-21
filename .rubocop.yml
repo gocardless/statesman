@@ -1,6 +1,9 @@
 # For all options see https://github.com/bbatsov/rubocop/tree/master/config
 
+inherit_from: .rubocop_todo.yml
+
 AllCops:
+  DisplayCopNames: true
   Include:
     - Rakefile
     - statesman.gemfile
@@ -37,7 +40,7 @@ LineLength:
 GuardClause:
   Enabled: false
 
-SingleSpaceBeforeFirstArg:
+Layout/SpaceBeforeFirstArg:
   Enabled: false
 
 DotPosition:
@@ -46,3 +49,12 @@ DotPosition:
 # Allow class and message or instance raises
 Style/RaiseArgs:
   Enabled: false
+
+Metrics/BlockLength:
+  Exclude:
+    - spec/**/*
+
+Style/FileName:
+  Exclude:
+    - Gemfile
+    - Guardfile

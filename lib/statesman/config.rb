@@ -9,7 +9,6 @@ module Statesman
       instance_eval(&block) unless block.nil?
     end
 
-    # rubocop:disable TrivialAccessors
     def storage_adapter(adapter_class)
       @adapter_class = adapter_class
     end

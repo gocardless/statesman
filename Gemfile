@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem "rails", "~> #{ENV["RAILS_VERSION"]}" if ENV["RAILS_VERSION"]
+gem "rails", "~> #{ENV['RAILS_VERSION']}" if ENV["RAILS_VERSION"]
 
 group :development do
   gem "mongoid", ">= 3.1" unless ENV["EXCLUDE_MONGOID"]
