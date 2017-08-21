@@ -2,10 +2,18 @@ module Statesman
   class InvalidStateError < StandardError; end
   class InvalidTransitionError < StandardError; end
   class InvalidCallbackError < StandardError; end
-  class GuardFailedError < StandardError; end
   class TransitionFailedError < StandardError; end
   class TransitionConflictError < StandardError; end
   class MissingTransitionAssociation < StandardError; end
+
+  class GuardFailedError < StandardError
+    attr_reader :guard_name
+
+    def initialize(message, guard_name: nil)
+      @guard_name = guard_name
+      super(message)
+    end
+  end
 
   class UnserializedMetadataError < StandardError
     def initialize(transition_class_name)

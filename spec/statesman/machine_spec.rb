@@ -615,8 +615,12 @@ describe Statesman::Machine do
 
     context "when it is unsuccesful" do
       before do
+        guard_failed_error = Statesman::GuardFailedError.new(
+          "Guard on transition from: 'active' to 'inactive' returned false"
+        )
+
         allow(instance).to receive(:transition_to!).
-          and_raise(Statesman::GuardFailedError)
+          and_raise(guard_failed_error)
       end
       it { is_expected.to be_falsey }
     end
