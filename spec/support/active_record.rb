@@ -1,6 +1,8 @@
 require "json"
 
-MIGRATION_CLASS = if Rails.version.split(".").map(&:to_i).first >= 5
+rails_5_or_higher = Gem::Version.new(Rails.version) >= Gem::Version.new("5.0.0")
+
+MIGRATION_CLASS = if rails_5_or_higher
                     migration_version = ActiveRecord::Migration.current_version
                     ActiveRecord::Migration[migration_version]
                   else
