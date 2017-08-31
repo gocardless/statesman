@@ -44,5 +44,9 @@ module Statesman
     def database_supports_partial_indexes?
       Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
     end
+
+    def metadata_default_value
+      Utils.rails_5_or_higher? ? "{}" : "{}".inspect
+    end
   end
 end
