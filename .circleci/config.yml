@@ -1,0 +1,308 @@
+version: 2
+
+references:
+  steps: &steps
+    - checkout
+
+    - type: shell
+      name: Write RAILS_VERSION to a file so we can use it for caching purposes
+      command: echo "$RAILS_VERSION" > ~/RAILS_VERSION.txt
+
+    - type: cache-restore
+      key: statesman-{{ checksum "Gemfile" }}-{{ checksum "~/RAILS_VERSION.txt" }}
+
+    - run: gem install bundler
+
+    - run: bundle install --path vendor/bundle
+
+    - type: cache-save
+      key: statesman-{{ checksum "Gemfile" }}-{{ checksum "~/RAILS_VERSION.txt" }}
+      paths:
+        - vendor/bundle
+
+    - run: bundle exec rubocop
+
+    - run: bundle exec rake
+
+jobs:
+  build-ruby241-rails-429-mongo:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=4.2.9
+      - image: circleci/mongo:3.0.14
+    steps: *steps
+  build-ruby241-rails-429-mysql:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=4.2.9
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby241-rails-429-postgres:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=4.2.9
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby241-rails-505-mysql:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=5.0.5
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby241-rails-505-postgres:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=5.0.5
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby241-rails-513-mysql:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=5.1.3
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby241-rails-513-postgres:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=5.1.3
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby233-rails-429-mongo:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=4.2.9
+      - image: circleci/mongo:3.0.14
+    steps: *steps
+  build-ruby233-rails-429-mysql:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=4.2.9
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby233-rails-429-postgres:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=4.2.9
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby233-rails-505-mysql:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=5.0.5
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby233-rails-505-postgres:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=5.0.5
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby233-rails-513-mysql:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=5.1.3
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby233-rails-513-postgres:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=5.1.3
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby227-rails-429-mongo:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=4.2.9
+      - image: circleci/mongo:3.0.14
+    steps: *steps
+  build-ruby227-rails-429-mysql:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=4.2.9
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby227-rails-429-postgres:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=4.2.9
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby227-rails-505-mysql:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=5.0.5
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby227-rails-505-postgres:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=5.0.5
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby227-rails-513-mysql:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=5.1.3
+          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/mysql:5.7.18
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+          - MYSQL_USER=root
+          - MYSQL_PASSWORD=
+          - MYSQL_DATABASE=statesman_test
+    steps: *steps
+  build-ruby227-rails-513-postgres:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=5.1.3
+          - DATABASE_URL=postgres://postgres@localhost/statesman_test
+          - EXCLUDE_MONGOID=true
+      - image: circleci/postgres:9.6
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=statesman_test
+    steps: *steps
+
+workflows:
+  version: 2
+  tests:
+    jobs:
+      - build-ruby241-rails-429-mongo
+      - build-ruby241-rails-429-mysql
+      - build-ruby241-rails-429-postgres
+      - build-ruby241-rails-505-mysql
+      - build-ruby241-rails-505-postgres
+      - build-ruby241-rails-513-mysql
+      - build-ruby241-rails-513-postgres
+      - build-ruby233-rails-429-mongo
+      - build-ruby233-rails-429-mysql
+      - build-ruby233-rails-429-postgres
+      - build-ruby233-rails-505-mysql
+      - build-ruby233-rails-505-postgres
+      - build-ruby233-rails-513-mysql
+      - build-ruby233-rails-513-postgres
+      - build-ruby227-rails-429-mongo
+      - build-ruby227-rails-429-mysql
+      - build-ruby227-rails-429-postgres
+      - build-ruby227-rails-505-mysql
+      - build-ruby227-rails-505-postgres
+      - build-ruby227-rails-513-mysql
+      - build-ruby227-rails-513-postgres
