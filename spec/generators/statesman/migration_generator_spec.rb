@@ -14,6 +14,8 @@ describe Statesman::MigrationGenerator, type: :generator do
       double('Time', utc: double('UTCTime', strftime: migration_number))
     end
 
+    let(:rails_version) { "5.1.3" }
+
     subject do
       file(
         "db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb"
@@ -22,6 +24,7 @@ describe Statesman::MigrationGenerator, type: :generator do
 
     before do
       allow(Time).to receive(:now).and_return(mock_time)
+      allow(Rails).to receive(:version).and_return(rails_version)
       run_generator %w(Yummy::Bacon Yummy::BaconTransition)
     end
 
@@ -37,6 +40,15 @@ describe Statesman::MigrationGenerator, type: :generator do
     it "names the most_recent index appropriately" do
       expect(subject).
         to contain("name: \"index_bacon_transitions_parent_most_recent\"")
+    end
+
+    context "for Rails 5 and later" do
+      it { is_expected.to contain("ActiveRecord::Migration[5.0]") }
+    end
+
+    context "for Rails 4 and earlier" do
+      let(:rails_version) { "4.0.0" }
+      it { is_expected.to contain(/ActiveRecord::Migration/) }
     end
   end
 end

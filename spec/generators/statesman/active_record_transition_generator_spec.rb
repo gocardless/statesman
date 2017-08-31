@@ -30,4 +30,20 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
 
     it { is_expected.to_not contain(/\n\n\n/) }
   end
+
+  describe "uses the correct superclass" do
+    subject { file('app/models/yummy/bacon_transition.rb') }
+    before { allow(Rails).to receive(:version).and_return(rails_version) }
+    before { run_generator %w(Yummy::Bacon Yummy::BaconTransition) }
+
+    context "for Rails 5 and later" do
+      let(:rails_version) { "5.0.0" }
+      it { is_expected.to contain(/ApplicationRecord/) }
+    end
+
+    context "for Rails 4 and earlier" do
+      let(:rails_version) { "4.0.0" }
+      it { is_expected.to contain(/ActiveRecord::Base/) }
+    end
+  end
 end
