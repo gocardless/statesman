@@ -3,6 +3,7 @@ module Statesman
   autoload :Machine,    'statesman/machine'
   autoload :Callback,   'statesman/callback'
   autoload :Guard,      'statesman/guard'
+  autoload :Utils,      'statesman/utils'
   autoload :Version,    'statesman/version'
   module Adapters
     autoload :Memory,       "statesman/adapters/memory"

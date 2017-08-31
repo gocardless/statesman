@@ -1,4 +1,4 @@
-class Create<%= migration_class_name %> < ActiveRecord::Migration<%= "[#{ActiveRecord::Migration.current_version}]" if rails_5_or_higher? %>
+class Create<%= migration_class_name %> < ActiveRecord::Migration<%= "[#{ActiveRecord::Migration.current_version}]" if Statesman::Utils.rails_5_or_higher? %>
   def change
     create_table :<%= table_name %> do |t|
       t.string :to_state, null: false
