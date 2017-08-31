@@ -47,16 +47,24 @@ describe Statesman::MigrationGenerator, type: :generator do
       )
     end
 
+    let(:rails_version) { nil }
+
     before do
       allow(Time).to receive(:now).and_return(mock_time)
+      expect(Rails).to receive(:version).and_return(rails_version)
       run_generator %w(Yummy::Bacon Yummy::BaconTransition)
     end
 
-    if ::ActiveRecord.respond_to?(:gem_version) &&
-       ::ActiveRecord.gem_version >= Gem::Version.new('5.0.0')
-      it { is_expected.to contain(/ActiveRecord::Migration\[\d+\.\d+\]/) }
-    else
+    context "on Rails 4" do
+      let(:rails_version) { "4.1.14" }
+
       it { is_expected.not_to contain(/ActiveRecord::Migration\[\d+\.\d+\]/) }
+    end
+
+    context "on Rails 5" do
+      let(:rails_version) { "5.1.0" }
+
+      it { is_expected.to contain(/ActiveRecord::Migration\[\d+\.\d+\]/) }
     end
   end
 end

@@ -123,7 +123,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       end
 
       context "ActiveRecord::RecordNotUnique unrelated to this transition" do
-        let(:error) { ActiveRecord::RecordNotUnique.new("unrelated", nil) }
+        let(:error) { ActiveRecord::RecordNotUnique.new("unrelated") }
         it { is_expected.to raise_exception(ActiveRecord::RecordNotUnique) }
       end
 
