@@ -46,11 +46,7 @@ module Statesman
     end
 
     def metadata_default_value
-      rails_5_or_higher? ? "{}" : "{}".inspect
-    end
-
-    def rails_5_or_higher?
-      Rails.version.split(".").map(&:to_i).first >= 5
+      Utils.rails_5_or_higher? ? "{}" : "{}".inspect
     end
   end
 end

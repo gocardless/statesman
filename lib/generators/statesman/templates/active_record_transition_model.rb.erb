@@ -1,7 +1,7 @@
-class <%= klass %> < <%= rails_5_or_higher? ? 'ApplicationRecord' : 'ActiveRecord::Base' %>
+class <%= klass %> < <%= Statesman::Utils.rails_5_or_higher? ? 'ApplicationRecord' : 'ActiveRecord::Base' %>
   include Statesman::Adapters::ActiveRecordTransition
 
-<%- unless rails_4_or_higher? -%>
+<%- unless Statesman::Utils.rails_4_or_higher? -%>
   attr_accessible :to_state, :metadata, :sort_key
 
 <%- end -%>
