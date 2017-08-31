@@ -31,7 +31,7 @@ env:
   - "RAILS_VERSION=4.2.8"
   - "RAILS_VERSION=4.2.8 DATABASE_URL=mysql2://root@localhost/statesman_test"
   - "RAILS_VERSION=4.2.8 DATABASE_URL=postgres://postgres@localhost/statesman_test"
-  - "RAILS_VERSION=5.0.0 EXCLUDE_MONGOID=true"
+  - "RAILS_VERSION=5.0.3 EXCLUDE_MONGOID=true"
 
 matrix:
   exclude: []
