@@ -1,13 +1,6 @@
 Thanks for taking an interest in contributing to Statesman, here are a few
 ways you can help make this project better!
 
-# Contribute.md
-
-## Team members
-
-- [Andy Appleton](https://twitter.com/appltn)
-- [Harry Marr](https://twitter.com/harrymarr)
-
 ## Contributing
 
 - Generally we welcome new features but please first open an issue where we 
