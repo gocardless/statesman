@@ -1,3 +1,9 @@
+## v3.1.0, 1 September 2017
+
+- Add support for Rails 5.0.x and 5.1.x (patch by [@kenchan0130](https://github.com/kenchan0130) and [@timrogers](https://github.com/timrogers))
+- Run tests in CircleCI instead of TravisCI (patch by [@timrogers](https://github.com/timrogers))
+- Update Rubocop and fix offences (patch by [@timrogers](https://github.com/timrogers))
+
 ## v3.0.0, 3 July 2017
 
 *Breaking changes*

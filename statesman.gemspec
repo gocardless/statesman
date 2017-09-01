@@ -7,9 +7,9 @@ require 'statesman/version'
 Gem::Specification.new do |spec|
   spec.name          = "statesman"
   spec.version       = Statesman::VERSION
-  spec.authors       = ["Harry Marr", "Andy Appleton"]
+  spec.authors       = ["GoCardless"]
   spec.email         = ["developers@gocardless.com"]
-  spec.description   = 'A statesmanlike state machine library'
+  spec.description   = 'A statesman-like state machine library'
   spec.summary       = spec.description
   spec.homepage      = "https://github.com/gocardless/statesman"
   spec.license       = "MIT"
