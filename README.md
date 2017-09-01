@@ -205,12 +205,23 @@ an array of states (`.transition(from: :some_state, to: [:another_state, :some_o
 #### `Machine.guard_transition`
 ```ruby
 Machine.guard_transition(from: :some_state, to: :another_state) do |object|
-  object.some_boolean?
+  next false if object.broken?
+  next true if object.skip_check_thing?
+
+  object.check_thing?
 end
 ```
 Define a guard. `to` and `from` parameters are optional, a nil parameter means
 guard all transitions. The passed block should evaluate to a boolean and must
 be idempotent as it could be called many times.
+
+If the block evaluates as `false` the Guard fails. This will raise a
+`GuardTransitionError` when using `transition!` or return `false` when using
+`transition`.
+
+If the block evaluates as `true` the Guard passes. This allows the next Guard
+to proceed or the transition to be finalised.
+
 
 #### `Machine.before_transition`
 ```ruby
