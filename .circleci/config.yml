@@ -58,6 +58,13 @@ jobs:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
     steps: *steps
+  build-ruby241-rails-505-mongo:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=5.0.5
+      - image: circleci/mongo:3.0.14
+    steps: *steps
   build-ruby241-rails-505-mysql:
     docker:
       - image: circleci/ruby:2.4.1-node
@@ -83,6 +90,13 @@ jobs:
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby241-rails-513-mongo:
+    docker:
+      - image: circleci/ruby:2.4.1-node
+        environment:
+          - RAILS_VERSION=5.1.3
+      - image: circleci/mongo:3.0.14
     steps: *steps
   build-ruby241-rails-513-mysql:
     docker:
@@ -143,6 +157,13 @@ jobs:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
     steps: *steps
+  build-ruby233-rails-505-mongo:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=5.0.5
+      - image: circleci/mongo:3.0.14
+    steps: *steps
   build-ruby233-rails-505-mysql:
     docker:
       - image: circleci/ruby:2.3.3-node
@@ -168,6 +189,13 @@ jobs:
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby233-rails-513-mongo:
+    docker:
+      - image: circleci/ruby:2.3.3-node
+        environment:
+          - RAILS_VERSION=5.1.3
+      - image: circleci/mongo:3.0.14
     steps: *steps
   build-ruby233-rails-513-mysql:
     docker:
@@ -228,6 +256,13 @@ jobs:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
     steps: *steps
+  build-ruby227-rails-505-mongo:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=5.0.5
+      - image: circleci/mongo:3.0.14
+    steps: *steps
   build-ruby227-rails-505-mysql:
     docker:
       - image: circleci/ruby:2.2.7-node
@@ -253,6 +288,13 @@ jobs:
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
+    steps: *steps
+  build-ruby227-rails-513-mongo:
+    docker:
+      - image: circleci/ruby:2.2.7-node
+        environment:
+          - RAILS_VERSION=5.1.3
+      - image: circleci/mongo:3.0.14
     steps: *steps
   build-ruby227-rails-513-mysql:
     docker:
@@ -288,21 +330,27 @@ workflows:
       - build-ruby241-rails-429-mongo
       - build-ruby241-rails-429-mysql
       - build-ruby241-rails-429-postgres
+      - build-ruby241-rails-505-mongo
       - build-ruby241-rails-505-mysql
       - build-ruby241-rails-505-postgres
+      - build-ruby241-rails-513-mongo
       - build-ruby241-rails-513-mysql
       - build-ruby241-rails-513-postgres
       - build-ruby233-rails-429-mongo
       - build-ruby233-rails-429-mysql
       - build-ruby233-rails-429-postgres
+      - build-ruby233-rails-505-mongo
       - build-ruby233-rails-505-mysql
       - build-ruby233-rails-505-postgres
+      - build-ruby233-rails-513-mongo
       - build-ruby233-rails-513-mysql
       - build-ruby233-rails-513-postgres
       - build-ruby227-rails-429-mongo
       - build-ruby227-rails-429-mysql
       - build-ruby227-rails-429-postgres
+      - build-ruby227-rails-505-mongo
       - build-ruby227-rails-505-mysql
       - build-ruby227-rails-505-postgres
+      - build-ruby227-rails-513-mongo
       - build-ruby227-rails-513-mysql
       - build-ruby227-rails-513-postgres
