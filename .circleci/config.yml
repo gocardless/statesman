@@ -26,6 +26,9 @@ references:
 
     - run: bundle exec rake
 
+    - type: store_test_results
+      path: /tmp/test-results
+
 jobs:
   build-ruby241-rails-429-mongo:
     docker:
