@@ -24,13 +24,19 @@ include JSON metadata set during a transition.
 - Database indices are used to offer database-level transaction duplication
 protection.
 
-## TL;DR Usage
+## Installation
+
+To get started, just add Statesman to your `Gemfile`, and then run `bundle`:
 
 ```ruby
+gem 'statesman', '~> 3.1.0'
+```
 
-#######################
-# State Machine Class #
-#######################
+## Usage
+
+First, create a state machine based on `Statesman::Machine`:
+
+```ruby
 class OrderStateMachine
   include Statesman::Machine
 
@@ -63,10 +69,11 @@ class OrderStateMachine
     MailerService.order_confirmation(order).deliver
   end
 end
+```
 
-##############
-# Your Model #
-##############
+Then, link it to your model:
+
+```ruby
 class Order < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordQueries
 
@@ -85,19 +92,20 @@ class Order < ActiveRecord::Base
   end
   private_class_method :initial_state
 end
+```
 
-####################
-# Transition Model #
-####################
+Next, you'll need to create a further model to represent state transitions:
+
+```ruby
 class OrderTransition < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
   belongs_to :order, inverse_of: :order_transitions
 end
 
-########################
-# Example method calls #
-########################
+Now, you can start working with your state machine:
+
+```ruby
 Order.first.state_machine.current_state # => "pending"
 Order.first.state_machine.allowed_transitions # => ["checking_out", "cancelled"]
 Order.first.state_machine.can_transition_to?(:cancelled) # => true/false
@@ -106,7 +114,6 @@ Order.first.state_machine.transition_to!(:cancelled) # => true/exception
 
 Order.in_state(:cancelled) # => [#<Order id: "123">]
 Order.not_in_state(:checking_out) # => [#<Order id: "123">]
-
 ```
 
 ## Persistence
