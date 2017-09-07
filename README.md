@@ -102,6 +102,7 @@ class OrderTransition < ActiveRecord::Base
 
   belongs_to :order, inverse_of: :order_transitions
 end
+```
 
 Now, you can start working with your state machine:
 
