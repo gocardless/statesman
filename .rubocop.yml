@@ -54,7 +54,7 @@ Metrics/BlockLength:
   Exclude:
     - spec/**/*
 
-Style/FileName:
+Naming/FileName:
   Exclude:
     - Gemfile
     - Guardfile
