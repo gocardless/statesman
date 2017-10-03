@@ -16,7 +16,7 @@ describe Statesman::MigrationGenerator, type: :generator do
 
     subject do
       file(
-        "db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb"
+        "db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb",
       )
     end
 

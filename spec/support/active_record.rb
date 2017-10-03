@@ -20,7 +20,7 @@ end
 
 class MyActiveRecordModel < ActiveRecord::Base
   has_many :my_active_record_model_transitions, autosave: false
-  alias transitions my_active_record_model_transitions
+  alias_method :transitions, :my_active_record_model_transitions
 
   def state_machine
     @state_machine ||= MyStateMachine.new(
@@ -98,7 +98,7 @@ end
 
 class OtherActiveRecordModel < ActiveRecord::Base
   has_many :other_active_record_model_transitions, autosave: false
-  alias transitions other_active_record_model_transitions
+  alias_method :transitions, :other_active_record_model_transitions
 
   def state_machine
     @state_machine ||= MyStateMachine.new(

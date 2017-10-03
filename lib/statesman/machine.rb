@@ -49,7 +49,7 @@ module Statesman
           before:       [],
           after:        [],
           after_commit: [],
-          guards:       []
+          guards:       [],
         }
       end
 
@@ -170,7 +170,7 @@ module Statesman
 
     def initialize(object,
                    options = {
-                     transition_class: Statesman::Adapters::MemoryTransition
+                     transition_class: Statesman::Adapters::MemoryTransition,
                    })
       @object = object
       @transition_class = options[:transition_class]
