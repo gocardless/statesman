@@ -29,20 +29,20 @@ namespace :statesman do
         subsequent_t = initial_t.alias
 
         later_row_for_same_parent = initial_t[parent_fk].
-                                    eq(subsequent_t[parent_fk]).
-                                    and(initial_t[:sort_key].
+          eq(subsequent_t[parent_fk]).
+          and(initial_t[:sort_key].
                                     lt(subsequent_t[:sort_key]))
 
         no_later_row = subsequent_t[:id].eq(nil)
         in_current_parent_batch = initial_t[parent_fk].in(models.map(&:id))
 
         latest_ids_query = initial_t.join(subsequent_t, Arel::Nodes::OuterJoin).
-                           on(later_row_for_same_parent).
-                           where(no_later_row.and(in_current_parent_batch)).
-                           project(initial_t[:id]).to_sql
+          on(later_row_for_same_parent).
+          where(no_later_row.and(in_current_parent_batch)).
+          project(initial_t[:id]).to_sql
 
         latest_ids = transition_class.find_by_sql(latest_ids_query).
-                     to_a.collect(&:id)
+          to_a.collect(&:id)
 
         transition_class.where(id: latest_ids).update_all(most_recent: true)
       end
