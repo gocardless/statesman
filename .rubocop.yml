@@ -1,6 +1,8 @@
 # For all options see https://github.com/bbatsov/rubocop/tree/master/config
 
 inherit_from: .rubocop_todo.yml
+inherit_gem:
+  ruboconfig: rubocop.yml
 
 AllCops:
   DisplayCopNames: true
