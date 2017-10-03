@@ -1,15 +1,9 @@
-# For all options see https://github.com/bbatsov/rubocop/tree/master/config
-
 inherit_from: .rubocop_todo.yml
 inherit_gem:
   ruboconfig: rubocop.yml
 
 AllCops:
   DisplayCopNames: true
-  Include:
-    - Rakefile
-    - statesman.gemfile
-    - lib/tasks/*.rake
   Exclude:
     - vendor/**/*
     - .*/**
@@ -18,48 +12,19 @@ AllCops:
 StringLiterals:
   Enabled: false
 
-Documentation:
-  Enabled: false
-
-SignalException:
-  EnforcedStyle: only_raise
-
-# Avoid methods longer than 15 lines of code
 MethodLength:
   CountComments: false
   Max: 15
 
 AbcSize:
-  Max: 25
-
-# Don't require utf-8 encoding comment
-Encoding:
-  Enabled: false
+  Max: 18
 
 LineLength:
   Max: 80
 
-GuardClause:
-  Enabled: false
-
-Layout/SpaceBeforeFirstArg:
-  Enabled: false
-
-DotPosition:
-  EnforcedStyle: trailing
-
 # Allow class and message or instance raises
 Style/RaiseArgs:
   Enabled: false
-
-Metrics/BlockLength:
-  Exclude:
-    - spec/**/*
-
-Naming/FileName:
-  Exclude:
-    - Gemfile
-    - Guardfile
 
 Lint/RescueWithoutErrorClass:
   Enabled: false
