@@ -441,7 +441,8 @@ describe Statesman::Machine do
     end
 
     let(:instance) { machine.new(my_model) }
-    subject { instance.allowed_transitions }
+    let(:metadata) { { some: :metadata } }
+    subject { instance.allowed_transitions(metadata) }
 
     context "with multiple possible states" do
       it { is_expected.to eq(%w[y z]) }
@@ -450,6 +451,16 @@ describe Statesman::Machine do
     context "with one possible state" do
       before { instance.transition_to!(:y) }
       it { is_expected.to eq(['z']) }
+
+      context "guarded using metadata" do
+        before { machine.guard_transition(to: :z)  { |_, _, metadata | metadata[:some] == :metadata } }
+        it { is_expected.to eq(['z']) }
+      end
+
+      context "excluded by guard using metadata" do
+        before { machine.guard_transition(to: :z)  { |_, _, metadata | metadata[:some] != :metadata } }
+        it { is_expected.to eq([]) }
+      end
     end
 
     context "with no possible transitions" do
@@ -481,7 +492,8 @@ describe Statesman::Machine do
     end
 
     let(:instance) { machine.new(my_model) }
-    subject { instance.can_transition_to?(new_state) }
+    let(:metadata) { { some: :metadata } }
+    subject { instance.can_transition_to?(new_state, metadata) }
 
     context "when the transition is invalid" do
       context "with an initial to state" do
@@ -514,6 +526,16 @@ describe Statesman::Machine do
       context "but it has a failing guard" do
         before { machine.guard_transition(to: :y) { false } }
         it { is_expected.to be_falsey }
+      end
+
+      context "but it has a failing guard based on metadata" do
+        before { machine.guard_transition(to: :y)  { |_, _, metadata | metadata[:some] != :metadata } }
+        it { is_expected.to be_falsey }
+      end
+
+      context "and has a passing guard based on metadata" do
+        before { machine.guard_transition(to: :y)  { |_, _, metadata | metadata[:some] == :metadata } }
+        it { is_expected.to be_truthy }
       end
     end
   end
