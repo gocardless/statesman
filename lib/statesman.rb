@@ -1,10 +1,11 @@
 module Statesman
-  autoload :Config,     'statesman/config'
-  autoload :Machine,    'statesman/machine'
-  autoload :Callback,   'statesman/callback'
-  autoload :Guard,      'statesman/guard'
-  autoload :Utils,      'statesman/utils'
-  autoload :Version,    'statesman/version'
+  autoload :Config,               'statesman/config'
+  autoload :Machine,              'statesman/machine'
+  autoload :Callback,             'statesman/callback'
+  autoload :Guard,                'statesman/guard'
+  autoload :Utils,                'statesman/utils'
+  autoload :Version,              'statesman/version'
+  autoload :MachineInheritance,   'statesman/machine_inheritance'
   module Adapters
     autoload :Memory,       "statesman/adapters/memory"
     autoload :ActiveRecord, "statesman/adapters/active_record"
