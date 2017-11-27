@@ -453,12 +453,22 @@ describe Statesman::Machine do
       it { is_expected.to eq(['z']) }
 
       context "guarded using metadata" do
-        before { machine.guard_transition(to: :z)  { |_, _, metadata | metadata[:some] == :metadata } }
+        before do
+          machine.guard_transition(to: :z) do |_, _, metadata|
+            metadata[:some] == :metadata
+          end
+        end
+
         it { is_expected.to eq(['z']) }
       end
 
       context "excluded by guard using metadata" do
-        before { machine.guard_transition(to: :z)  { |_, _, metadata | metadata[:some] != :metadata } }
+        before do
+          machine.guard_transition(to: :z) do |_, _, metadata|
+            metadata[:some] != :metadata
+          end
+        end
+
         it { is_expected.to eq([]) }
       end
     end
@@ -529,12 +539,22 @@ describe Statesman::Machine do
       end
 
       context "but it has a failing guard based on metadata" do
-        before { machine.guard_transition(to: :y)  { |_, _, metadata | metadata[:some] != :metadata } }
+        before do
+          machine.guard_transition(to: :y) do |_, _, metadata|
+            metadata[:some] != :metadata
+          end
+        end
+
         it { is_expected.to be_falsey }
       end
 
       context "and has a passing guard based on metadata" do
-        before { machine.guard_transition(to: :y)  { |_, _, metadata | metadata[:some] == :metadata } }
+        before do
+          machine.guard_transition(to: :y) do |_, _, metadata|
+            metadata[:some] == :metadata
+          end
+        end
+
         it { is_expected.to be_truthy }
       end
     end
