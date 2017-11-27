@@ -189,9 +189,9 @@ module Statesman
       states.flatten.any? { |state| current_state == state.to_s }
     end
 
-    def allowed_transitions
+    def allowed_transitions(metadata = {})
       successors_for(current_state).select do |state|
-        can_transition_to?(state)
+        can_transition_to?(state, metadata)
       end
     end
 
