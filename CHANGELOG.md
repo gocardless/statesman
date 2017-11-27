@@ -1,3 +1,8 @@
+
+## v3.2.0, 27 November 2017
+
+- Allow specifying metadata with `Machine#allowed_transitions` (patch by [@vvondra](https://github.com/vvondra))
+
 ## v3.1.0, 1 September 2017
 
 - Add support for Rails 5.0.x and 5.1.x (patch by [@kenchan0130](https://github.com/kenchan0130) and [@timrogers](https://github.com/timrogers))
