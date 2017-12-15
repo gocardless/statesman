@@ -157,6 +157,11 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             from(true).to be_falsey
         end
 
+        it "touches the previous transition's updated_at timestamp" do
+          expect { create }.
+            to change { previous_transition.reload.updated_at }
+        end
+
         context "and a query on the parent model's state is made" do
           context "in a before action" do
             it "still has the old state" do
