@@ -8,6 +8,11 @@ namespace :statesman do
     parent_class = parent_model_name.constantize
     transition_class = parent_class.transition_class
     parent_fk = "#{parent_model_name.demodulize.underscore}_id"
+    updated_at = if ActiveRecord::Base.default_timezone == :utc
+                   Time.now.utc
+                 else
+                   Time.now
+                 end
 
     total_models = parent_class.count
     done_models = 0
@@ -18,10 +23,10 @@ namespace :statesman do
         if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
           # Set all transitions' most_recent to FALSE
           transition_class.where(parent_fk => models.map(&:id)).
-            update_all(most_recent: false)
+            update_all(most_recent: false, updated_at: updated_at)
         else
           transition_class.where(parent_fk => models.map(&:id)).
-            update_all(most_recent: nil)
+            update_all(most_recent: nil, updated_at: updated_at)
         end
 
         # Set current transition's most_recent to TRUE
@@ -44,7 +49,8 @@ namespace :statesman do
         latest_ids = transition_class.find_by_sql(latest_ids_query).
           to_a.collect(&:id)
 
-        transition_class.where(id: latest_ids).update_all(most_recent: true)
+        transition_class.where(id: latest_ids).
+          update_all(most_recent: true, updated_at: updated_at)
       end
 
       done_models += batch_size
