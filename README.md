@@ -100,6 +100,8 @@ Next, you'll need to create a further model to represent state transitions:
 class OrderTransition < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
+  validates :to_state, inclusion: { in: OrderStateMachine.states }
+
   belongs_to :order, inverse_of: :order_transitions
 end
 ```
