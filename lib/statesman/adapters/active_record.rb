@@ -88,7 +88,7 @@ module Statesman
 
       def unset_old_most_recent
         most_recent = transitions_for_parent.where(most_recent: true)
-        updated_at = if ActiveRecord::Base.default_timezone == :utc
+        updated_at = if ::ActiveRecord::Base.default_timezone == :utc
                        Time.now.utc
                      else
                        Time.now
