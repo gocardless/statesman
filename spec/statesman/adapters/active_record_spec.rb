@@ -1,4 +1,5 @@
 require "spec_helper"
+require "timecop"
 require "statesman/adapters/shared_examples"
 require "statesman/exceptions"
 
@@ -158,7 +159,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         end
 
         it "touches the previous transition's updated_at timestamp" do
-          expect { create }.
+          expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
             to change { previous_transition.reload.updated_at }
         end
 
