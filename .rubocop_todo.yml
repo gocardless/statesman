@@ -15,3 +15,7 @@ Metrics/BlockLength:
 # Configuration parameters: CountComments.
 Metrics/ModuleLength:
   Max: 107
+
+# Offense count: 1
+Lint/AmbiguousBlockAssociation:
+  Enabled: false
