@@ -26,5 +26,5 @@ LineLength:
 Style/RaiseArgs:
   Enabled: false
 
-Lint/RescueWithoutErrorClass:
+Style/RescueStandardError:
   Enabled: false
