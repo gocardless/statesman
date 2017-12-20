@@ -1,7 +1,7 @@
 require "spec_helper"
 
 describe Statesman::Guard do
-  let(:callback) { -> {} }
+  let(:callback) { ->{} }
   let(:guard) { Statesman::Guard.new(from: nil, to: nil, callback: callback) }
 
   specify { expect(guard).to be_a(Statesman::Callback) }
