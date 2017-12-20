@@ -132,7 +132,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
       # this spec.
       MyActiveRecordModel.send(:has_many,
                                :custom_name,
-                               class_name: 'OtherActiveRecordModelTransition')
+                               class_name: "OtherActiveRecordModelTransition")
 
       MyActiveRecordModel.class_eval do
         def self.transition_class

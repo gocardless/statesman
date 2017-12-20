@@ -213,7 +213,7 @@ describe Statesman::Machine do
     end
 
     let(:options) { { from: nil, to: [] } }
-    let(:set_callback) { machine.send(assignment_method, options){} }
+    let(:set_callback) { machine.send(assignment_method, options) {} }
 
     shared_examples "fails" do |error_type|
       specify { expect { set_callback }.to raise_error(error_type) }
@@ -450,7 +450,7 @@ describe Statesman::Machine do
 
     context "with one possible state" do
       before { instance.transition_to!(:y) }
-      it { is_expected.to eq(['z']) }
+      it { is_expected.to eq(["z"]) }
 
       context "guarded using metadata" do
         before do
@@ -459,7 +459,7 @@ describe Statesman::Machine do
           end
         end
 
-        it { is_expected.to eq(['z']) }
+        it { is_expected.to eq(["z"]) }
       end
 
       context "excluded by guard using metadata" do
@@ -666,12 +666,12 @@ describe Statesman::Machine do
     context "when a non statesman exception is raised" do
       before do
         allow(instance).to receive(:transition_to!).
-          and_raise(RuntimeError, 'user defined exception')
+          and_raise(RuntimeError, "user defined exception")
       end
 
       it "should not rescue the exception" do
         expect { instance.transition_to(:some_state, metadata) }.
-          to raise_error(RuntimeError, 'user defined exception')
+          to raise_error(RuntimeError, "user defined exception")
       end
     end
   end

@@ -59,10 +59,10 @@ class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
       t.integer :sort_key
 
       # MySQL doesn't allow default values on text fields
-      if ActiveRecord::Base.connection.adapter_name == 'Mysql2'
+      if ActiveRecord::Base.connection.adapter_name == "Mysql2"
         t.text :metadata
       else
-        t.text :metadata, default: '{}'
+        t.text :metadata, default: "{}"
       end
 
       if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
@@ -137,10 +137,10 @@ class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
       t.integer :sort_key
 
       # MySQL doesn't allow default values on text fields
-      if ActiveRecord::Base.connection.adapter_name == 'Mysql2'
+      if ActiveRecord::Base.connection.adapter_name == "Mysql2"
         t.text :metadata
       else
-        t.text :metadata, default: '{}'
+        t.text :metadata, default: "{}"
       end
 
       if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
@@ -234,10 +234,10 @@ class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
       t.integer :sort_key
 
       # MySQL doesn't allow default values on text fields
-      if ActiveRecord::Base.connection.adapter_name == 'Mysql2'
+      if ActiveRecord::Base.connection.adapter_name == "Mysql2"
         t.text :metadata
       else
-        t.text :metadata, default: '{}'
+        t.text :metadata, default: "{}"
       end
 
       if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
@@ -250,7 +250,7 @@ class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
     end
 
     add_index :my_namespace_my_active_record_model_transitions, :sort_key,
-              unique: true, name: 'my_namespaced_key'
+              unique: true, name: "my_namespaced_key"
 
     if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
       add_index :my_namespace_my_active_record_model_transitions,

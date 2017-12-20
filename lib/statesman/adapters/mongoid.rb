@@ -10,7 +10,7 @@ module Statesman
         @transition_class = transition_class
         @parent_model = parent_model
         @observer = observer
-        unless transition_class_hash_fields.include?('statesman_metadata')
+        unless transition_class_hash_fields.include?("statesman_metadata")
           raise UnserializedMetadataError, metadata_field_error_message
         end
       end
