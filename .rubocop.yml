@@ -4,6 +4,7 @@ inherit_gem:
 
 AllCops:
   DisplayCopNames: true
+  TargetRubyVersion: 2.2
   Exclude:
     - vendor/**/*
     - .*/**
