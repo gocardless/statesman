@@ -138,12 +138,8 @@ module Statesman
       end
 
       def validate_callback_type_and_class(callback_type, callback_class)
-        if callback_type.nil?
-          raise ArgumentError.new("missing keyword: callback_type")
-        end
-        if callback_class.nil?
-          raise ArgumentError.new("missing keyword: callback_class")
-        end
+        raise ArgumentError, "missing keyword: callback_type" if callback_type.nil?
+        raise ArgumentError, "missing keyword: callback_class" if callback_class.nil?
       end
 
       def validate_state(state)

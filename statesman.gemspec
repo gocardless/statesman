@@ -1,13 +1,13 @@
-lib = File.expand_path('../lib', __FILE__)
+lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'statesman/version'
+require "statesman/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "statesman"
   spec.version       = Statesman::VERSION
   spec.authors       = ["GoCardless"]
   spec.email         = ["developers@gocardless.com"]
-  spec.description   = 'A statesman-like state machine library'
+  spec.description   = "A statesman-like state machine library"
   spec.summary       = spec.description
   spec.homepage      = "https://github.com/gocardless/statesman"
   spec.license       = "MIT"
@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = '>= 2.2'
+  spec.required_ruby_version = ">= 2.2"
 
   spec.add_development_dependency "ammeter",               "~> 1.1"
   spec.add_development_dependency "bundler",               "~> 1.3"
@@ -29,6 +29,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec-its",             "~> 1.1"
   spec.add_development_dependency "rspec-rails",           "~> 3.1"
   spec.add_development_dependency "rspec_junit_formatter", "~> 0.3.0"
-  spec.add_development_dependency "rubocop",               "~> 0.51.0"
+  spec.add_development_dependency "rubocop",               "~> 0.52.0"
   spec.add_development_dependency "sqlite3",               "~> 1.3"
+  spec.add_development_dependency "timecop",               "~> 0.9.1"
 end

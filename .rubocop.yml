@@ -1,30 +1,13 @@
 inherit_from: .rubocop_todo.yml
+
 inherit_gem:
   ruboconfig: rubocop.yml
 
 AllCops:
-  DisplayCopNames: true
-  Exclude:
-    - vendor/**/*
-    - .*/**
-    - spec/fixtures/**/*
+  TargetRubyVersion: 2.2
 
-StringLiterals:
-  Enabled: false
-
-MethodLength:
-  CountComments: false
-  Max: 15
-
-AbcSize:
-  Max: 18
-
-LineLength:
-  Max: 80
-
-# Allow class and message or instance raises
-Style/RaiseArgs:
-  Enabled: false
-
-Lint/RescueWithoutErrorClass:
+# This currently raises a false positive on date format strings, e.g. `lib/generators/
+# statesman/generator_helpers.rb:16`. Re-enable this once
+# https://github.com/bbatsov/rubocop/pull/5230 is merged.
+Style/FormatStringToken:
   Enabled: false
