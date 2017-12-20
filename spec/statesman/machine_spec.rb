@@ -213,7 +213,7 @@ describe Statesman::Machine do
     end
 
     let(:options) { { from: nil, to: [] } }
-    let(:set_callback) { machine.send(assignment_method, options) {} }
+    let(:set_callback) { machine.send(assignment_method, options){} }
 
     shared_examples "fails" do |error_type|
       specify { expect { set_callback }.to raise_error(error_type) }
