@@ -1,7 +1,7 @@
-require 'mongoid'
+require "mongoid"
 
 Mongoid.configure do |config|
-  config.connect_to('statesman_test')
+  config.connect_to("statesman_test")
 end
 
 class MyMongoidModel

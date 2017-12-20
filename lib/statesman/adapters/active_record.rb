@@ -13,17 +13,17 @@ module Statesman
         if ::ActiveRecord::Base.connection.respond_to?(:supports_partial_index?)
           ::ActiveRecord::Base.connection.supports_partial_index?
         else
-          ::ActiveRecord::Base.connection.adapter_name == 'PostgreSQL'
+          ::ActiveRecord::Base.connection.adapter_name == "PostgreSQL"
         end
       end
 
       def initialize(transition_class, parent_model, observer, options = {})
         serialized = serialized?(transition_class)
-        column_type = transition_class.columns_hash['metadata'].sql_type
+        column_type = transition_class.columns_hash["metadata"].sql_type
         if !serialized && !JSON_COLUMN_TYPES.include?(column_type)
-          raise UnserializedMetadataError.new(transition_class.name)
+          raise UnserializedMetadataError, transition_class.name
         elsif serialized && JSON_COLUMN_TYPES.include?(column_type)
-          raise IncompatibleSerializationError.new(transition_class.name)
+          raise IncompatibleSerializationError, transition_class.name
         end
         @transition_class = transition_class
         @parent_model = parent_model
@@ -100,7 +100,7 @@ module Statesman
         # support partial indexes. By doing the conditioning on the column,
         # rather than Rails' opinion of whether the database supports partial
         # indexes, we're robust to DBs later adding support for partial indexes.
-        if transition_class.columns_hash['most_recent'].null == false
+        if transition_class.columns_hash["most_recent"].null == false
           most_recent.update_all(most_recent: false, updated_at: updated_at)
         else
           most_recent.update_all(most_recent: nil, updated_at: updated_at)
@@ -113,7 +113,7 @@ module Statesman
 
       def serialized?(transition_class)
         if ::ActiveRecord.respond_to?(:gem_version) &&
-            ::ActiveRecord.gem_version >= Gem::Version.new('4.2.0.a')
+            ::ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
           transition_class.type_for_attribute("metadata").
             is_a?(::ActiveRecord::Type::Serialized)
         else
@@ -123,7 +123,7 @@ module Statesman
 
       def transition_conflict_error?(e)
         e.message.include?(@transition_class.table_name) &&
-          (e.message.include?('sort_key') || e.message.include?('most_recent'))
+          (e.message.include?("sort_key") || e.message.include?("most_recent"))
       end
     end
   end

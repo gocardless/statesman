@@ -4,14 +4,14 @@ require "generators/statesman/migration_generator"
 
 describe Statesman::MigrationGenerator, type: :generator do
   it_behaves_like "a generator" do
-    let(:migration_name) { 'db/migrate/add_statesman_to_bacon_transitions.rb' }
+    let(:migration_name) { "db/migrate/add_statesman_to_bacon_transitions.rb" }
   end
 
-  describe 'the model contains the correct words' do
-    let(:migration_number) { '5678309' }
+  describe "the model contains the correct words" do
+    let(:migration_number) { "5678309" }
 
     let(:mock_time) do
-      double('Time', utc: double('UTCTime', strftime: migration_number))
+      double("Time", utc: double("UTCTime", strftime: migration_number))
     end
 
     subject do

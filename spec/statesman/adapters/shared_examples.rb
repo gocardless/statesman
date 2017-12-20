@@ -11,7 +11,6 @@ require "spec_helper"
 #   history:          Returns the full transition history
 #   last:             Returns the latest transition history item
 #
-# rubocop:disable Metrics/LineLength
 # NOTE This line cannot reasonably be shortened.
 shared_examples_for "an adapter" do |adapter_class, transition_class, options = {}|
   # rubocop:enable Metrics/LineLength

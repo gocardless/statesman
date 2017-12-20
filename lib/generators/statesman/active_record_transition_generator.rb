@@ -11,7 +11,7 @@ module Statesman
     argument :parent, type: :string, desc: "Your parent model name"
     argument :klass,  type: :string, desc: "Your transition model name"
 
-    source_root File.expand_path('../templates', __FILE__)
+    source_root File.expand_path("../templates", __FILE__)
 
     def create_model_file
       template("create_migration.rb.erb", migration_file_name)
