@@ -5,9 +5,3 @@ inherit_gem:
 
 AllCops:
   TargetRubyVersion: 2.2
-
-# This currently raises a false positive on date format strings, e.g. `lib/generators/
-# statesman/generator_helpers.rb:16`. Re-enable this once
-# https://github.com/bbatsov/rubocop/pull/5230 is merged.
-Style/FormatStringToken:
-  Enabled: false
