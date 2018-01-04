@@ -41,8 +41,8 @@ module Statesman
         @last_transition = nil
       end
 
-      def history
-        if transitions_for_parent.loaded?
+      def history(force_reload: false)
+        if transitions_for_parent.loaded? && !force_reload
           # Workaround for Rails bug which causes infinite loop when sorting
           # already loaded result set. Introduced in rails/rails@b097ebe
           transitions_for_parent.to_a.sort_by(&:sort_key)
@@ -53,7 +53,7 @@ module Statesman
 
       def last(force_reload: false)
         if force_reload
-          @last_transition = history.last
+          @last_transition = history(force_reload: true).last
         else
           @last_transition ||= history.last
         end

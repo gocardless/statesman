@@ -4,7 +4,6 @@ module Statesman
   module Adapters
     class Memory
       attr_reader :transition_class
-      attr_reader :history
       attr_reader :parent_model
 
       # We only accept mode as a parameter to maintain a consistent interface
@@ -30,6 +29,10 @@ module Statesman
 
       def last(*)
         @history.sort_by(&:sort_key).last
+      end
+
+      def history(*)
+        @history
       end
 
       private

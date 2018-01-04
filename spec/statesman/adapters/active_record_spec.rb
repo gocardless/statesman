@@ -234,17 +234,35 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           described_class.new(MyActiveRecordModelTransition, model, observer)
         end
 
-        before { alternate_adapter.create(:y, :z, []) }
-
         it "still returns the cached value" do
+          alternate_adapter.create(:y, :z, [])
+
           expect_any_instance_of(MyActiveRecordModel).
             to receive(:my_active_record_model_transitions).never
           expect(adapter.last.to_state).to eq("y")
         end
 
-        context "when explitly not using the cache" do
-          it "still returns the cached value" do
-            expect(adapter.last(force_reload: true).to_state).to eq("z")
+        context "when explicitly not using the cache" do
+          context "when the transitions are in memory" do
+            before do
+              model.my_active_record_model_transitions.load
+              alternate_adapter.create(:y, :z, [])
+            end
+
+            it "reloads the value" do
+              expect(adapter.last(force_reload: true).to_state).to eq("z")
+            end
+          end
+
+          context "when the transitions are not in memory" do
+            before do
+              model.my_active_record_model_transitions.reset
+              alternate_adapter.create(:y, :z, [])
+            end
+
+            it "reloads the value" do
+              expect(adapter.last(force_reload: true).to_state).to eq("z")
+            end
           end
         end
       end
