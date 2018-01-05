@@ -32,7 +32,7 @@ module Statesman
         @last_transition = nil
       end
 
-      def history
+      def history(*)
         transitions_for_parent.asc(:sort_key)
       end
 
