@@ -1,3 +1,7 @@
+## v3.3.0, 5 January 2018
+
+- Touch `updated_at` on transitions when unsetting `most_recent` flag (patch by [@NGMarmaduke](https://github.com/NGMarmaduke))
+- Fix `force_reload` for ActiveRecord models with loaded transitions (patch by [@jacobpgn](https://github.com/))
 
 ## v3.2.0, 27 November 2017
 
