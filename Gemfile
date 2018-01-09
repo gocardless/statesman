@@ -12,5 +12,5 @@ group :development do
 end
 
 group :development, :test do
-  gem "gc_ruboconfig", "~> 2.1.0"
+  gem "gc_ruboconfig", "~> 2.3.1"
 end
