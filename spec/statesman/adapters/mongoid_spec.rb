@@ -8,6 +8,7 @@ describe Statesman::Adapters::Mongoid, mongo: true do
   after { Mongoid.purge! }
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyMongoidModel.create(current_state: :pending) }
+
   it_behaves_like "an adapter", described_class, MyMongoidModelTransition
 
   describe "#initialize" do

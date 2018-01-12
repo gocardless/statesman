@@ -21,6 +21,7 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "ammeter",               "~> 1.1"
   spec.add_development_dependency "bundler",               "~> 1.3"
+  spec.add_development_dependency "gc_ruboconfig",         "~> 2.3.1"
   spec.add_development_dependency "mysql2",                "~> 0.4"
   spec.add_development_dependency "pg",                    "~> 0.18"
   spec.add_development_dependency "rails",                 ">= 3.2"
@@ -29,7 +30,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec-its",             "~> 1.1"
   spec.add_development_dependency "rspec-rails",           "~> 3.1"
   spec.add_development_dependency "rspec_junit_formatter", "~> 0.3.0"
-  spec.add_development_dependency "gc_ruboconfig",         "~> 2.3.1"
   spec.add_development_dependency "sqlite3",               "~> 1.3"
   spec.add_development_dependency "timecop",               "~> 0.9.1"
 end
