@@ -12,6 +12,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
+
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
 
   describe "#initialize" do
@@ -98,13 +99,14 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   end
 
   describe "#create" do
+    subject { -> { create } }
+
     let!(:adapter) do
       described_class.new(MyActiveRecordModelTransition, model, observer)
     end
     let(:from) { :x }
     let(:to) { :y }
     let(:create) { adapter.create(from, to) }
-    subject { -> { create } }
 
     context "when there is a race" do
       it "raises a TransitionConflictError" do
@@ -132,11 +134,13 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             ActiveRecord::RecordNotUnique.new("unrelated", nil)
           end
         end
+
         it { is_expected.to raise_exception(ActiveRecord::RecordNotUnique) }
       end
 
       context "other errors" do
         let(:error) { StandardError }
+
         it { is_expected.to raise_exception(StandardError) }
       end
     end
@@ -150,6 +154,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
 
       context "with a previous transition" do
         let!(:previous_transition) { adapter.create(from, to) }
+
         its(:most_recent) { is_expected.to eq(true) }
 
         it "updates the previous transition's most_recent flag" do
@@ -195,6 +200,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       context "with two previous transitions" do
         let!(:previous_transition) { adapter.create(from, to) }
         let!(:another_previous_transition) { adapter.create(from, to) }
+
         its(:most_recent) { is_expected.to eq(true) }
 
         it "updates the previous transition's most_recent flag" do
@@ -273,7 +279,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       before { model.my_active_record_model_transitions.load_target }
 
       it "doesn't query the database" do
-        expect(MyActiveRecordModelTransition).not_to receive(:connection)
+        expect(MyActiveRecordModelTransition).to_not receive(:connection)
         expect(adapter.last.to_state).to eq("y")
       end
     end
