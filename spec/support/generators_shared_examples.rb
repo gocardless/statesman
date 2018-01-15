@@ -19,6 +19,7 @@ shared_examples "a generator" do
 
     describe "it generates a correctly named file" do
       subject { file(migration_name) }
+
       it { is_expected.to be_a_migration }
     end
   end
