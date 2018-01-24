@@ -232,6 +232,18 @@ module Statesman
       false
     end
 
+    def respond_to_missing?(method_name, include_private = false)
+      method_name[-1] == "?" && self.class.states.include?(method_name) || super
+    end
+
+    def method_missing(method_name, *args, &block)
+      if method_name[-1] == "?" && self.class.states.include?(method_name[0..-2])
+        current_state == method_name[0..-2]
+      else
+        super
+      end
+    end
+
     private
 
     def adapter_class(transition_class)

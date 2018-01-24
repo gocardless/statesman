@@ -429,6 +429,24 @@ describe Statesman::Machine do
     end
   end
 
+  describe "#state?" do
+    before { machine.state(:pending, initial: true) }
+    before { machine.state(:active) }
+    subject(:instance) { machine.new(my_model) }
+
+    context "when called with a valid state" do
+      specify { expect(instance.pending?).to be_truthy }
+      specify { expect(instance.active?).to be_falsey }
+    end
+
+    context "when called with a state that does't exist" do
+      it "raises an error" do
+        expect { machine.inactive? }.
+          to raise_error(NoMethodError)
+      end
+    end
+  end
+
   describe "#allowed_transitions" do
     before do
       machine.class_eval do
