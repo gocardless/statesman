@@ -137,6 +137,11 @@ Generate the transition model:
 $ rails g statesman:active_record_transition Order OrderTransition
 ```
 
+If you're using the ActiveRecord adapter and decide not to include the default
+`updated_at` column in your transition table, you'll need to configure the
+`updated_timestamp_column` option on the transition class, setting it to another column
+name (e.g. `:updated_on`) or `nil`.
+
 And add an association from the parent model:
 
 `app/models/order.rb`:
