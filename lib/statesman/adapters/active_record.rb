@@ -88,11 +88,7 @@ module Statesman
 
       def unset_old_most_recent
         most_recent = transitions_for_parent.where(most_recent: true)
-        updated_at = if ::ActiveRecord::Base.default_timezone == :utc
-                       Time.now.utc
-                     else
-                       Time.now
-                     end
+
         # Check whether the `most_recent` column allows null values. If it
         # doesn't, set old records to `false`, otherwise, set them to `NULL`.
         #
@@ -101,9 +97,9 @@ module Statesman
         # rather than Rails' opinion of whether the database supports partial
         # indexes, we're robust to DBs later adding support for partial indexes.
         if transition_class.columns_hash["most_recent"].null == false
-          most_recent.update_all(most_recent: false, updated_at: updated_at)
+          most_recent.update_all(with_updated_timestamp(most_recent: false))
         else
-          most_recent.update_all(most_recent: nil, updated_at: updated_at)
+          most_recent.update_all(with_updated_timestamp(most_recent: nil))
         end
       end
 
@@ -124,6 +120,18 @@ module Statesman
       def transition_conflict_error?(e)
         e.message.include?(@transition_class.table_name) &&
           (e.message.include?("sort_key") || e.message.include?("most_recent"))
+      end
+
+      def with_updated_timestamp(params)
+        return params if @transition_class.updated_timestamp_column.nil?
+
+        timestamp = if ::ActiveRecord::Base.default_timezone == :utc
+                      Time.now.utc
+                    else
+                      Time.now
+                    end
+
+        params.merge(@transition_class.updated_timestamp_column => timestamp)
       end
     end
   end

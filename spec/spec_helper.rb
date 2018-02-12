@@ -11,6 +11,7 @@ require "action_controller"
 require "rspec/rails"
 require "support/active_record"
 require "rspec/its"
+require "pry"
 
 RSpec.configure do |config|
   config.raise_errors_for_deprecations!

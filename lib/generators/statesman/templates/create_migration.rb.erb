@@ -6,6 +6,10 @@ class Create<%= migration_class_name %> < ActiveRecord::Migration<%= "[#{ActiveR
       t.integer :sort_key, null: false
       t.integer :<%= parent_id %>, null: false
       t.boolean :most_recent<%= ", null: false" if database_supports_partial_indexes? %>
+
+      # If you decide not to include an updated timestamp column in your transition
+      # table, you'll need to configure the `updated_timestamp_column` setting in your
+      # migration class.
       t.timestamps null: false
     end
 

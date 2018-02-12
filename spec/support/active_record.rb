@@ -50,7 +50,7 @@ class CreateMyActiveRecordModelMigration < MIGRATION_CLASS
 end
 
 # TODO: make this a module we can extend from the app? Or a generator?
-# rubocop:disable MethodLength
+# rubocop:disable MethodLength, Metrics/AbcSize
 class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_model_transitions do |t|
@@ -72,6 +72,10 @@ class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
       end
 
       t.timestamps null: false
+
+      # We'll use this to test customising the updated_timestamp_column setting on the
+      # transition class.
+      t.date :updated_on
     end
 
     add_index :my_active_record_model_transitions,
@@ -94,7 +98,7 @@ class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
     end
   end
 end
-# rubocop:enable MethodLength
+# rubocop:enable MethodLength, Metrics/AbcSize
 
 class OtherActiveRecordModel < ActiveRecord::Base
   has_many :other_active_record_model_transitions, autosave: false
@@ -206,6 +210,8 @@ module MyNamespace
   end
 
   class MyActiveRecordModelTransition < ActiveRecord::Base
+    include Statesman::Adapters::ActiveRecordTransition
+
     belongs_to :my_active_record_model,
                class_name: "MyNamespace::MyActiveRecordModel"
     serialize :metadata, JSON

@@ -163,6 +163,46 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             to(change { previous_transition.reload.updated_at })
         end
 
+        context "with a custom updated timestamp column set" do
+          around do |example|
+            MyActiveRecordModelTransition.updated_timestamp_column.tap do |original_value|
+              MyActiveRecordModelTransition.updated_timestamp_column = :updated_on
+              example.run
+              MyActiveRecordModelTransition.updated_timestamp_column = original_value
+            end
+          end
+
+          it "touches the previous transition's updated_on timestamp" do
+            expect { Timecop.freeze(Time.now + 1.day) { create } }.
+              to(change { previous_transition.reload.updated_on })
+          end
+
+          it "doesn't update the updated_at column" do
+            expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
+              to_not(change { previous_transition.reload.updated_at })
+          end
+        end
+
+        context "with no updated timestamp column set" do
+          around do |example|
+            MyActiveRecordModelTransition.updated_timestamp_column.tap do |original_value|
+              MyActiveRecordModelTransition.updated_timestamp_column = nil
+              example.run
+              MyActiveRecordModelTransition.updated_timestamp_column = original_value
+            end
+          end
+
+          it "just updates the most_recent" do
+            expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
+              to(change { previous_transition.reload.most_recent })
+          end
+
+          it "doesn't update the updated_at column" do
+            expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
+              to_not(change { previous_transition.reload.updated_at })
+          end
+        end
+
         context "and a query on the parent model's state is made" do
           context "in a before action" do
             it "still has the old state" do
