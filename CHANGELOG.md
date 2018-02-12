@@ -1,3 +1,7 @@
+## v3.3.1, 12 February 2018
+
+- When unsetting the `most_recent` flag during a transition, don't assume that transitions have an `updated_at` attribute, but rather allow the "updated timestamp column" to be re-configured or disabled entirely (patch by [@timrogers](https://github.com/timrogers))
+
 ## v3.3.0, 5 January 2018
 
 - Touch `updated_at` on transitions when unsetting `most_recent` flag (patch by [@NGMarmaduke](https://github.com/NGMarmaduke))
