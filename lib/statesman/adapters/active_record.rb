@@ -123,7 +123,20 @@ module Statesman
       end
 
       def with_updated_timestamp(params)
-        return params if @transition_class.updated_timestamp_column.nil?
+        # TODO: Once we've set expectations that transition classes should conform to
+        # the interface of Adapters::ActiveRecordTransition as a breaking change in the
+        # next major version, we can stop calling `#respond_to?` first and instead
+        # assume that there is a `.updated_timestamp_column` method we can call.
+        #
+        # At the moment, most transition classes will include the module, but not all,
+        # not least because it doesn't work with PostgreSQL JSON columns for metadata.
+        column = if @transition_class.respond_to?(:updated_timestamp_column)
+                   @transition_class.updated_timestamp_column
+                 else
+                   ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
+                 end
+
+        return params if column.nil?
 
         timestamp = if ::ActiveRecord::Base.default_timezone == :utc
                       Time.now.utc
@@ -131,7 +144,7 @@ module Statesman
                       Time.now
                     end
 
-        params.merge(@transition_class.updated_timestamp_column => timestamp)
+        params.merge(column => timestamp)
       end
     end
   end
