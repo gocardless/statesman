@@ -40,6 +40,13 @@ class MyActiveRecordModelTransition < ActiveRecord::Base
   serialize :metadata, JSON
 end
 
+class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base
+  self.table_name = "my_active_record_model_transitions"
+
+  belongs_to :my_active_record_model
+  serialize :metadata, JSON
+end
+
 class CreateMyActiveRecordModelMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_models do |t|

@@ -163,6 +163,19 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             to(change { previous_transition.reload.updated_at })
         end
 
+        context "for a transition class without an updated timestamp column attribute" do
+          let!(:adapter) do
+            described_class.new(MyActiveRecordModelTransitionWithoutInclude,
+                                model,
+                                observer)
+          end
+
+          it "defaults to touching the previous transition's updated_at timestamp" do
+            expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
+              to(change { previous_transition.reload.updated_at })
+          end
+        end
+
         context "with a custom updated timestamp column set" do
           around do |example|
             MyActiveRecordModelTransition.updated_timestamp_column.tap do |original_value|
