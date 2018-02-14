@@ -121,7 +121,7 @@ Order.not_in_state(:checking_out) # => [#<Order id: "123">]
 
 By default Statesman stores transition history in memory only. It can be
 persisted by configuring Statesman to use a different adapter. For example,
-ActiveRecord within Rails:
+for ActiveRecord within Rails:
 
 `config/initializers/statesman.rb`:
 
@@ -136,6 +136,10 @@ Generate the transition model:
 ```bash
 $ rails g statesman:active_record_transition Order OrderTransition
 ```
+
+Your transition class should
+`include Statesman::Adapters::ActiveRecordTransition` if you're using the
+ActiveRecord adapter.
 
 If you're using the ActiveRecord adapter and decide not to include the default
 `updated_at` column in your transition table, you'll need to configure the
@@ -178,8 +182,12 @@ or 5. To do that
   t.json :metadata, default: {}
   ```
 
-* Remove `include Statesman::Adapters::ActiveRecordTransition` statement from your
-  transition model
+* Remove the `include Statesman::Adapters::ActiveRecordTransition` statement from
+  your transition model. (If you want to customise your transition class's "updated
+  timestamp column", as described above, you should define a
+  `.updated_timestamp_column` method on your class and return the name of the column
+  as a symbol, or `nil` if you don't want to record an updated timestamp on
+  transitions.)
 
 ## Configuration
 
