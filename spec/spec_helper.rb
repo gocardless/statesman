@@ -1,4 +1,5 @@
 require "statesman"
+require "generators/statesman/generator_helpers"
 require "sqlite3"
 require "mysql2"
 require "pg"

@@ -8,6 +8,8 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
   end
 
   describe "creates a migration" do
+    extend Statesman::GeneratorHelpers
+
     subject(:migration) { file("db/migrate/#{time}_create_bacon_transitions.rb") }
 
     before do
@@ -20,6 +22,14 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
 
     it "includes a foreign key" do
       expect(migration).to contain("add_foreign_key :bacon_transitions, :bacons")
+    end
+
+    it "does not include the metadata default value when using MySQL", if: mysql? do
+      expect(migration).not_to contain(/default: "{}"/)
+    end
+
+    it "includes the metadata default value when other than MySQL", unless: mysql? do
+      expect(migration).to contain(/default: "{}"/)
     end
   end
 

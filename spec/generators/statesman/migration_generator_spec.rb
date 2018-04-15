@@ -8,6 +8,8 @@ describe Statesman::MigrationGenerator, type: :generator do
   end
 
   describe "the model contains the correct words" do
+    extend Statesman::GeneratorHelpers
+
     subject(:migration) do
       file(
         "db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb",
@@ -28,6 +30,14 @@ describe Statesman::MigrationGenerator, type: :generator do
     it { is_expected.to contain(/:bacon_transition/) }
     it { is_expected.to_not contain(%r{:yummy/bacon}) }
     it { is_expected.to contain(/null: false/) }
+
+    it "does not include the metadata default value when using MySQL", if: mysql? do
+      expect(migration).not_to contain(/default: "{}"/)
+    end
+
+    it "includes the metadata default value when other than MySQL", unless: mysql? do
+      expect(migration).to contain(/default: "{}"/)
+    end
 
     it "names the sorting index appropriately" do
       expect(migration).
