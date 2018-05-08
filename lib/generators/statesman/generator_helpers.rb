@@ -9,7 +9,7 @@ module Statesman
     end
 
     def migration_class_name
-      klass.gsub(/::/, "").pluralize
+      klass.demodulize.pluralize
     end
 
     def next_migration_number

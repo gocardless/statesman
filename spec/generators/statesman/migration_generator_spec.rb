@@ -48,5 +48,10 @@ describe Statesman::MigrationGenerator, type: :generator do
       expect(migration).
         to contain("name: \"index_bacon_transitions_parent_most_recent\"")
     end
+
+    it "properly migrates the schema" do
+      require file("db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb")
+      expect { AddStatesmanToBaconTransitions.new.up }.not_to raise_error
+    end
   end
 end

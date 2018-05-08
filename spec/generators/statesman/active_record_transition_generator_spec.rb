@@ -31,6 +31,11 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     it "includes the metadata default value when other than MySQL", unless: mysql? do
       expect(migration).to contain(/default: "{}"/)
     end
+
+    it "properly migrates the schema" do
+      require file("db/migrate/#{time}_create_bacon_transitions.rb")
+      expect { CreateBaconTransitions.new.up }.not_to raise_error
+    end
   end
 
   describe "properly adds class names" do
