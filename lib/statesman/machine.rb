@@ -100,7 +100,7 @@ module Statesman
 
       # Check that the 'from' state is not terminal
       def validate_not_from_terminal_state(from)
-        unless from.nil? || successors.keys.include?(from)
+        unless from.nil? || successors.key?(from)
           raise InvalidTransitionError,
                 "Cannot transition away from terminal state '#{from}'"
         end

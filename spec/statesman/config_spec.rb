@@ -1,13 +1,16 @@
 require "spec_helper"
 
 describe Statesman::Config do
-  let(:instance) { Statesman::Config.new }
+  let(:instance) { described_class.new }
+
   after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
 
   describe "#storage_adapter" do
-    let(:adapter) { Class.new }
-    before  { instance.storage_adapter(adapter) }
     subject { instance.adapter_class }
+
+    let(:adapter) { Class.new }
+
+    before { instance.storage_adapter(adapter) }
 
     it { is_expected.to be(adapter) }
 

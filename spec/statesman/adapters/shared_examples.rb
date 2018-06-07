@@ -13,8 +13,6 @@ require "spec_helper"
 #
 # NOTE This line cannot reasonably be shortened.
 shared_examples_for "an adapter" do |adapter_class, transition_class, options = {}|
-  # rubocop:enable Metrics/LineLength
-
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:adapter) do
     adapter_class.new(transition_class,
@@ -23,25 +21,28 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
 
   describe "#initialize" do
     subject { adapter }
+
     its(:transition_class) { is_expected.to be(transition_class) }
     its(:parent_model) { is_expected.to be(model) }
     its(:history) { is_expected.to eq([]) }
   end
 
   describe "#create" do
+    subject { -> { create } }
+
     let(:from) { :x }
     let(:to) { :y }
     let(:there) { :z }
     let(:create) { adapter.create(from, to) }
-    subject { -> { create } }
 
     it { is_expected.to change(adapter.history, :count).by(1) }
 
     context "the new transition" do
       subject { create }
+
       it { is_expected.to be_a(transition_class) }
 
-      it "should have the initial state" do
+      it "has the initial state" do
         expect(subject.to_state.to_sym).to eq(to)
       end
 
@@ -87,23 +88,28 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
     end
 
     context "with metadata" do
-      let(:metadata) { { "some" => "hash" } }
       subject { adapter.create(from, to, metadata) }
+
+      let(:metadata) { { "some" => "hash" } }
+
       its(:metadata) { is_expected.to eq(metadata) }
     end
   end
 
   describe "#history" do
     subject { adapter.history }
+
     it { is_expected.to eq([]) }
 
     context "with transitions" do
       let!(:transition) { adapter.create(:x, :y) }
+
       it { is_expected.to eq([transition]) }
 
       context "sorting" do
-        let!(:transition2) { adapter.create(:x, :y) }
         subject { adapter.history }
+
+        let!(:transition2) { adapter.create(:x, :y) }
 
         it { is_expected.to eq(adapter.history.sort_by(&:sort_key)) }
       end

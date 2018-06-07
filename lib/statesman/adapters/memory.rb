@@ -28,7 +28,7 @@ module Statesman
       end
 
       def last(*)
-        @history.sort_by(&:sort_key).last
+        @history.max_by(&:sort_key)
       end
 
       def history(*)

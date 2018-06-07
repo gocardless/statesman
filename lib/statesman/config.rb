@@ -12,6 +12,5 @@ module Statesman
     def storage_adapter(adapter_class)
       @adapter_class = adapter_class
     end
-    # rubocop:enable TrivialAccessors
   end
 end
