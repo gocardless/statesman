@@ -6,14 +6,9 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     prepare_transitions_table
     prepare_other_model_table
     prepare_other_transitions_table
-  end
 
-  before do
     Statesman.configure { storage_adapter(Statesman::Adapters::ActiveRecord) }
-  end
-  after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
 
-  before do
     MyActiveRecordModel.send(:include, Statesman::Adapters::ActiveRecordQueries)
     MyActiveRecordModel.class_eval do
       def self.transition_class
@@ -36,9 +31,11 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         :initial
       end
     end
+
+    MyActiveRecordModel.send(:has_one, :other_active_record_model)
+    OtherActiveRecordModel.send(:belongs_to, :my_active_record_model)
   end
-  before { MyActiveRecordModel.send(:has_one, :other_active_record_model) }
-  before { OtherActiveRecordModel.send(:belongs_to, :my_active_record_model) }
+  after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
 
   let!(:model) do
     model = MyActiveRecordModel.create

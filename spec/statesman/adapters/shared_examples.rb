@@ -38,12 +38,12 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
     it { is_expected.to change(adapter.history, :count).by(1) }
 
     context "the new transition" do
-      subject { create }
+      subject(:instance) { create }
 
       it { is_expected.to be_a(transition_class) }
 
       it "has the initial state" do
-        expect(subject.to_state.to_sym).to eq(to)
+        expect(instance.to_state.to_sym).to eq(to)
       end
 
       context "with no previous transition" do

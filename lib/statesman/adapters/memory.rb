@@ -8,7 +8,7 @@ module Statesman
 
       # We only accept mode as a parameter to maintain a consistent interface
       # with other adapters which require it.
-      def initialize(transition_class, parent_model, observer, _ = {})
+      def initialize(transition_class, parent_model, observer, _opts = {})
         @history = []
         @transition_class = transition_class
         @parent_model = parent_model
