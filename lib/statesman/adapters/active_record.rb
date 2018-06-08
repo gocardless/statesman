@@ -117,9 +117,9 @@ module Statesman
         end
       end
 
-      def transition_conflict_error?(e)
-        e.message.include?(@transition_class.table_name) &&
-          (e.message.include?("sort_key") || e.message.include?("most_recent"))
+      def transition_conflict_error?(err)
+        err.message.include?(@transition_class.table_name) &&
+          (err.message.include?("sort_key") || err.message.include?("most_recent"))
       end
 
       def with_updated_timestamp(params)

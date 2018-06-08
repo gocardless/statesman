@@ -2,7 +2,7 @@ require "rails/version"
 require "rspec/rails"
 require "ammeter/init"
 
-TMP_GENERATOR_PATH = File.expand_path("../generator-tmp", __FILE__)
+TMP_GENERATOR_PATH = File.expand_path("generator-tmp", __dir__)
 
 shared_examples "a generator" do
   destination TMP_GENERATOR_PATH
@@ -19,6 +19,7 @@ shared_examples "a generator" do
 
     describe "it generates a correctly named file" do
       subject { file(migration_name) }
+
       it { is_expected.to be_a_migration }
     end
   end

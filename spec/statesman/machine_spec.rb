@@ -32,14 +32,14 @@ describe Statesman::Machine do
         transition from: :y, to: :z
       end
     end
-    let(:instance) { machine.new(my_model) }
-    let(:retry_attempts) { 2 }
-
     subject(:transition_state) do
-      Statesman::Machine.retry_conflicts(retry_attempts) do
+      described_class.retry_conflicts(retry_attempts) do
         instance.transition_to(:y)
       end
     end
+
+    let(:instance) { machine.new(my_model) }
+    let(:retry_attempts) { 2 }
 
     context "when no exception occurs" do
       it "runs the transition once" do
@@ -248,26 +248,31 @@ describe Statesman::Machine do
     context "with invalid states" do
       context "when both are invalid" do
         let(:options) { { from: :foo, to: :bar } }
+
         it_behaves_like "fails", Statesman::InvalidStateError
       end
 
       context "from a terminal state to anything" do
         let(:options) { { from: :y, to: [] } }
+
         it_behaves_like "fails", Statesman::InvalidTransitionError
       end
 
       context "to an initial state and from anything" do
         let(:options) { { from: nil, to: :x } }
+
         it_behaves_like "fails", Statesman::InvalidTransitionError
       end
 
       context "from a terminal state and to multiple states" do
         let(:options) { { from: :y, to: %i[x z] } }
+
         it_behaves_like "fails", Statesman::InvalidTransitionError
       end
 
       context "to an initial state and other states" do
         let(:options) { { from: nil, to: %i[y x z] } }
+
         it_behaves_like "fails", Statesman::InvalidTransitionError
       end
     end
@@ -275,21 +280,25 @@ describe Statesman::Machine do
     context "with validate_states" do
       context "from anything" do
         let(:options) { { from: nil, to: :y } }
+
         it_behaves_like "adds callback"
       end
 
       context "to anything" do
         let(:options) { { from: :x, to: [] } }
+
         it_behaves_like "adds callback"
       end
 
       context "to several" do
         let(:options) { { from: :x, to: %i[y z] } }
+
         it_behaves_like "adds callback"
       end
 
       context "from any to several" do
         let(:options) { { from: nil, to: %i[y z] } }
+
         it_behaves_like "adds callback"
       end
     end
@@ -359,8 +368,9 @@ describe Statesman::Machine do
       end
     end
 
-    let(:instance) { machine.new(my_model) }
     subject { instance.current_state }
+
+    let(:instance) { machine.new(my_model) }
 
     context "with no transitions" do
       it { is_expected.to eq(machine.initial_state) }
@@ -383,22 +393,27 @@ describe Statesman::Machine do
       end
     end
 
-    let(:instance) { machine.new(my_model) }
     subject { instance.in_state?(state) }
+
+    let(:instance) { machine.new(my_model) }
+
     before { instance.transition_to!(:y) }
 
     context "when machine is in given state" do
       let(:state) { "y" }
+
       it { is_expected.to eq(true) }
     end
 
     context "when machine is not in given state" do
       let(:state) { "x" }
+
       it { is_expected.to eq(false) }
     end
 
     context "when given a symbol" do
       let(:state) { :y }
+
       it { is_expected.to eq(true) }
     end
 
@@ -406,11 +421,13 @@ describe Statesman::Machine do
       context "when given multiple arguments" do
         context "when one of the states is the current state" do
           subject { instance.in_state?(:x, :y) }
+
           it { is_expected.to eq(true) }
         end
 
         context "when none of the states are the current state" do
           subject { instance.in_state?(:x, :z) }
+
           it { is_expected.to eq(false) }
         end
       end
@@ -418,11 +435,13 @@ describe Statesman::Machine do
       context "when given an array" do
         context "when one of the states is the current state" do
           subject { instance.in_state?(%i[x y]) }
+
           it { is_expected.to eq(true) }
         end
 
         context "when none of the states are the current state" do
           subject { instance.in_state?(%i[x z]) }
+
           it { is_expected.to eq(false) }
         end
       end
@@ -440,9 +459,10 @@ describe Statesman::Machine do
       end
     end
 
+    subject { instance.allowed_transitions(metadata) }
+
     let(:instance) { machine.new(my_model) }
     let(:metadata) { { some: :metadata } }
-    subject { instance.allowed_transitions(metadata) }
 
     context "with multiple possible states" do
       it { is_expected.to eq(%w[y z]) }
@@ -501,29 +521,33 @@ describe Statesman::Machine do
       end
     end
 
+    subject { instance.can_transition_to?(new_state, metadata) }
+
     let(:instance) { machine.new(my_model) }
     let(:metadata) { { some: :metadata } }
-    subject { instance.can_transition_to?(new_state, metadata) }
 
     context "when the transition is invalid" do
       context "with an initial to state" do
         let(:new_state) { :x }
+
         it { is_expected.to be_falsey }
       end
 
       context "with a terminal from state" do
         before { instance.transition_to!(:y) }
         let(:new_state) { :y }
+
         it { is_expected.to be_falsey }
       end
 
       context "and is guarded" do
         let(:guard_cb) { -> { false } }
         let(:new_state) { :z }
+
         before { machine.guard_transition(to: new_state, &guard_cb) }
 
         it "does not fire guard" do
-          expect(guard_cb).not_to receive(:call)
+          expect(guard_cb).to_not receive(:call)
           is_expected.to be_falsey
         end
       end
@@ -531,6 +555,7 @@ describe Statesman::Machine do
 
     context "when the transition valid" do
       let(:new_state) { :y }
+
       it { is_expected.to be_truthy }
 
       context "but it has a failing guard" do
@@ -611,6 +636,7 @@ describe Statesman::Machine do
       context "with a guard" do
         let(:result) { true }
         let(:guard_cb) { ->(*_args) { result } }
+
         before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
 
         context "and an object to act on" do
@@ -643,9 +669,10 @@ describe Statesman::Machine do
   end
 
   describe "#transition_to" do
+    subject { instance.transition_to(:some_state, metadata) }
+
     let(:instance) { machine.new(my_model) }
     let(:metadata) { { some: :metadata } }
-    subject { instance.transition_to(:some_state, metadata) }
 
     context "when it is succesful" do
       before do
@@ -669,7 +696,7 @@ describe Statesman::Machine do
           and_raise(RuntimeError, "user defined exception")
       end
 
-      it "should not rescue the exception" do
+      it "does not rescue the exception" do
         expect { instance.transition_to(:some_state, metadata) }.
           to raise_error(RuntimeError, "user defined exception")
       end
