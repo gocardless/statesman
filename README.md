@@ -8,6 +8,7 @@ For our policy on compatibility with Ruby and Rails versions, see [COMPATIBILITY
 [![CircleCI](https://circleci.com/gh/gocardless/statesman.svg?style=svg)](https://circleci.com/gh/gocardless/statesman)
 [![Code Climate](https://codeclimate.com/github/gocardless/statesman.svg)](https://codeclimate.com/github/gocardless/statesman)
 [![Gitter](https://badges.gitter.im/join.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=statesman&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=statesman&package-manager=bundler&version-scheme=semver)
 
 Statesman is an opinionated state machine library designed to provide a robust
 audit trail and data integrity. It decouples the state machine logic from the
