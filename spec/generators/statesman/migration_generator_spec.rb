@@ -8,16 +8,16 @@ describe Statesman::MigrationGenerator, type: :generator do
   end
 
   describe "the model contains the correct words" do
+    subject(:migration) do
+      file(
+        "db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb",
+      )
+    end
+
     let(:migration_number) { "5678309" }
 
     let(:mock_time) do
       double("Time", utc: double("UTCTime", strftime: migration_number))
-    end
-
-    subject do
-      file(
-        "db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb",
-      )
     end
 
     before do
@@ -26,16 +26,16 @@ describe Statesman::MigrationGenerator, type: :generator do
     end
 
     it { is_expected.to contain(/:bacon_transition/) }
-    it { is_expected.not_to contain(%r{:yummy/bacon}) }
+    it { is_expected.to_not contain(%r{:yummy/bacon}) }
     it { is_expected.to contain(/null: false/) }
 
     it "names the sorting index appropriately" do
-      expect(subject).
+      expect(migration).
         to contain("name: \"index_bacon_transitions_parent_sort\"")
     end
 
     it "names the most_recent index appropriately" do
-      expect(subject).
+      expect(migration).
         to contain("name: \"index_bacon_transitions_parent_most_recent\"")
     end
   end

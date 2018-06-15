@@ -4,12 +4,11 @@ module Statesman
   module Adapters
     class Memory
       attr_reader :transition_class
-      attr_reader :history
       attr_reader :parent_model
 
       # We only accept mode as a parameter to maintain a consistent interface
       # with other adapters which require it.
-      def initialize(transition_class, parent_model, observer, _ = {})
+      def initialize(transition_class, parent_model, observer, _opts = {})
         @history = []
         @transition_class = transition_class
         @parent_model = parent_model
@@ -29,7 +28,11 @@ module Statesman
       end
 
       def last(*)
-        @history.sort_by(&:sort_key).last
+        @history.max_by(&:sort_key)
+      end
+
+      def history(*)
+        @history
       end
 
       private

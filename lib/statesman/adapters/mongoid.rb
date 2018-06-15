@@ -6,7 +6,7 @@ module Statesman
       attr_reader :transition_class
       attr_reader :parent_model
 
-      def initialize(transition_class, parent_model, observer, _ = {})
+      def initialize(transition_class, parent_model, observer, _opts = {})
         @transition_class = transition_class
         @parent_model = parent_model
         @observer = observer
@@ -32,7 +32,7 @@ module Statesman
         @last_transition = nil
       end
 
-      def history
+      def history(*)
         transitions_for_parent.asc(:sort_key)
       end
 

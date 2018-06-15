@@ -1,6 +1,13 @@
 class <%= klass %> < <%= Statesman::Utils.rails_5_or_higher? ? 'ApplicationRecord' : 'ActiveRecord::Base' %>
   include Statesman::Adapters::ActiveRecordTransition
 
+  # If your transition table doesn't have the default `updated_at` timestamp column,
+  # you'll need to configure the `updated_timestamp_column` option, setting it to
+  # another column name (e.g. `:updated_on`) or `nil`.
+  #
+  # self.updated_timestamp_column = :updated_on
+  # self.updated_timestamp_column = nil
+
 <%- unless Statesman::Utils.rails_4_or_higher? -%>
   attr_accessible :to_state, :metadata, :sort_key
 

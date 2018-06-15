@@ -41,8 +41,8 @@ module Statesman
         @last_transition = nil
       end
 
-      def history
-        if transitions_for_parent.loaded?
+      def history(force_reload: false)
+        if transitions_for_parent.loaded? && !force_reload
           # Workaround for Rails bug which causes infinite loop when sorting
           # already loaded result set. Introduced in rails/rails@b097ebe
           transitions_for_parent.to_a.sort_by(&:sort_key)
@@ -53,7 +53,7 @@ module Statesman
 
       def last(force_reload: false)
         if force_reload
-          @last_transition = history.last
+          @last_transition = history(force_reload: true).last
         else
           @last_transition ||= history.last
         end
@@ -88,11 +88,7 @@ module Statesman
 
       def unset_old_most_recent
         most_recent = transitions_for_parent.where(most_recent: true)
-        updated_at = if ::ActiveRecord::Base.default_timezone == :utc
-                       Time.now.utc
-                     else
-                       Time.now
-                     end
+
         # Check whether the `most_recent` column allows null values. If it
         # doesn't, set old records to `false`, otherwise, set them to `NULL`.
         #
@@ -101,9 +97,9 @@ module Statesman
         # rather than Rails' opinion of whether the database supports partial
         # indexes, we're robust to DBs later adding support for partial indexes.
         if transition_class.columns_hash["most_recent"].null == false
-          most_recent.update_all(most_recent: false, updated_at: updated_at)
+          most_recent.update_all(with_updated_timestamp(most_recent: false))
         else
-          most_recent.update_all(most_recent: nil, updated_at: updated_at)
+          most_recent.update_all(with_updated_timestamp(most_recent: nil))
         end
       end
 
@@ -121,9 +117,34 @@ module Statesman
         end
       end
 
-      def transition_conflict_error?(e)
-        e.message.include?(@transition_class.table_name) &&
-          (e.message.include?("sort_key") || e.message.include?("most_recent"))
+      def transition_conflict_error?(err)
+        err.message.include?(@transition_class.table_name) &&
+          (err.message.include?("sort_key") || err.message.include?("most_recent"))
+      end
+
+      def with_updated_timestamp(params)
+        # TODO: Once we've set expectations that transition classes should conform to
+        # the interface of Adapters::ActiveRecordTransition as a breaking change in the
+        # next major version, we can stop calling `#respond_to?` first and instead
+        # assume that there is a `.updated_timestamp_column` method we can call.
+        #
+        # At the moment, most transition classes will include the module, but not all,
+        # not least because it doesn't work with PostgreSQL JSON columns for metadata.
+        column = if @transition_class.respond_to?(:updated_timestamp_column)
+                   @transition_class.updated_timestamp_column
+                 else
+                   ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
+                 end
+
+        return params if column.nil?
+
+        timestamp = if ::ActiveRecord::Base.default_timezone == :utc
+                      Time.now.utc
+                    else
+                      Time.now
+                    end
+
+        params.merge(column => timestamp)
       end
     end
   end

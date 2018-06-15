@@ -8,6 +8,7 @@ describe Statesman::Adapters::Mongoid, mongo: true do
   after { Mongoid.purge! }
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyMongoidModel.create(current_state: :pending) }
+
   it_behaves_like "an adapter", described_class, MyMongoidModelTransition
 
   describe "#initialize" do
@@ -45,6 +46,36 @@ describe Statesman::Adapters::Mongoid, mongo: true do
         before { adapter.create(:y, :z) }
         it "retrieves the new transition from the database" do
           expect(adapter.last.to_state).to eq("z")
+        end
+      end
+    end
+
+    context "when a new transition has been created elsewhere" do
+      let(:alternate_adapter) do
+        described_class.new(MyMongoidModelTransition, model, observer)
+      end
+
+      context "when explicitly not using the cache" do
+        context "when the transitions are in memory" do
+          before do
+            model.my_mongoid_model_transitions.entries
+            alternate_adapter.create(:y, :z)
+          end
+
+          it "reloads the value" do
+            expect(adapter.last(force_reload: true).to_state).to eq("z")
+          end
+        end
+
+        context "when the transitions are not in memory" do
+          before do
+            model.my_mongoid_model_transitions.reset
+            alternate_adapter.create(:y, :z)
+          end
+
+          it "reloads the value" do
+            expect(adapter.last(force_reload: true).to_state).to eq("z")
+          end
         end
       end
     end

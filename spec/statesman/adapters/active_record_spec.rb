@@ -12,6 +12,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
+
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
 
   describe "#initialize" do
@@ -98,13 +99,14 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   end
 
   describe "#create" do
+    subject { -> { create } }
+
     let!(:adapter) do
       described_class.new(MyActiveRecordModelTransition, model, observer)
     end
     let(:from) { :x }
     let(:to) { :y }
     let(:create) { adapter.create(from, to) }
-    subject { -> { create } }
 
     context "when there is a race" do
       it "raises a TransitionConflictError" do
@@ -132,11 +134,13 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             ActiveRecord::RecordNotUnique.new("unrelated", nil)
           end
         end
+
         it { is_expected.to raise_exception(ActiveRecord::RecordNotUnique) }
       end
 
       context "other errors" do
         let(:error) { StandardError }
+
         it { is_expected.to raise_exception(StandardError) }
       end
     end
@@ -150,6 +154,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
 
       context "with a previous transition" do
         let!(:previous_transition) { adapter.create(from, to) }
+
         its(:most_recent) { is_expected.to eq(true) }
 
         it "updates the previous transition's most_recent flag" do
@@ -161,6 +166,59 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         it "touches the previous transition's updated_at timestamp" do
           expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
             to(change { previous_transition.reload.updated_at })
+        end
+
+        context "for a transition class without an updated timestamp column attribute" do
+          let!(:adapter) do
+            described_class.new(MyActiveRecordModelTransitionWithoutInclude,
+                                model,
+                                observer)
+          end
+
+          it "defaults to touching the previous transition's updated_at timestamp" do
+            expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
+              to(change { previous_transition.reload.updated_at })
+          end
+        end
+
+        context "with a custom updated timestamp column set" do
+          around do |example|
+            MyActiveRecordModelTransition.updated_timestamp_column.tap do |original_value|
+              MyActiveRecordModelTransition.updated_timestamp_column = :updated_on
+              example.run
+              MyActiveRecordModelTransition.updated_timestamp_column = original_value
+            end
+          end
+
+          it "touches the previous transition's updated_on timestamp" do
+            expect { Timecop.freeze(Time.now + 1.day) { create } }.
+              to(change { previous_transition.reload.updated_on })
+          end
+
+          it "doesn't update the updated_at column" do
+            expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
+              to_not(change { previous_transition.reload.updated_at })
+          end
+        end
+
+        context "with no updated timestamp column set" do
+          around do |example|
+            MyActiveRecordModelTransition.updated_timestamp_column.tap do |original_value|
+              MyActiveRecordModelTransition.updated_timestamp_column = nil
+              example.run
+              MyActiveRecordModelTransition.updated_timestamp_column = original_value
+            end
+          end
+
+          it "just updates the most_recent" do
+            expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
+              to(change { previous_transition.reload.most_recent })
+          end
+
+          it "doesn't update the updated_at column" do
+            expect { Timecop.freeze(Time.now + 5.seconds) { create } }.
+              to_not(change { previous_transition.reload.updated_at })
+          end
         end
 
         context "and a query on the parent model's state is made" do
@@ -195,6 +253,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       context "with two previous transitions" do
         let!(:previous_transition) { adapter.create(from, to) }
         let!(:another_previous_transition) { adapter.create(from, to) }
+
         its(:most_recent) { is_expected.to eq(true) }
 
         it "updates the previous transition's most_recent flag" do
@@ -234,17 +293,35 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           described_class.new(MyActiveRecordModelTransition, model, observer)
         end
 
-        before { alternate_adapter.create(:y, :z, []) }
-
         it "still returns the cached value" do
+          alternate_adapter.create(:y, :z, [])
+
           expect_any_instance_of(MyActiveRecordModel).
             to receive(:my_active_record_model_transitions).never
           expect(adapter.last.to_state).to eq("y")
         end
 
-        context "when explitly not using the cache" do
-          it "still returns the cached value" do
-            expect(adapter.last(force_reload: true).to_state).to eq("z")
+        context "when explicitly not using the cache" do
+          context "when the transitions are in memory" do
+            before do
+              model.my_active_record_model_transitions.load
+              alternate_adapter.create(:y, :z, [])
+            end
+
+            it "reloads the value" do
+              expect(adapter.last(force_reload: true).to_state).to eq("z")
+            end
+          end
+
+          context "when the transitions are not in memory" do
+            before do
+              model.my_active_record_model_transitions.reset
+              alternate_adapter.create(:y, :z, [])
+            end
+
+            it "reloads the value" do
+              expect(adapter.last(force_reload: true).to_state).to eq("z")
+            end
           end
         end
       end
@@ -255,7 +332,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       before { model.my_active_record_model_transitions.load_target }
 
       it "doesn't query the database" do
-        expect(MyActiveRecordModelTransition).not_to receive(:connection)
+        expect(MyActiveRecordModelTransition).to_not receive(:connection)
         expect(adapter.last.to_state).to eq("y")
       end
     end
