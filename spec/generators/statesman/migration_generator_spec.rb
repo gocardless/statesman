@@ -32,7 +32,7 @@ describe Statesman::MigrationGenerator, type: :generator do
     it { is_expected.to contain(/null: false/) }
 
     it "does not include the metadata default value when using MySQL", if: mysql? do
-      expect(migration).not_to contain(/default: "{}"/)
+      expect(migration).to_not contain(/default: "{}"/)
     end
 
     it "includes the metadata default value when other than MySQL", unless: mysql? do
@@ -51,7 +51,7 @@ describe Statesman::MigrationGenerator, type: :generator do
 
     it "properly migrates the schema" do
       require file("db/migrate/#{migration_number}_add_statesman_to_bacon_transitions.rb")
-      expect { AddStatesmanToBaconTransitions.new.up }.not_to raise_error
+      expect { AddStatesmanToBaconTransitions.new.up }.to_not raise_error
     end
   end
 end

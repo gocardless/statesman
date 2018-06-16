@@ -52,6 +52,7 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
 
       context "with a previous transition" do
         before { adapter.create(from, to) }
+
         its(:sort_key) { is_expected.to be(20) }
       end
     end
@@ -117,9 +118,11 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
   end
 
   describe "#last" do
-    before { adapter.create(:x, :y) }
-    before { adapter.create(:y, :z) }
     subject { adapter.last }
+
+    before { adapter.create(:x, :y) }
+
+    before { adapter.create(:y, :z) }
 
     it { is_expected.to be_a(transition_class) }
     specify { expect(adapter.last.to_state.to_sym).to eq(:z) }

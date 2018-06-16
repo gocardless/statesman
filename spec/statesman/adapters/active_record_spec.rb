@@ -10,6 +10,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   end
 
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
+
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
 
@@ -283,6 +284,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
 
       context "after then creating a new transition" do
         before { adapter.create(:y, :z, []) }
+
         it "retrieves the new transition from the database" do
           expect(adapter.last.to_state).to eq("z")
         end
@@ -329,6 +331,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
 
     context "with a pre-fetched transition history" do
       before { adapter.create(:x, :y) }
+
       before { model.my_active_record_model_transitions.load_target }
 
       it "doesn't query the database" do
@@ -347,6 +350,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
     before do
       MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
     end
+
     let(:observer) { double(Statesman::Machine, execute: nil) }
     let(:model) do
       MyNamespace::MyActiveRecordModel.create(current_state: :pending)

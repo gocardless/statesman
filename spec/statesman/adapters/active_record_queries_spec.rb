@@ -35,6 +35,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     MyActiveRecordModel.send(:has_one, :other_active_record_model)
     OtherActiveRecordModel.send(:belongs_to, :my_active_record_model)
   end
+
   after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
 
   let!(:model) do
