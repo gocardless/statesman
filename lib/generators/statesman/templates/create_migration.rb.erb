@@ -17,13 +17,13 @@ class Create<%= migration_class_name %> < ActiveRecord::Migration<%= "[#{ActiveR
     add_foreign_key :<%= table_name %>, :<%= parent_table_name %>
 
     add_index(:<%= table_name %>,
-              [:<%= parent_id %>, :sort_key],
+              %i(<%= parent_id %> sort_key),
               unique: true,
               name: "<%= index_name :parent_sort %>")
     add_index(:<%= table_name %>,
-              [:<%= parent_id %>, :most_recent],
+              %i(<%= parent_id %> most_recent),
               unique: true,
-              <%= "where: 'most_recent'," if database_supports_partial_indexes? %>
+              <%= 'where: "most_recent",' if database_supports_partial_indexes? %>
               name: "<%= index_name :parent_most_recent %>")
   end
 end
