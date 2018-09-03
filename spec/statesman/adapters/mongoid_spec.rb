@@ -6,6 +6,7 @@ require "mongoid"
 
 describe Statesman::Adapters::Mongoid, mongo: true do
   after { Mongoid.purge! }
+
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyMongoidModel.create(current_state: :pending) }
 
@@ -34,16 +35,18 @@ describe Statesman::Adapters::Mongoid, mongo: true do
 
     context "with a previously looked up transition" do
       before { adapter.create(:x, :y) }
+
       before { adapter.last }
 
       it "caches the transition" do
         expect_any_instance_of(MyMongoidModel).
-          to receive(:my_mongoid_model_transitions).never
+          to_not receive(:my_mongoid_model_transitions)
         adapter.last
       end
 
       context "and a new transition" do
         before { adapter.create(:y, :z) }
+
         it "retrieves the new transition from the database" do
           expect(adapter.last.to_state).to eq("z")
         end

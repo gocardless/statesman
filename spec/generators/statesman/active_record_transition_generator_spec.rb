@@ -24,8 +24,9 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
   end
 
   describe "properly adds class names" do
-    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
     subject { file("app/models/yummy/bacon_transition.rb") }
+
+    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
 
     it { is_expected.to contain(/:bacon_transition/) }
     it { is_expected.to_not contain(%r{:yummy/bacon}) }
@@ -33,16 +34,18 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
   end
 
   describe "properly formats without class names" do
-    before { run_generator %w[Bacon BaconTransition] }
     subject { file("app/models/bacon_transition.rb") }
+
+    before { run_generator %w[Bacon BaconTransition] }
 
     it { is_expected.to_not contain(/class_name:/) }
     it { is_expected.to contain(/class BaconTransition/) }
   end
 
   describe "it doesn't create any double-spacing" do
-    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
     subject { file("app/models/yummy/bacon_transition.rb") }
+
+    before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
 
     it { is_expected.to_not contain(/\n\n\n/) }
   end
