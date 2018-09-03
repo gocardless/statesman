@@ -6,11 +6,14 @@ describe Statesman::Machine do
 
   describe ".state" do
     before { machine.state(:x) }
+
     before { machine.state(:y) }
+
     specify { expect(machine.states).to eq(%w[x y]) }
 
     context "initial" do
       before { machine.state(:x, initial: true) }
+
       specify { expect(machine.initial_state).to eq("x") }
 
       context "when an initial state is already defined" do
@@ -23,6 +26,12 @@ describe Statesman::Machine do
   end
 
   describe ".retry_conflicts" do
+    subject(:transition_state) do
+      described_class.retry_conflicts(retry_attempts) do
+        instance.transition_to(:y)
+      end
+    end
+
     before do
       machine.class_eval do
         state :x, initial: true
@@ -30,11 +39,6 @@ describe Statesman::Machine do
         state :z
         transition from: :x, to: :y
         transition from: :y, to: :z
-      end
-    end
-    subject(:transition_state) do
-      described_class.retry_conflicts(retry_attempts) do
-        instance.transition_to(:y)
       end
     end
 
@@ -358,6 +362,8 @@ describe Statesman::Machine do
   end
 
   describe "#current_state" do
+    subject { instance.current_state }
+
     before do
       machine.class_eval do
         state :x, initial: true
@@ -368,8 +374,6 @@ describe Statesman::Machine do
       end
     end
 
-    subject { instance.current_state }
-
     let(:instance) { machine.new(my_model) }
 
     context "with no transitions" do
@@ -378,6 +382,7 @@ describe Statesman::Machine do
 
     context "with multiple transitions" do
       before { instance.transition_to!(:y) }
+
       before { instance.transition_to!(:z) }
 
       it { is_expected.to eq("z") }
@@ -385,6 +390,8 @@ describe Statesman::Machine do
   end
 
   describe "#in_state?" do
+    subject { instance.in_state?(state) }
+
     before do
       machine.class_eval do
         state :x, initial: true
@@ -392,8 +399,6 @@ describe Statesman::Machine do
         transition from: :x, to: :y
       end
     end
-
-    subject { instance.in_state?(state) }
 
     let(:instance) { machine.new(my_model) }
 
@@ -449,6 +454,8 @@ describe Statesman::Machine do
   end
 
   describe "#allowed_transitions" do
+    subject { instance.allowed_transitions(metadata) }
+
     before do
       machine.class_eval do
         state :x, initial: true
@@ -459,8 +466,6 @@ describe Statesman::Machine do
       end
     end
 
-    subject { instance.allowed_transitions(metadata) }
-
     let(:instance) { machine.new(my_model) }
     let(:metadata) { { some: :metadata } }
 
@@ -470,6 +475,7 @@ describe Statesman::Machine do
 
     context "with one possible state" do
       before { instance.transition_to!(:y) }
+
       it { is_expected.to eq(["z"]) }
 
       context "guarded using metadata" do
@@ -495,6 +501,7 @@ describe Statesman::Machine do
 
     context "with no possible transitions" do
       before { instance.transition_to!(:z) }
+
       it { is_expected.to eq([]) }
     end
   end
@@ -511,6 +518,8 @@ describe Statesman::Machine do
   end
 
   describe "#can_transition_to?" do
+    subject(:can_transition_to?) { instance.can_transition_to?(new_state, metadata) }
+
     before do
       machine.class_eval do
         state :x, initial: true
@@ -520,8 +529,6 @@ describe Statesman::Machine do
         transition from: :y, to: :z
       end
     end
-
-    subject { instance.can_transition_to?(new_state, metadata) }
 
     let(:instance) { machine.new(my_model) }
     let(:metadata) { { some: :metadata } }
@@ -535,6 +542,7 @@ describe Statesman::Machine do
 
       context "with a terminal from state" do
         before { instance.transition_to!(:y) }
+
         let(:new_state) { :y }
 
         it { is_expected.to be_falsey }
@@ -548,7 +556,7 @@ describe Statesman::Machine do
 
         it "does not fire guard" do
           expect(guard_cb).to_not receive(:call)
-          is_expected.to be_falsey
+          expect(can_transition_to?).to be_falsey
         end
       end
     end
@@ -560,6 +568,7 @@ describe Statesman::Machine do
 
       context "but it has a failing guard" do
         before { machine.guard_transition(to: :y) { false } }
+
         it { is_expected.to be_falsey }
       end
 
@@ -679,6 +688,7 @@ describe Statesman::Machine do
         expect(instance).to receive(:transition_to!).once.
           with(:some_state, metadata).and_return(:some_state)
       end
+
       it { is_expected.to be(:some_state) }
     end
 
@@ -687,6 +697,7 @@ describe Statesman::Machine do
         allow(instance).to receive(:transition_to!).
           and_raise(Statesman::GuardFailedError)
       end
+
       it { is_expected.to be_falsey }
     end
 

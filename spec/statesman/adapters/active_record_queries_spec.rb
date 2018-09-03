@@ -35,6 +35,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     MyActiveRecordModel.send(:has_one, :other_active_record_model)
     OtherActiveRecordModel.send(:belongs_to, :my_active_record_model)
   end
+
   after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
 
   let!(:model) do
@@ -107,20 +108,20 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
 
     context "given multiple states" do
-      subject { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
+      subject(:not_in_state) { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
 
       it do
-        is_expected.to match_array([initial_state_model,
-                                    returned_to_initial_model])
+        expect(not_in_state).to match_array([initial_state_model,
+                                             returned_to_initial_model])
       end
     end
 
     context "given an array of states" do
-      subject { MyActiveRecordModel.not_in_state(%i[succeeded failed]) }
+      subject(:not_in_state) { MyActiveRecordModel.not_in_state(%i[succeeded failed]) }
 
       it do
-        is_expected.to match_array([initial_state_model,
-                                    returned_to_initial_model])
+        expect(not_in_state).to match_array([initial_state_model,
+                                             returned_to_initial_model])
       end
     end
   end

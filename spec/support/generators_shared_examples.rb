@@ -7,6 +7,7 @@ TMP_GENERATOR_PATH = File.expand_path("generator-tmp", __dir__)
 shared_examples "a generator" do
   destination TMP_GENERATOR_PATH
   before { prepare_destination }
+
   let(:gen) { generator %w[Yummy::Bacon Yummy::BaconTransition] }
 
   it "invokes create_model_file method" do
