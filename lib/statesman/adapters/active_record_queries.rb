@@ -20,7 +20,7 @@ module Statesman
             where("NOT (#{states_where(most_recent_transition_alias, states)})",
                   states)
         end
-        
+
         def most_recent_transition_join
           "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias}
              ON #{table_name}.id =
