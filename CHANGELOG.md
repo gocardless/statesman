@@ -1,3 +1,10 @@
+## v3.5.0, 2 November 2018
+
+- Expose `most_recent_transition_join` - ActiveRecords `or` requires that both
+    sides of the query match up. Exposing this methods makes things easier if
+    one side of the `or` uses `in_state` or `not_in_state`. (patch by [@adambutler](https://github.com/adambutler))
+- Various Readme and CI related changes.
+
 ## v3.4.1, 14 February 2018 ❤️
 
 - Support ActiveRecord transition classes which don't include `Statesman::Adapters::ActiveRecordTransition`, and thus don't have a `.updated_timestamp_column` method (see #310 for further details) (patch by [@timrogers](https://github.com/timrogers))

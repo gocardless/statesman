@@ -374,6 +374,17 @@ Returns all models currently in any of the supplied states.
 #### `Model.not_in_state(:state_1, :state_2, etc)`
 Returns all models not currently in any of the supplied states.
 
+
+### `Model.most_recent_transition_join`
+This joins the model to its most recent transition whatever that may be.
+We expose this method to ease use of ActiveRecord's `or` e.g
+
+```ruby
+Model.in_state(:state_1).or(
+  Model.most_recent_transition_join.where(model_field: 123)
+)
+```
+
 ## Frequently Asked Questions
 
 #### Storing the state on the model object
