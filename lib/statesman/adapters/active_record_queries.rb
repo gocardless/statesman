@@ -21,6 +21,13 @@ module Statesman
                   states)
         end
 
+        def most_recent_transition_join
+          "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias}
+             ON #{table_name}.id =
+                  #{most_recent_transition_alias}.#{model_foreign_key}
+             AND #{most_recent_transition_alias}.most_recent = #{db_true}"
+        end
+
         private
 
         def transition_class
@@ -53,13 +60,6 @@ module Statesman
 
         def model_table
           transition_reflection.table_name
-        end
-
-        def most_recent_transition_join
-          "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias}
-             ON #{table_name}.id =
-                  #{most_recent_transition_alias}.#{model_foreign_key}
-             AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
         def states_where(temporary_table_name, states)
