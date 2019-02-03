@@ -76,8 +76,12 @@ module Statesman
           transition.save!
           @last_transition = transition
           @observer.execute(:after, from, to, transition)
+          ::ActiveRecord::Base.connection.add_transaction_record(
+            ActiveRecordAfterCommitWrap.new do
+              @observer.execute(:after_commit, from, to, transition)
+            end
+          )
         end
-        @observer.execute(:after_commit, from, to, transition)
 
         transition
       end
@@ -146,6 +150,20 @@ module Statesman
 
         params.merge(column => timestamp)
       end
+    end
+
+    class ActiveRecordAfterCommitWrap
+      def initialize
+        @callback = Proc.new
+      end
+
+      def committed!(*)
+        @callback.call
+      end
+
+      def before_committed!(*); end
+
+      def rolledback!(*); end
     end
   end
 end
