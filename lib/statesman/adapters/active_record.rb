@@ -78,14 +78,18 @@ module Statesman
           transition.save!
           @last_transition = transition
           @observer.execute(:after, from, to, transition)
-          ::ActiveRecord::Base.connection.add_transaction_record(
-            ActiveRecordAfterCommitWrap.new do
-              @observer.execute(:after_commit, from, to, transition)
-            end
-          )
+          add_after_commit_callback(from, to, transition)
         end
 
         transition
+      end
+
+      def add_after_commit_callback(from, to, transition)
+        ::ActiveRecord::Base.connection.add_transaction_record(
+          ActiveRecordAfterCommitWrap.new do
+            @observer.execute(:after_commit, from, to, transition)
+          end,
+        )
       end
 
       def transitions_for_parent
