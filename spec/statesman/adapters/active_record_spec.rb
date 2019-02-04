@@ -227,6 +227,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             it "still has the old state" do
               allow(observer).to receive(:execute) do |phase|
                 next unless phase == :before
+
                 expect(
                   model.transitions.where(most_recent: true).first.to_state,
                 ).to eq("y")
@@ -240,6 +241,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
             it "still has the old state" do
               allow(observer).to receive(:execute) do |phase|
                 next unless phase == :after
+
                 expect(
                   model.transitions.where(most_recent: true).first.to_state,
                 ).to eq("z")

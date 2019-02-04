@@ -11,7 +11,7 @@ references:
     - type: cache-restore
       key: statesman-{{ checksum "Gemfile" }}-{{ checksum "~/RAILS_VERSION.txt" }}
 
-    - run: gem install bundler
+    - run: gem install bundler -v 1.3
 
     - run: bundle install --path vendor/bundle
 
