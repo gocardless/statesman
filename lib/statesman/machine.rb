@@ -46,10 +46,10 @@ module Statesman
 
       def callbacks
         @callbacks ||= {
-          before:       [],
-          after:        [],
+          before: [],
+          after: [],
           after_commit: [],
-          guards:       [],
+          guards: [],
         }
       end
 

@@ -25,6 +25,7 @@ module Statesman
         elsif serialized && JSON_COLUMN_TYPES.include?(column_type)
           raise IncompatibleSerializationError, transition_class.name
         end
+
         @transition_class = transition_class
         @parent_model = parent_model
         @observer = observer
@@ -36,6 +37,7 @@ module Statesman
         create_transition(from.to_s, to.to_s, metadata)
       rescue ::ActiveRecord::RecordNotUnique => e
         raise TransitionConflictError, e.message if transition_conflict_error? e
+
         raise
       ensure
         @last_transition = nil
