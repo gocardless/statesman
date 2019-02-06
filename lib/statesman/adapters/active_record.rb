@@ -72,7 +72,7 @@ module Statesman
 
         transition = transitions_for_parent.build(transition_attributes)
 
-        ::ActiveRecord::Base.transaction(requires_new: true) do
+        ::ActiveRecord::Base.transaction(requires_new: Statesman.requires_new) do
           @observer.execute(:before, from, to, transition)
           unset_old_most_recent
           transition.save!

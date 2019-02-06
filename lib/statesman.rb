@@ -26,9 +26,14 @@ module Statesman
   def self.configure(&block)
     config = Config.new(block)
     @storage_adapter = config.adapter_class
+    @requires_new = config.requires_new
   end
 
   def self.storage_adapter
     @storage_adapter || Adapters::Memory
+  end
+
+  def self.requires_new
+    @requires_new || true
   end
 end
