@@ -163,6 +163,12 @@ module Statesman
         @callback = Proc.new
       end
 
+      # rubocop: disable Naming/PredicateName
+      def has_transactional_callbacks?
+        true
+      end
+      # rubocop: enable Naming/PredicateName
+
       def committed!(*)
         @callback.call
       end
@@ -170,6 +176,11 @@ module Statesman
       def before_committed!(*); end
 
       def rolledback!(*); end
+
+      # Required for +transaction(requires_new: true)+
+      def add_to_transaction(*)
+        @connection.add_transaction_record(self)
+      end
     end
   end
 end
