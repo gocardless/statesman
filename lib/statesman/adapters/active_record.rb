@@ -161,6 +161,7 @@ module Statesman
     class ActiveRecordAfterCommitWrap
       def initialize
         @callback = Proc.new
+        @connection = ::ActiveRecord::Base.connection
       end
 
       # rubocop: disable Naming/PredicateName
