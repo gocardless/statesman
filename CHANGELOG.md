@@ -1,3 +1,9 @@
+## v4.0.0, 22 February 2019
+
+- Forces Statesman to use a new transactions with `requires_new: true` (https://github.com/gocardless/statesman/pull/249)
+- Fixes an issue with `after_commit` transition blocks that where being
+    executed even if the transaction rolled back. ([patch](https://github.com/gocardless/statesman/pull/338) by [@matid](https://github.com/matid))
+
 ## v3.5.0, 2 November 2018
 
 - Expose `most_recent_transition_join` - ActiveRecords `or` requires that both
