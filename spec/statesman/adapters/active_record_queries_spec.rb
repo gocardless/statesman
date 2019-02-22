@@ -168,4 +168,38 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
       end
     end
   end
+
+  context "after_commit transactional integrity" do
+    before do
+      MyStateMachine.class_eval do
+        cattr_accessor(:after_commit_callback_executed) { false }
+
+        after_transition(from: :initial, to: :succeeded, after_commit: true) do
+          # This leaks state in a testable way if transactional integrity is broken.
+          MyStateMachine.after_commit_callback_executed = true
+        end
+      end
+    end
+
+    after do
+      MyStateMachine.class_eval do
+        callbacks[:after_commit] = []
+      end
+    end
+
+    let!(:model) do
+      MyActiveRecordModel.create
+    end
+
+    # rubocop:disable RSpec/ExampleLength
+    it do
+      expect do
+        ActiveRecord::Base.transaction do
+          model.state_machine.transition_to!(:succeeded)
+          raise ActiveRecord::Rollback
+        end
+      end.to_not change(MyStateMachine, :after_commit_callback_executed)
+    end
+    # rubocop:enable RSpec/ExampleLength
+  end
 end
