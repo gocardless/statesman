@@ -146,7 +146,24 @@ module Statesman
       end
 
       def parent_join_foreign_key
-        parent_model.class.to_s.demodulize.underscore + "_id"
+        association =
+          parent_model.class.
+            reflect_on_all_associations(:has_many).
+            find { |r| r.name.to_s == @association_name.to_s }
+
+        association_join_primary_key(association)
+      end
+
+      def association_join_primary_key(association)
+        if association.respond_to?(:join_primary_key)
+          association.join_primary_key
+        elsif association.method(:join_keys).arity.zero?
+          # Support for Rails 5.1
+          association.join_keys.key
+        else
+          # Support for Rails < 5.1
+          association.join_keys(transition_class).key
+        end
       end
 
       def with_updated_timestamp(params)
