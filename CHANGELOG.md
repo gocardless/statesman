@@ -1,3 +1,7 @@
+## v4.1.0, 10 April 2019
+
+- Add better support for mysql (and others) in `transition_conflict_error?` [@greysteil](https://github.com/greysteil) (https://github.com/gocardless/statesman/pull/342)
+
 ## v4.0.0, 22 February 2019
 
 - Forces Statesman to use a new transactions with `requires_new: true` (https://github.com/gocardless/statesman/pull/249)
