@@ -93,7 +93,7 @@ module Statesman
       end
 
       def transitions_for_parent
-        @parent_model.send(@association_name)
+        parent_model.send(@association_name)
       end
 
       def unset_old_most_recent
@@ -128,8 +128,42 @@ module Statesman
       end
 
       def transition_conflict_error?(err)
-        err.message.include?(@transition_class.table_name) &&
+        return true if unique_indexes.any? { |i| err.message.include?(i.name) }
+
+        err.message.include?(transition_class.table_name) &&
           (err.message.include?("sort_key") || err.message.include?("most_recent"))
+      end
+
+      def unique_indexes
+        ::ActiveRecord::Base.connection.
+          indexes(transition_class.table_name).
+          select do |index|
+            next unless index.unique
+
+            index.columns.sort == [parent_join_foreign_key, "sort_key"] ||
+              index.columns.sort == [parent_join_foreign_key, "most_recent"]
+          end
+      end
+
+      def parent_join_foreign_key
+        association =
+          parent_model.class.
+            reflect_on_all_associations(:has_many).
+            find { |r| r.name.to_s == @association_name.to_s }
+
+        association_join_primary_key(association)
+      end
+
+      def association_join_primary_key(association)
+        if association.respond_to?(:join_primary_key)
+          association.join_primary_key
+        elsif association.method(:join_keys).arity.zero?
+          # Support for Rails 5.1
+          association.join_keys.key
+        else
+          # Support for Rails < 5.1
+          association.join_keys(transition_class).key
+        end
       end
 
       def with_updated_timestamp(params)
@@ -140,8 +174,8 @@ module Statesman
         #
         # At the moment, most transition classes will include the module, but not all,
         # not least because it doesn't work with PostgreSQL JSON columns for metadata.
-        column = if @transition_class.respond_to?(:updated_timestamp_column)
-                   @transition_class.updated_timestamp_column
+        column = if transition_class.respond_to?(:updated_timestamp_column)
+                   transition_class.updated_timestamp_column
                  else
                    ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
                  end

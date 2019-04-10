@@ -94,14 +94,12 @@ class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
                 %i[my_active_record_model_id most_recent],
                 unique: true,
                 where: "most_recent",
-                name: "index_my_active_record_model_transitions_"\
-                      "parent_most_recent"
+                name: "index_my_active_record_model_transitions_parent_latest"
     else
       add_index :my_active_record_model_transitions,
                 %i[my_active_record_model_id most_recent],
                 unique: true,
-                name: "index_my_active_record_model_transitions_"\
-                      "parent_most_recent"
+                name: "index_my_active_record_model_transitions_parent_latest"
     end
   end
 end
@@ -173,13 +171,13 @@ class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
                 unique: true,
                 where: "most_recent",
                 name: "index_other_active_record_model_transitions_"\
-                      "parent_most_recent"
+                      "parent_latest"
     else
       add_index :other_active_record_model_transitions,
                 %i[other_active_record_model_id most_recent],
                 unique: true,
                 name: "index_other_active_record_model_transitions_"\
-                      "parent_most_recent"
+                      "parent_latest"
     end
   end
 end
@@ -188,8 +186,7 @@ end
 class DropMostRecentColumn < MIGRATION_CLASS
   def change
     remove_index :my_active_record_model_transitions,
-                 name: "index_my_active_record_model_transitions_"\
-                       "parent_most_recent"
+                 name: "index_my_active_record_model_transitions_parent_latest"
     remove_column :my_active_record_model_transitions, :most_recent
   end
 end
@@ -270,14 +267,12 @@ class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
                 %i[my_active_record_model_id most_recent],
                 unique: true,
                 where: "most_recent",
-                name: "index_namespace_model_transitions_"\
-                      "parent_most_recent"
+                name: "index_namespace_model_transitions_parent_latest"
     else
       add_index :my_namespace_my_active_record_model_transitions,
                 %i[my_active_record_model_id most_recent],
                 unique: true,
-                name: "index_namespace_model_transitions_"\
-                      "parent_most_recent"
+                name: "index_namespace_model_transitions_parent_latest"
     end
   end
   # rubocop:enable MethodLength
