@@ -359,7 +359,7 @@ Returns all models currently in any of the supplied states.
 Returns all models not currently in any of the supplied states.
 
 
-### `Model.most_recent_transition_join`
+#### `Model.most_recent_transition_join`
 This joins the model to its most recent transition whatever that may be.
 We expose this method to ease use of ActiveRecord's `or` e.g
 
@@ -408,6 +408,22 @@ class OrderStateMachine
   ...
 end
 ```
+
+#### Deleting records.
+
+If you need to delete the Parent model regularly you will need to change
+either the association deletion behaviour or add a `DELETE CASCADE` condition
+to foreign key in your database.
+
+E.g
+```
+has_many :order_transitions, autosave: false, dependent: :destroy
+```
+or when migrating the transition model
+```
+add_foreign_key :order_transitions, :orders, on_delete: :cascade
+```
+
 
 ## Testing Statesman Implementations
 
