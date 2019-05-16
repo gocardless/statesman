@@ -75,7 +75,8 @@ module Statesman
         end
 
         def most_recent_transition_alias
-          "most_recent_#{transition_name.to_s.singularize}"
+          @most_recent_transition_alias ||=
+            "most_recent_#{transition_name.to_s.singularize}"
         end
 
         def db_true
