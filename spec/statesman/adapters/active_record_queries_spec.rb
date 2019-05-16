@@ -140,6 +140,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
           OtherActiveRecordModelTransition
         end
       end
+      MyActiveRecordModel.send(:include, Statesman::Adapters::ActiveRecordQueries)
     end
 
     describe ".in_state" do
