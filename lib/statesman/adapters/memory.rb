@@ -18,7 +18,7 @@ module Statesman
       def create(from, to, metadata = {})
         from = from.to_s
         to = to.to_s
-        transition = transition_class.new(to, next_sort_key, metadata)
+        transition = transition_class.new(from, to, next_sort_key, metadata)
 
         @observer.execute(:before, from, to, transition)
         @history << transition

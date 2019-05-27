@@ -16,6 +16,7 @@ class MyMongoidModelTransition
   include Mongoid::Document
   include Mongoid::Timestamps
 
+  field :from_state, type: String
   field :to_state, type: String
   field :sort_key, type: Integer
   field :statesman_metadata, type: Hash
