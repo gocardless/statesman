@@ -24,7 +24,7 @@ references:
 
     - run: dockerize -wait tcp://localhost:$DATABASE_DEPENDENCY_PORT -timeout 1m
 
-    - run: bundle exec rake
+    - run: bundle exec rspec --tag '~active_record'
 
     - type: store_test_results
       path: /tmp/test-results
