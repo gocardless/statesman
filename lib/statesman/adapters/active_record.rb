@@ -64,11 +64,9 @@ module Statesman
       private
 
       def create_transition(from, to, metadata)
-        transition_attributes = { to_state: to,
-                                  sort_key: next_sort_key,
-                                  metadata: metadata }
-
-        transition = transitions_for_parent.build(transition_attributes)
+        transition = transitions_for_parent.build(
+          default_transition_attributes(to, metadata),
+        )
 
         ::ActiveRecord::Base.transaction(requires_new: true) do
           @observer.execute(:before, from, to, transition)
@@ -84,6 +82,20 @@ module Statesman
         end
 
         transition
+      end
+
+      def default_transition_attributes(to, metadata)
+        transition_attributes = { to_state: to,
+                                  sort_key: next_sort_key,
+                                  metadata: metadata }
+
+        # see comment on `unset_old_most_recent` method
+        if transition_class.columns_hash["most_recent"].null == false
+          transition_attributes[:most_recent] = false
+        else
+          transition_attributes[:most_recent] = nil
+        end
+        transition_attributes
       end
 
       def add_after_commit_callback(from, to, transition)
