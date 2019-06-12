@@ -68,14 +68,16 @@ module Statesman
                                   sort_key: next_sort_key,
                                   metadata: metadata }
 
-        transition_attributes[:most_recent] = true
-
         transition = transitions_for_parent.build(transition_attributes)
 
         ::ActiveRecord::Base.transaction(requires_new: true) do
           @observer.execute(:before, from, to, transition)
-          unset_old_most_recent
+          # We save the transition first, and mark it as
+          # most_recent after to avoid letting MySQL put a
+          # next-key lock which could cause deadlocks.
           transition.save!
+          unset_old_most_recent
+          transition.update!(most_recent: true)
           @last_transition = transition
           @observer.execute(:after, from, to, transition)
           add_after_commit_callback(from, to, transition)
