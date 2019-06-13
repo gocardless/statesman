@@ -63,6 +63,7 @@ module Statesman
 
       private
 
+      # rubocop:disable Metrics/MethodLength
       def create_transition(from, to, metadata)
         transition = transitions_for_parent.build(
           default_transition_attributes(to, metadata),
@@ -70,12 +71,20 @@ module Statesman
 
         ::ActiveRecord::Base.transaction(requires_new: true) do
           @observer.execute(:before, from, to, transition)
-          # We save the transition first, and mark it as
-          # most_recent after to avoid letting MySQL put a
-          # next-key lock which could cause deadlocks.
+
+          # We save the transition first with most_recent falsy, then mark most_recent
+          # true after to avoid letting MySQL acquire a next-key lock which can cause
+          # deadlocks.
+          #
+          # To avoid an additional query, we manually adjust the most_recent attribute on
+          # our transition assuming that update_most_recents will have set it to true.
           transition.save!
-          unset_old_most_recent
-          transition.update!(most_recent: true)
+          unless update_most_recents(transition.id) > 0
+            raise ActiveRecord::Rollback, "failed to update most_recent"
+          end
+
+          transition.assign_attributes(most_recent: true)
+
           @last_transition = transition
           @observer.execute(:after, from, to, transition)
           add_after_commit_callback(from, to, transition)
@@ -83,6 +92,7 @@ module Statesman
 
         transition
       end
+      # rubocop:enable Metrics/MethodLength
 
       def default_transition_attributes(to, metadata)
         transition_attributes = { to_state: to,
@@ -110,21 +120,58 @@ module Statesman
         parent_model.send(@association_name)
       end
 
-      def unset_old_most_recent
-        most_recent = transitions_for_parent.where(most_recent: true)
+      # Sets the given transition most_recent = t while unsetting the most_recent of any
+      # previous transitions.
+      def update_most_recents(most_recent_id)
+        transitions = transitions_for_parent
+        last_or_current = transitions.where(id: most_recent_id).or(
+          transitions.where(most_recent: true)
+        )
 
-        # Check whether the `most_recent` column allows null values. If it
-        # doesn't, set old records to `false`, otherwise, set them to `NULL`.
-        #
-        # Some conditioning here is required to support databases that don't
-        # support partial indexes. By doing the conditioning on the column,
-        # rather than Rails' opinion of whether the database supports partial
-        # indexes, we're robust to DBs later adding support for partial indexes.
-        if transition_class.columns_hash["most_recent"].null == false
-          most_recent.update_all(with_updated_timestamp(most_recent: false))
-        else
-          most_recent.update_all(with_updated_timestamp(most_recent: nil))
+        last_or_current.update_all(
+          build_most_recents_update_all(most_recent_id),
+        )
+      end
+
+      # Generates update_all parameters that will touch the updated timestamp (if valid
+      # for this model) and ensure only the transition with the most_recent_id has
+      # most_recent set to true.
+      #
+      # This is quite nasty, but combines two updates (set all most_recent = f, set
+      # current most_recent = t) into one, which helps improve transition performance
+      # especially when database latency is significant.
+      #
+      # The SQL this can help produce looks like:
+      #
+      #   update transitions
+      #      set most_recent = (case when id = 'PA123' then TRUE else FALSE end)
+      #        , updated_at = '...'
+      #      ...
+      #
+      def build_most_recents_update_all(most_recent_id)
+        clause = "most_recent = (case when id = ? then ? else ? end)"
+        parameters = [most_recent_id, true, not_most_recent_value]
+
+        updated_column, updated_at = updated_timestamp
+        if updated_column
+          clause += ", #{updated_column} = ?"
+          parameters.push(updated_at)
         end
+
+        [clause, *parameters]
+      end
+
+      # Check whether the `most_recent` column allows null values. If it doesn't, set old
+      # records to `false`, otherwise, set them to `NULL`.
+      #
+      # Some conditioning here is required to support databases that don't support partial
+      # indexes. By doing the conditioning on the column, rather than Rails' opinion of
+      # whether the database supports partial indexes, we're robust to DBs later adding
+      # support for partial indexes.
+      def not_most_recent_value
+        return false if transition_class.columns_hash["most_recent"].null == false
+
+        nil
       end
 
       def next_sort_key
@@ -182,7 +229,8 @@ module Statesman
         end
       end
 
-      def with_updated_timestamp(params)
+      # updated_timestamp should return [column_name, value]
+      def updated_timestamp
         # TODO: Once we've set expectations that transition classes should conform to
         # the interface of Adapters::ActiveRecordTransition as a breaking change in the
         # next major version, we can stop calling `#respond_to?` first and instead
@@ -196,15 +244,12 @@ module Statesman
                    ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
                  end
 
-        return params if column.nil?
+        # No updated timestamp column, don't return anything
+        return nil if column.nil?
 
-        timestamp = if ::ActiveRecord::Base.default_timezone == :utc
-                      Time.now.utc
-                    else
-                      Time.now
-                    end
-
-        params.merge(column => timestamp)
+        [
+          column, ::ActiveRecord::Base.default_timezone == :utc ? Time.now.utc : Time.now,
+        ]
       end
     end
 
