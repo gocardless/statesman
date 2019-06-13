@@ -125,7 +125,7 @@ module Statesman
       def update_most_recents(most_recent_id)
         transitions = transitions_for_parent
         last_or_current = transitions.where(id: most_recent_id).or(
-          transitions.where(most_recent: true)
+          transitions.where(most_recent: true),
         )
 
         last_or_current.update_all(
@@ -246,7 +246,7 @@ module Statesman
         return nil if column.nil?
 
         [
-          column, ::ActiveRecord::Base.default_timezone == :utc ? Time.now.utc : Time.now,
+          column, ::ActiveRecord::Base.default_timezone == :utc ? Time.now.utc : Time.now
         ]
       end
     end
