@@ -144,7 +144,6 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     context "given the initial state" do
       subject { MyActiveRecordModel.in_state_ignoring_initial(:initial) }
 
-      it { is_expected.to include initial_state_model }
       it { is_expected.to include returned_to_initial_model }
     end
 
@@ -180,8 +179,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
       end
 
       it do
-        expect(not_in_state_ignoring_initial).to match_array([initial_state_model,
-                                                              returned_to_initial_model])
+        expect(not_in_state_ignoring_initial).to match_array([returned_to_initial_model])
       end
     end
 
@@ -191,8 +189,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
       end
 
       it do
-        expect(not_in_state_ignoring_initial).to match_array([initial_state_model,
-                                                              returned_to_initial_model])
+        expect(not_in_state_ignoring_initial).to match_array([returned_to_initial_model])
       end
     end
   end
