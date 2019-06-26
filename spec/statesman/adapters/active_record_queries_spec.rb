@@ -126,6 +126,73 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
   end
 
+  describe ".in_state_ignoring_initial" do
+    context "given a single state" do
+      subject { MyActiveRecordModel.in_state_ignoring_initial(:succeeded) }
+
+      it { is_expected.to include model }
+      it { is_expected.to_not include other_model }
+    end
+
+    context "given multiple states" do
+      subject { MyActiveRecordModel.in_state_ignoring_initial(:succeeded, :failed) }
+
+      it { is_expected.to include model }
+      it { is_expected.to include other_model }
+    end
+
+    context "given the initial state" do
+      subject { MyActiveRecordModel.in_state_ignoring_initial(:initial) }
+
+      it { is_expected.to include initial_state_model }
+      it { is_expected.to include returned_to_initial_model }
+    end
+
+    context "given an array of states" do
+      subject { MyActiveRecordModel.in_state_ignoring_initial(%i[succeeded failed]) }
+
+      it { is_expected.to include model }
+      it { is_expected.to include other_model }
+    end
+
+    context "merging two queries" do
+      subject do
+        MyActiveRecordModel.in_state_ignoring_initial(:succeeded).
+          joins(:other_active_record_model).
+          merge(OtherActiveRecordModel.in_state_ignoring_initial(:initial))
+      end
+
+      it { is_expected.to be_empty }
+    end
+  end
+
+  describe ".not_in_state_ignoring_initial" do
+    context "given a single state" do
+      subject { MyActiveRecordModel.not_in_state_ignoring_initial(:failed) }
+
+      it { is_expected.to include model }
+      it { is_expected.to_not include other_model }
+    end
+
+    context "given multiple states" do
+      subject(:not_in_state_ignoring_initial) { MyActiveRecordModel.not_in_state_ignoring_initial(:succeeded, :failed) }
+
+      it do
+        expect(not_in_state_ignoring_initial).to match_array([initial_state_model,
+                                             returned_to_initial_model])
+      end
+    end
+
+    context "given an array of states" do
+      subject(:not_in_state_ignoring_initial) { MyActiveRecordModel.not_in_state_ignoring_initial(%i[succeeded failed]) }
+
+      it do
+        expect(not_in_state_ignoring_initial).to match_array([initial_state_model,
+                                             returned_to_initial_model])
+      end
+    end
+  end
+
   context "with a custom name for the transition association" do
     before do
       # Switch to using OtherActiveRecordModelTransition, so the existing

@@ -28,6 +28,28 @@ module Statesman
              AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
+        def in_state_ignoring_initial(*states)
+          states = states.flatten.map(&:to_s)
+
+          joins(most_recent_transition_join_ignoring_initial).
+            where(states_where(most_recent_transition_alias, states), states)
+        end
+
+        def not_in_state_ignoring_initial(*states)
+          states = states.flatten.map(&:to_s)
+
+          joins(most_recent_transition_join_ignoring_initial).
+            where("NOT (#{states_where(most_recent_transition_alias, states)})",
+                  states)
+        end
+
+        def most_recent_transition_join_ignoring_initial
+          "JOIN #{model_table} AS #{most_recent_transition_alias}
+             ON #{table_name}.id =
+                  #{most_recent_transition_alias}.#{model_foreign_key}
+             AND #{most_recent_transition_alias}.most_recent = #{db_true}"
+        end
+
         private
 
         def transition_class
