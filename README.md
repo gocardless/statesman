@@ -406,7 +406,7 @@ You could also use a calculated column or view in your database.
 Given a field `foo` that was stored in the metadata, you can access it like so:
 
 ```ruby
-model_instance.last_transition.metadata["foo"]
+model_instance.state_machine.last_transition.metadata["foo"]
 ```
 
 #### Events
