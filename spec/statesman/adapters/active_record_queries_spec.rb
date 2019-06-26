@@ -175,20 +175,24 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
 
     context "given multiple states" do
-      subject(:not_in_state_ignoring_initial) { MyActiveRecordModel.not_in_state_ignoring_initial(:succeeded, :failed) }
+      subject(:not_in_state_ignoring_initial) {
+        MyActiveRecordModel.not_in_state_ignoring_initial(:succeeded, :failed)
+      }
 
       it do
         expect(not_in_state_ignoring_initial).to match_array([initial_state_model,
-                                             returned_to_initial_model])
+                                                              returned_to_initial_model])
       end
     end
 
     context "given an array of states" do
-      subject(:not_in_state_ignoring_initial) { MyActiveRecordModel.not_in_state_ignoring_initial(%i[succeeded failed]) }
+      subject(:not_in_state_ignoring_initial) {
+        MyActiveRecordModel.not_in_state_ignoring_initial(%i[succeeded failed])
+      }
 
       it do
         expect(not_in_state_ignoring_initial).to match_array([initial_state_model,
-                                             returned_to_initial_model])
+                                                              returned_to_initial_model])
       end
     end
   end
