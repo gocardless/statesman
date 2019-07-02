@@ -4,8 +4,8 @@ gemspec
 
 if ENV['RAILS_VERSION'] == 'master'
   gem "rails", git: "https://github.com/rails/rails"
-else
-  gem "rails", "~> #{ENV['RAILS_VERSION']}" if ENV["RAILS_VERSION"]
+elsif ENV['RAILS_VERSION']
+  gem "rails", "~> #{ENV['RAILS_VERSION']}"
 end
 
 group :development do
