@@ -198,6 +198,10 @@ module Statesman
         @connection = ::ActiveRecord::Base.connection
       end
 
+      def trigger_transactional_callbacks?
+        true
+      end
+
       # rubocop: disable Naming/PredicateName
       def has_transactional_callbacks?
         true
