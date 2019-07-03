@@ -124,8 +124,12 @@ module Statesman
       # previous transitions.
       def update_most_recents(most_recent_id)
         transitions = transitions_for_parent
-        last_or_current = transitions.where(id: most_recent_id).or(
-          transitions.where(most_recent: true),
+
+        # TODO: Once support for Rails 4 is dropped this can be replaced with
+        # transitions.where(id: most_recent_id).or(transitions.where(most_recent: true)
+        last_or_current = transitions.where(
+          "#{transition_class.table_name}.id = #{most_recent_id} "\
+          "OR #{transition_class.table_name}.most_recent = #{db_true}",
         )
 
         last_or_current.update_all(
@@ -250,6 +254,10 @@ module Statesman
         [
           column, ::ActiveRecord::Base.default_timezone == :utc ? Time.now.utc : Time.now
         ]
+      end
+
+      def db_true
+        ::ActiveRecord::Base.connection.quote(true)
       end
     end
 
