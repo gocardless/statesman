@@ -129,7 +129,8 @@ module Statesman
         # transitions.where(id: most_recent_id).or(transitions.where(most_recent: true)
         last_or_current = transitions.where(
           "#{transition_class.table_name}.id = #{most_recent_id} "\
-          "OR #{transition_class.table_name}.most_recent = #{db_true}",
+          "OR #{transition_class.table_name}.most_recent = "\
+          "#{::ActiveRecord::Base.connection.quote(true)}",
         )
 
         last_or_current.update_all(
@@ -153,8 +154,9 @@ module Statesman
       #      ...
       #
       def build_most_recents_update_all(most_recent_id)
-        clause = "most_recent = (case when id = ? then ? else ? end)"
-        parameters = [most_recent_id, true, not_most_recent_value]
+        clause = "most_recent = "\
+                 "(case when id = ? then #{db_true} else #{not_most_recent_value} end)"
+        parameters = [most_recent_id]
 
         updated_column, updated_at = updated_timestamp
         if updated_column
@@ -173,9 +175,9 @@ module Statesman
       # whether the database supports partial indexes, we're robust to DBs later adding
       # support for partial indexes.
       def not_most_recent_value
-        return false if transition_class.columns_hash["most_recent"].null == false
+        return db_false if transition_class.columns_hash["most_recent"].null == false
 
-        nil
+        "NULL"
       end
 
       def next_sort_key
@@ -257,7 +259,19 @@ module Statesman
       end
 
       def db_true
-        ::ActiveRecord::Base.connection.quote(true)
+        value = ::ActiveRecord::Base.connection.type_cast(
+          true,
+          transition_class.columns_hash["most_recent"],
+        )
+        ::ActiveRecord::Base.connection.quote(value)
+      end
+
+      def db_false
+        value = ::ActiveRecord::Base.connection.type_cast(
+          false,
+          transition_class.columns_hash["most_recent"],
+        )
+        ::ActiveRecord::Base.connection.quote(value)
       end
     end
 
