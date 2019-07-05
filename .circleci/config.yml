@@ -142,7 +142,7 @@ jobs:
     docker:
       - image: circleci/ruby:2.6.2-node
         environment:
-          - RAILS_VERSION=6.0.0.beta3
+          - RAILS_VERSION=6.0.0.rc1
           - DATABASE_DEPENDENCY_PORT=27017
       - image: circleci/mongo:3
     steps: *steps
@@ -150,7 +150,7 @@ jobs:
     docker:
       - image: circleci/ruby:2.6.2-node
         environment:
-          - RAILS_VERSION=6.0.0.beta3
+          - RAILS_VERSION=6.0.0.rc1
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
           - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
@@ -165,7 +165,7 @@ jobs:
     docker:
       - image: circleci/ruby:2.6.2-node
         environment:
-          - RAILS_VERSION=6.0.0.beta3
+          - RAILS_VERSION=6.0.0.rc1
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
           - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
