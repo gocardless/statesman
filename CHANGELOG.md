@@ -1,3 +1,8 @@
+## v4.1.1, 6th July 2019
+
+- Fix statesman index detection for indexes that start t-z [@hmarr](https://github.com/gocardless/statesman/pull/354)
+- Correct access of metadata via `state_machine` [@glenpike](https://github.com/gocardless/statesman/pull/349)
+
 ## v4.1.0, 10 April 2019
 
 - Add better support for mysql (and others) in `transition_conflict_error?` [@greysteil](https://github.com/greysteil) (https://github.com/gocardless/statesman/pull/342)
