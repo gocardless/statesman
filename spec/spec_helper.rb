@@ -20,9 +20,7 @@ RSpec.configure do |config|
   config.order = "random"
 
   def connection_failure
-    if defined?(Moped)
-      Moped::Errors::ConnectionFailure
-    end
+    Moped::Errors::ConnectionFailure if defined?(Moped)
   end
 
   if config.exclusion_filter[:active_record]
