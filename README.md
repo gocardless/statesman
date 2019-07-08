@@ -199,13 +199,11 @@ or 5. To do that
 ```ruby
 Statesman.configure do
   storage_adapter(Statesman::Adapters::ActiveRecord)
-  # ...or
-  storage_adapter(Statesman::Adapters::Mongoid)
 end
 ```
 Statesman defaults to storing transitions in memory. If you're using rails, you
 can instead configure it to persist transitions to the database by using the
-ActiveRecord or Mongoid adapter.
+ActiveRecord adapter.
 
 Statesman will fallback to memory unless you specify a transition_class when instantiating your state machine. This allows you to only persist transitions on certain state machines in your app.
 

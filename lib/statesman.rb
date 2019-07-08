@@ -12,9 +12,6 @@ module Statesman
              "statesman/adapters/active_record_transition"
     autoload :ActiveRecordQueries,
              "statesman/adapters/active_record_queries"
-    autoload :Mongoid, "statesman/adapters/mongoid"
-    autoload :MongoidTransition,
-             "statesman/adapters/mongoid_transition"
   end
   require "statesman/railtie" if defined?(::Rails::Railtie)
 

@@ -22,33 +22,6 @@ RSpec.configure do |config|
   def connection_failure
     if defined?(Moped)
       Moped::Errors::ConnectionFailure
-    else
-      Mongo::Error::NoServerAvailable
-    end
-  end
-
-  if config.exclusion_filter[:mongo]
-    puts "Skipping Mongo tests"
-  else
-    require "mongoid"
-
-    # Try a mongo connection at the start of the suite and raise if it fails
-    begin
-      Mongoid.configure do |mongo_config|
-        if defined?(Moped)
-          mongo_config.connect_to("statesman_test")
-          mongo_config.sessions["default"]["options"]["max_retries"] = 2
-        else
-          mongo_config.connect_to("statesman_test", server_selection_timeout: 2)
-        end
-      end
-      # Attempting a mongo operation will trigger 2 retries then throw an
-      # exception if mongo is not running.
-      Mongoid.purge!
-    rescue connection_failure => error
-      puts "The spec suite requires MongoDB to be installed and running locally"
-      puts "Mongo dependent specs can be filtered with rspec --tag '~mongo'"
-      raise(error)
     end
   end
 

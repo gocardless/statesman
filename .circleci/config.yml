@@ -30,21 +30,12 @@ references:
       path: /tmp/test-results
 
 jobs:
-  build-ruby241-rails-429-mongo:
-    docker:
-      - image: circleci/ruby:2.4.1-node
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
-    steps: *steps
   build-ruby241-rails-429-mysql:
     docker:
       - image: circleci/ruby:2.4.1-node
         environment:
           - RAILS_VERSION=4.2.9
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -59,20 +50,11 @@ jobs:
         environment:
           - RAILS_VERSION=4.2.9
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby241-rails-505-mongo:
-    docker:
-      - image: circleci/ruby:2.4.1-node
-        environment:
-          - RAILS_VERSION=5.0.5
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby241-rails-505-mysql:
     docker:
@@ -80,7 +62,6 @@ jobs:
         environment:
           - RAILS_VERSION=5.0.5
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -95,20 +76,11 @@ jobs:
         environment:
           - RAILS_VERSION=5.0.5
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby241-rails-513-mongo:
-    docker:
-      - image: circleci/ruby:2.4.1-node
-        environment:
-          - RAILS_VERSION=5.1.3
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby241-rails-513-mysql:
     docker:
@@ -116,7 +88,6 @@ jobs:
         environment:
           - RAILS_VERSION=5.1.3
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -131,20 +102,11 @@ jobs:
         environment:
           - RAILS_VERSION=5.1.3
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby262-rails-600-mongo:
-    docker:
-      - image: circleci/ruby:2.6.2-node
-        environment:
-          - RAILS_VERSION=6.0.0.rc1
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby262-rails-600-mysql:
     docker:
@@ -152,7 +114,6 @@ jobs:
         environment:
           - RAILS_VERSION=6.0.0.rc1
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -167,20 +128,11 @@ jobs:
         environment:
           - RAILS_VERSION=6.0.0.rc1
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby241-rails-523-mongo:
-    docker:
-      - image: circleci/ruby:2.4.1-node
-        environment:
-          - RAILS_VERSION=5.2.3
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby241-rails-523-mysql:
     docker:
@@ -188,7 +140,6 @@ jobs:
         environment:
           - RAILS_VERSION=5.2.3
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -203,20 +154,11 @@ jobs:
         environment:
           - RAILS_VERSION=5.2.3
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby233-rails-429-mongo:
-    docker:
-      - image: circleci/ruby:2.3.3-node
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby233-rails-429-mysql:
     docker:
@@ -224,7 +166,6 @@ jobs:
         environment:
           - RAILS_VERSION=4.2.9
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -239,20 +180,11 @@ jobs:
         environment:
           - RAILS_VERSION=4.2.9
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby233-rails-505-mongo:
-    docker:
-      - image: circleci/ruby:2.3.3-node
-        environment:
-          - RAILS_VERSION=5.0.5
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby233-rails-505-mysql:
     docker:
@@ -260,7 +192,6 @@ jobs:
         environment:
           - RAILS_VERSION=5.0.5
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -275,20 +206,11 @@ jobs:
         environment:
           - RAILS_VERSION=5.0.5
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby233-rails-513-mongo:
-    docker:
-      - image: circleci/ruby:2.3.3-node
-        environment:
-          - RAILS_VERSION=5.1.3
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby233-rails-513-mysql:
     docker:
@@ -296,7 +218,6 @@ jobs:
         environment:
           - RAILS_VERSION=5.1.3
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -311,20 +232,11 @@ jobs:
         environment:
           - RAILS_VERSION=5.1.3
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby227-rails-429-mongo:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby227-rails-429-mysql:
     docker:
@@ -332,7 +244,6 @@ jobs:
         environment:
           - RAILS_VERSION=4.2.9
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -347,20 +258,11 @@ jobs:
         environment:
           - RAILS_VERSION=4.2.9
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby227-rails-505-mongo:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=5.0.5
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby227-rails-505-mysql:
     docker:
@@ -368,7 +270,6 @@ jobs:
         environment:
           - RAILS_VERSION=5.0.5
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -383,20 +284,11 @@ jobs:
         environment:
           - RAILS_VERSION=5.0.5
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby227-rails-513-mongo:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=5.1.3
-          - DATABASE_DEPENDENCY_PORT=27017
-      - image: circleci/mongo:3
     steps: *steps
   build-ruby227-rails-513-mysql:
     docker:
@@ -404,7 +296,6 @@ jobs:
         environment:
           - RAILS_VERSION=5.1.3
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=3306
       - image: circleci/mysql:5.7.18
         environment:
@@ -419,7 +310,6 @@ jobs:
         environment:
           - RAILS_VERSION=5.1.3
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
       - image: circleci/postgres:9.6
         environment:
@@ -431,36 +321,25 @@ workflows:
   version: 2
   tests:
     jobs:
-      - build-ruby241-rails-429-mongo
       - build-ruby241-rails-429-mysql
       - build-ruby241-rails-429-postgres
-      - build-ruby241-rails-505-mongo
       - build-ruby241-rails-505-mysql
       - build-ruby241-rails-505-postgres
-      - build-ruby241-rails-513-mongo
       - build-ruby241-rails-513-mysql
       - build-ruby241-rails-513-postgres
-      - build-ruby241-rails-523-mongo
       - build-ruby241-rails-523-mysql
       - build-ruby241-rails-523-postgres
-      - build-ruby262-rails-600-mongo
       - build-ruby262-rails-600-mysql
       - build-ruby262-rails-600-postgres
-      - build-ruby233-rails-429-mongo
       - build-ruby233-rails-429-mysql
       - build-ruby233-rails-429-postgres
-      - build-ruby233-rails-505-mongo
       - build-ruby233-rails-505-mysql
       - build-ruby233-rails-505-postgres
-      - build-ruby233-rails-513-mongo
       - build-ruby233-rails-513-mysql
       - build-ruby233-rails-513-postgres
-      - build-ruby227-rails-429-mongo
       - build-ruby227-rails-429-mysql
       - build-ruby227-rails-429-postgres
-      - build-ruby227-rails-505-mongo
       - build-ruby227-rails-505-mysql
       - build-ruby227-rails-505-postgres
-      - build-ruby227-rails-513-mongo
       - build-ruby227-rails-513-mysql
       - build-ruby227-rails-513-postgres
