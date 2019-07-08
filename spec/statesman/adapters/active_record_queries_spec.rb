@@ -144,7 +144,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     context "given the initial state" do
       subject { MyActiveRecordModel.in_state_ignoring_initial(:initial) }
 
-      it { is_expected.to include returned_to_initial_model }
+      it { is_expected.to_not include returned_to_initial_model }
     end
 
     context "given an array of states" do
