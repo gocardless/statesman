@@ -38,8 +38,7 @@ module Statesman
           states = states.flatten
 
           joins(most_recent_transition_join_without_initial).
-            where(states_where(most_recent_transition_alias, states), states).
-            where("#{most_recent_transition_alias}.to_state != ?", initial_state)
+            where(states_where(most_recent_transition_alias, states), states)
         end
 
         def not_in_state_without_initial(*states)
