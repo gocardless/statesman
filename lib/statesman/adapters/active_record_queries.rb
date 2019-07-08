@@ -29,6 +29,10 @@ module Statesman
           "LEFT OUTER JOIN " + join_statement
         end
 
+        def most_recent_transition_join_without_initial
+          "JOIN " + join_statement
+        end
+
         private
 
         def in_state_without_initial(*states)
@@ -45,10 +49,6 @@ module Statesman
             where("NOT (#{states_where(most_recent_transition_alias, states)})",
                   states).
             where("#{most_recent_transition_alias}.to_state != ?", initial_state)
-        end
-
-        def most_recent_transition_join_without_initial
-          "JOIN " + join_statement
         end
 
         def join_statement
