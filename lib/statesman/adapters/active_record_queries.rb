@@ -32,6 +32,8 @@ module Statesman
              AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
+        private
+
         def in_state_without_initial(*states)
           states = states.flatten.map(&:to_s)
 
@@ -55,8 +57,6 @@ module Statesman
                   #{most_recent_transition_alias}.#{model_foreign_key}
              AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
-
-        private
 
         def transition_class
           raise NotImplementedError, "A transition_class method should be " \
