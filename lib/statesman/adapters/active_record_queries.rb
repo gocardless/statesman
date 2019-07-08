@@ -35,16 +35,12 @@ module Statesman
         private
 
         def in_state_without_initial(*states)
-          states = states.flatten.map(&:to_s)
-
           joins(most_recent_transition_join_without_initial).
             where(states_where(most_recent_transition_alias, states), states).
             where("#{most_recent_transition_alias}.to_state != ?", initial_state)
         end
 
         def not_in_state_without_initial(*states)
-          states = states.flatten.map(&:to_s)
-
           joins(most_recent_transition_join_without_initial).
             where("NOT (#{states_where(most_recent_transition_alias, states)})",
                   states).
