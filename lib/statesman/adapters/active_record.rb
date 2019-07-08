@@ -140,8 +140,10 @@ module Statesman
           select do |index|
             next unless index.unique
 
-            index.columns.sort == [parent_join_foreign_key, "sort_key"] ||
-              index.columns.sort == [parent_join_foreign_key, "most_recent"]
+            # We care about the columns used in the index, but not necessarily
+            # the order, which is why we sort both sides of the comparison here
+            index.columns.sort == [parent_join_foreign_key, "sort_key"].sort ||
+              index.columns.sort == [parent_join_foreign_key, "most_recent"].sort
           end
       end
 
