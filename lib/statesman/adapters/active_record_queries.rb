@@ -9,7 +9,7 @@ module Statesman
         def in_state(*states)
           states = states.flatten.map(&:to_s)
 
-          return in_state_ignoring_initial(states) unless initial_state.to_s.in?(states)
+          return in_state_without_initial(states) unless initial_state.to_s.in?(states)
 
           joins(most_recent_transition_join).
             where(states_where(most_recent_transition_alias, states), states)
@@ -18,7 +18,7 @@ module Statesman
         def not_in_state(*states)
           states = states.flatten.map(&:to_s)
 
-          return not_in_state_ignoring_initial(states) if initial_state.to_s.in?(states)
+          return not_in_state_without_initial(states) if initial_state.to_s.in?(states)
 
           joins(most_recent_transition_join).
             where("NOT (#{states_where(most_recent_transition_alias, states)})",
@@ -32,24 +32,24 @@ module Statesman
              AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
-        def in_state_ignoring_initial(*states)
+        def in_state_without_initial(*states)
           states = states.flatten.map(&:to_s)
 
-          joins(most_recent_transition_join_ignoring_initial).
+          joins(most_recent_transition_join_without_initial).
             where(states_where(most_recent_transition_alias, states), states).
             where("#{most_recent_transition_alias}.to_state != ?", initial_state)
         end
 
-        def not_in_state_ignoring_initial(*states)
+        def not_in_state_without_initial(*states)
           states = states.flatten.map(&:to_s)
 
-          joins(most_recent_transition_join_ignoring_initial).
+          joins(most_recent_transition_join_without_initial).
             where("NOT (#{states_where(most_recent_transition_alias, states)})",
                   states).
             where("#{most_recent_transition_alias}.to_state != ?", initial_state)
         end
 
-        def most_recent_transition_join_ignoring_initial
+        def most_recent_transition_join_without_initial
           "JOIN #{model_table} AS #{most_recent_transition_alias}
              ON #{table_name}.id =
                   #{most_recent_transition_alias}.#{model_foreign_key}
