@@ -9,6 +9,10 @@ module Statesman
         def in_state(*states)
           states = states.flatten.map(&:to_s)
 
+          if not initial_state.to_s.in?(states)
+            return in_state_ignoring_initial(states)
+          end
+
           joins(most_recent_transition_join).
             where(states_where(most_recent_transition_alias, states), states)
         end
@@ -32,7 +36,8 @@ module Statesman
           states = states.flatten.map(&:to_s)
 
           joins(most_recent_transition_join_ignoring_initial).
-            where(states_where(most_recent_transition_alias, states), states)
+            where(states_where(most_recent_transition_alias, states), states).
+            where("#{most_recent_transition_alias}.to_state != #{initial_state}")
         end
 
         def not_in_state_ignoring_initial(*states)
