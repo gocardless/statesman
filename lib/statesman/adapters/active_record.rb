@@ -126,7 +126,7 @@ module Statesman
       # Sets the given transition most_recent = t while unsetting the most_recent of any
       # previous transitions.
       def update_most_recents(most_recent_id) # rubocop:disable Metrics/AbcSize
-        update = Arel::UpdateManager.new
+        update = build_arel_manager(::Arel::UpdateManager)
         update.table(transition_table)
 
         update.where(
@@ -188,6 +188,18 @@ module Statesman
         values
       end
       # rubocop:enable Metrics/MethodLength
+
+      # Provide a wrapper for constructing an update manager which handles a breaking API
+      # change in Arel as we move into Rails >6.0.
+      #
+      # https://github.com/rails/rails/commit/7508284800f67b4611c767bff9eae7045674b66f
+      def build_arel_manager(manager)
+        if manager.instance_method(:initialize).arity.zero?
+          manager.new
+        else
+          manager.new(::ActiveRecord::Base)
+        end
+      end
 
       # Check whether the `most_recent` column allows null values. If it doesn't, set old
       # records to `false`, otherwise, set them to `NULL`.
