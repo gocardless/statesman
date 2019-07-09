@@ -142,7 +142,7 @@ module Statesman
         # most_recent before setting the new row to be true.
         update.order(transition_table[:most_recent].desc) if db_mysql?
 
-        ::ActiveRecord::Base.connection.exec_update(update.to_sql)
+        ::ActiveRecord::Base.connection.exec_update(update.to_sql, nil, [])
       end
 
       # Generates update_all Arel values that will touch the updated timestamp (if valid
