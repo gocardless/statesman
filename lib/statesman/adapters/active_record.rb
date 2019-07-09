@@ -160,14 +160,15 @@ module Statesman
       #        , updated_at = '...'
       #      ...
       #
-      # rubocop:disable Metrics/MethodLength
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       def build_most_recents_update_all_values(most_recent_id)
         values = [
           [
             transition_table[:most_recent],
             Arel::Nodes::SqlLiteral.new(
               Arel::Nodes::Case.new.
-                when(transition_table[:id].eq(most_recent_id)).then(true).
+                when(transition_table[:id].eq(most_recent_id)).
+                  then(Arel::Nodes::True.new).
                 else(not_most_recent_value).to_sql,
             ),
           ],
@@ -185,7 +186,7 @@ module Statesman
 
         values
       end
-      # rubocop:enable Metrics/MethodLength
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
       # Provide a wrapper for constructing an update manager which handles a breaking API
       # change in Arel as we move into Rails >6.0.
@@ -207,7 +208,9 @@ module Statesman
       # whether the database supports partial indexes, we're robust to DBs later adding
       # support for partial indexes.
       def not_most_recent_value
-        return db_false if transition_class.columns_hash["most_recent"].null == false
+        if transition_class.columns_hash["most_recent"].null == false
+          return Arel::Nodes::False.new
+        end
 
         nil
       end
@@ -292,22 +295,6 @@ module Statesman
 
       def db_mysql?
         ::ActiveRecord::Base.connection.adapter_name.downcase.starts_with?("mysql")
-      end
-
-      def db_true
-        value = ::ActiveRecord::Base.connection.type_cast(
-          true,
-          transition_class.columns_hash["most_recent"],
-        )
-        ::ActiveRecord::Base.connection.quote(value)
-      end
-
-      def db_false
-        value = ::ActiveRecord::Base.connection.type_cast(
-          false,
-          transition_class.columns_hash["most_recent"],
-        )
-        ::ActiveRecord::Base.connection.quote(value)
       end
     end
 
