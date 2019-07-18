@@ -1,24 +1,30 @@
 module Statesman
   module Adapters
     module ActiveRecordQueries
-      def self.included(base)
-        %i[transition_class initial_state].each do |method|
-          unless base.respond_to?(:method)
-            raise NotImplementedError,
-                  "A #{method} method should be defined on the model. " \
-                  "Alternatively, use the new form of `extend " \
-                  "Statesman::Adapters::ActiveRecordQueries.new(" \
-                  "transition_class: MyTransition, " \
-                  "initial_state: :some_state)`"
-          end
-        end
+      def self.check_missing_methods!(base)
+        missing_methods = %i[transition_class initial_state].
+          reject { |_method| base.respond_to?(:method) }
+        return if missing_methods.none?
 
-        base.include(ClassMethods.new(
-          transition_class: base.transition_class,
-          initial_state: base.initial_state,
-          most_recent_transition_alias: base.try(:most_recent_transition_alias),
-          transition_name: base.try(:transition_name)
-        ))
+        raise NotImplementedError,
+              "#{missing_methods.join(', ')} method(s) should be defined on " \
+              "the model. Alternatively, use the new form of `extend " \
+              "Statesman::Adapters::ActiveRecordQueries[" \
+              "transition_class: MyTransition, " \
+              "initial_state: :some_state]`"
+      end
+
+      def self.included(base)
+        check_missing_methods!(base)
+
+        base.include(
+          ClassMethods.new(
+            transition_class: base.transition_class,
+            initial_state: base.initial_state,
+            most_recent_transition_alias: base.try(:most_recent_transition_alias),
+            transition_name: base.try(:transition_name),
+          ),
+        )
       end
 
       def self.[](**args)
@@ -31,30 +37,44 @@ module Statesman
         end
 
         def included(base)
+          ensure_inheritance(base)
+
           query_builder = QueryBuilder.new(base, **@args)
+
+          base.define_singleton_method(:most_recent_transition_join) do
+            query_builder.most_recent_transition_join
+          end
+
+          define_in_state(base, query_builder)
+          define_not_in_state(base, query_builder)
+        end
+
+        private
+
+        def ensure_inheritance(base)
           klass = self
           existing_inherited = base.method(:inherited)
           base.define_singleton_method(:inherited) do |subclass|
             existing_inherited.call(subclass)
             subclass.send(:include, klass)
           end
+        end
 
-          base.define_singleton_method(:most_recent_transition_join) do
-            query_builder.most_recent_transition_join
-          end
-
+        def define_in_state(base, query_builder)
           base.define_singleton_method(:in_state) do |*states|
             states = states.flatten.map(&:to_s)
 
-            joins(most_recent_transition_join)
-              .where(query_builder.states_where(states), states)
+            joins(most_recent_transition_join).
+              where(query_builder.states_where(states), states)
           end
+        end
 
+        def define_not_in_state(base, query_builder)
           base.define_singleton_method(:not_in_state) do |*states|
             states = states.flatten.map(&:to_s)
 
-            joins(most_recent_transition_join)
-              .where("NOT (#{query_builder.states_where(states)})", states)
+            joins(most_recent_transition_join).
+              where("NOT (#{query_builder.states_where(states)})", states)
           end
         end
       end
@@ -62,7 +82,7 @@ module Statesman
       class QueryBuilder
         def initialize(model, transition_class:, initial_state:,
                        most_recent_transition_alias: nil,
-                      transition_name: nil)
+                       transition_name: nil)
           @model = model
           @transition_class = transition_class
           @initial_state = initial_state

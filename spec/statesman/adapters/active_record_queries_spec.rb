@@ -1,8 +1,6 @@
 require "spec_helper"
 
 describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
-  let(:config_type) { :new }
-
   def configure_old(klass, transition_class)
     klass.define_singleton_method(:transition_class) { transition_class }
     klass.define_singleton_method(:initial_state) { :initial }
@@ -21,19 +19,6 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     prepare_other_transitions_table
 
     Statesman.configure { storage_adapter(Statesman::Adapters::ActiveRecord) }
-
-    if config_type == :old
-      configure_old(MyActiveRecordModel, MyActiveRecordModelTransition)
-      configure_old(OtherActiveRecordModel, OtherActiveRecordModelTransition)
-    elsif config_type == :new
-      configure_new(MyActiveRecordModel, MyActiveRecordModelTransition)
-      configure_new(OtherActiveRecordModel, OtherActiveRecordModelTransition)
-    else
-      raise "Unknown config type #{config_type}"
-    end
-
-    MyActiveRecordModel.send(:has_one, :other_active_record_model)
-    OtherActiveRecordModel.send(:belongs_to, :my_active_record_model)
   end
 
   after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
@@ -60,6 +45,21 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
   end
 
   shared_examples "testing methods" do
+    before do
+      if config_type == :old
+        configure_old(MyActiveRecordModel, MyActiveRecordModelTransition)
+        configure_old(OtherActiveRecordModel, OtherActiveRecordModelTransition)
+      elsif config_type == :new
+        configure_new(MyActiveRecordModel, MyActiveRecordModelTransition)
+        configure_new(OtherActiveRecordModel, OtherActiveRecordModelTransition)
+      else
+        raise "Unknown config type #{config_type}"
+      end
+
+      MyActiveRecordModel.send(:has_one, :other_active_record_model)
+      OtherActiveRecordModel.send(:belongs_to, :my_active_record_model)
+    end
+
     describe ".in_state" do
       context "given a single state" do
         subject { MyActiveRecordModel.in_state(:succeeded) }
@@ -187,11 +187,13 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
   context "using old configuration method" do
     let(:config_type) { :old }
+
     include_examples "testing methods"
   end
 
   context "using new configuration method" do
     let(:config_type) { :new }
+
     include_examples "testing methods"
   end
 
