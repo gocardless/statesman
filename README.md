@@ -76,12 +76,12 @@ Then, link it to your model:
 
 ```ruby
 class Order < ActiveRecord::Base
+  has_many :order_transitions, autosave: false
+
   include Statesman::Adapters::ActiveRecordQueries[
     transition_class: OrderTransition,
     initial_state: :pending
   ]
-
-  has_many :order_transitions, autosave: false
 
   def state_machine
     @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
@@ -331,6 +331,7 @@ in 5.0.0.
 
 ```ruby
 class Order < ActiveRecord::Base
+  has_many :order_transitions, autosave: false
   include Statesman::Adapters::ActiveRecordQueries[
     transition_class: OrderTransition,
     initial_state: OrderStateMachine.initial_state
