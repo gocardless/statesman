@@ -76,22 +76,16 @@ Then, link it to your model:
 
 ```ruby
 class Order < ActiveRecord::Base
-  include Statesman::Adapters::ActiveRecordQueries
+  include Statesman::Adapters::ActiveRecordQueries[
+    transition_class: OrderTransition,
+    initial_state: :pending
+  ]
 
   has_many :order_transitions, autosave: false
 
   def state_machine
     @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
   end
-
-  def self.transition_class
-    OrderTransition
-  end
-
-  def self.initial_state
-    :pending
-  end
-  private_class_method :initial_state
 end
 ```
 
@@ -328,43 +322,33 @@ callback code throws an exception, it will not be caught.)
 
 A mixin is provided for the ActiveRecord adapter which adds scopes to easily
 find all models currently in (or not in) a given state. Include it into your
-model and define `transition_class` and `initial_state` class methods:
+model and passing in `transition_class` and `initial_state` as options.
+
+In 4.1.1 and below, these two options had to be defined as methods on the model,
+but 4.2.0 and above allow this style of configuration as well. The old method
+pollutes the model with extra class methods, and is deprecated, to be removed
+in 5.0.0.
 
 ```ruby
 class Order < ActiveRecord::Base
-  include Statesman::Adapters::ActiveRecordQueries
-
-  def self.transition_class
-    OrderTransition
-  end
-  private_class_method :transition_class
-
-  def self.initial_state
-    OrderStateMachine.initial_state
-  end
-  private_class_method :initial_state
+  include Statesman::Adapters::ActiveRecordQueries[
+    transition_class: OrderTransition,
+    initial_state: OrderStateMachine.initial_state
+  ]
 end
 ```
 
 If the transition class-name differs from the association name, you will also
-need to define a corresponding `transition_name` class method:
+need to pass `transition_name` as an option:
 
 ```ruby
 class Order < ActiveRecord::Base
   has_many :transitions, class_name: "OrderTransition", autosave: false
-
-  def self.transition_name
-    :transitions
-  end
-
-  def self.transition_class
-    OrderTransition
-  end
-
-  def self.initial_state
-    OrderStateMachine.initial_state
-  end
-  private_class_method :initial_state
+  include Statesman::Adapters::ActiveRecordQueries[
+    transition_class: OrderTransition,
+    initial_state: OrderStateMachine.initial_state,
+    transition_name: :transitions
+  ]
 end
 ```
 

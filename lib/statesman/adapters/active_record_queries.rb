@@ -2,50 +2,101 @@ module Statesman
   module Adapters
     module ActiveRecordQueries
       def self.included(base)
-        base.extend(ClassMethods)
-      end
-
-      module ClassMethods
-        def in_state(*states)
-          states = states.flatten.map(&:to_s)
-
-          joins(most_recent_transition_join).
-            where(states_where(most_recent_transition_alias, states), states)
+        %i[transition_class initial_state].each do |method|
+          unless base.respond_to?(:method)
+            raise NotImplementedError,
+                  "A #{method} method should be defined on the model. " \
+                  "Alternatively, use the new form of `extend " \
+                  "Statesman::Adapters::ActiveRecordQueries.new(" \
+                  "transition_class: MyTransition, " \
+                  "initial_state: :some_state)`"
+          end
         end
 
-        def not_in_state(*states)
-          states = states.flatten.map(&:to_s)
+        base.include(ClassMethods.new(
+          transition_class: base.transition_class,
+          initial_state: base.initial_state,
+          most_recent_transition_alias: base.try(:most_recent_transition_alias),
+          transition_name: base.try(:transition_name)
+        ))
+      end
 
-          joins(most_recent_transition_join).
-            where("NOT (#{states_where(most_recent_transition_alias, states)})",
-                  states)
+      def self.[](**args)
+        ClassMethods.new(**args)
+      end
+
+      class ClassMethods < Module
+        def initialize(**args)
+          @args = args
+        end
+
+        def included(base)
+          query_builder = QueryBuilder.new(base, **@args)
+          klass = self
+          existing_inherited = base.method(:inherited)
+          base.define_singleton_method(:inherited) do |subclass|
+            existing_inherited.call(subclass)
+            subclass.send(:include, klass)
+          end
+
+          base.define_singleton_method(:most_recent_transition_join) do
+            query_builder.most_recent_transition_join
+          end
+
+          base.define_singleton_method(:in_state) do |*states|
+            states = states.flatten.map(&:to_s)
+
+            joins(most_recent_transition_join)
+              .where(query_builder.states_where(states), states)
+          end
+
+          base.define_singleton_method(:not_in_state) do |*states|
+            states = states.flatten.map(&:to_s)
+
+            joins(most_recent_transition_join)
+              .where("NOT (#{query_builder.states_where(states)})", states)
+          end
+        end
+      end
+
+      class QueryBuilder
+        def initialize(model, transition_class:, initial_state:,
+                       most_recent_transition_alias: nil,
+                      transition_name: nil)
+          @model = model
+          @transition_class = transition_class
+          @initial_state = initial_state
+          @most_recent_transition_alias = most_recent_transition_alias
+          @transition_name = transition_name
+        end
+
+        def states_where(states)
+          if initial_state.to_s.in?(states.map(&:to_s))
+            "#{most_recent_transition_alias}.to_state IN (?) OR " \
+            "#{most_recent_transition_alias}.to_state IS NULL"
+          else
+            "#{most_recent_transition_alias}.to_state IN (?) AND " \
+            "#{most_recent_transition_alias}.to_state IS NOT NULL"
+          end
         end
 
         def most_recent_transition_join
           "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias}
-             ON #{table_name}.id =
+             ON #{model.table_name}.id =
                   #{most_recent_transition_alias}.#{model_foreign_key}
              AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
         private
 
-        def transition_class
-          raise NotImplementedError, "A transition_class method should be " \
-                                     "defined on the model"
-        end
-
-        def initial_state
-          raise NotImplementedError, "An initial_state method should be " \
-                                     "defined on the model"
-        end
+        attr_reader :model, :transition_class, :initial_state
 
         def transition_name
-          transition_class.table_name.to_sym
+          @transition_name || transition_class.table_name.to_sym
         end
 
         def transition_reflection
-          reflect_on_all_associations(:has_many).each do |value|
+          model.reflect_on_all_associations(:has_many).each do |value|
             return value if value.klass == transition_class
           end
 
@@ -62,18 +113,9 @@ module Statesman
           transition_reflection.table_name
         end
 
-        def states_where(temporary_table_name, states)
-          if initial_state.to_s.in?(states.map(&:to_s))
-            "#{temporary_table_name}.to_state IN (?) OR " \
-            "#{temporary_table_name}.to_state IS NULL"
-          else
-            "#{temporary_table_name}.to_state IN (?) AND " \
-            "#{temporary_table_name}.to_state IS NOT NULL"
-          end
-        end
-
         def most_recent_transition_alias
-          "most_recent_#{transition_name.to_s.singularize}"
+          @most_recent_transition_alias ||
+            "most_recent_#{transition_name.to_s.singularize}"
         end
 
         def db_true
