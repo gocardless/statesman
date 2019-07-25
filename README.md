@@ -234,7 +234,8 @@ end
 ```
 Define a guard. `to` and `from` parameters are optional, a nil parameter means
 guard all transitions. The passed block should evaluate to a boolean and must
-be idempotent as it could be called many times.
+be idempotent as it could be called many times. The guard will pass when the 
+boolean evaluates to true. On a "falsey" value, eg. false, nil, the guard will fail. 
 
 #### `Machine.before_transition`
 ```ruby
