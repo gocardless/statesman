@@ -61,6 +61,7 @@ end
 class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_model_transitions do |t|
+      t.string  :from_state
       t.string  :to_state
       t.integer :my_active_record_model_id
       t.integer :sort_key
@@ -137,10 +138,11 @@ class CreateOtherActiveRecordModelMigration < MIGRATION_CLASS
   end
 end
 
-# rubocop:disable MethodLength
+# rubocop:disable MethodLength, Metrics/AbcSize
 class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :other_active_record_model_transitions do |t|
+      t.string  :from_state
       t.string  :to_state
       t.integer :other_active_record_model_id
       t.integer :sort_key
@@ -181,7 +183,7 @@ class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
     end
   end
 end
-# rubocop:enable MethodLength
+# rubocop:enable MethodLength, Metrics/AbcSize
 
 class DropMostRecentColumn < MIGRATION_CLASS
   def change
@@ -235,10 +237,11 @@ class CreateNamespacedARModelMigration < MIGRATION_CLASS
   end
 end
 
-# rubocop:disable MethodLength
+# rubocop:disable MethodLength, Metrics/AbcSize
 class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :my_namespace_my_active_record_model_transitions do |t|
+      t.string  :from_state
       t.string  :to_state
       t.integer :my_active_record_model_id
       t.integer :sort_key
@@ -275,5 +278,5 @@ class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
                 name: "index_namespace_model_transitions_parent_latest"
     end
   end
-  # rubocop:enable MethodLength
+  # rubocop:enable MethodLength, Metrics/AbcSize
 end

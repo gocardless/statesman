@@ -64,12 +64,7 @@ module Statesman
       private
 
       def create_transition(from, to, metadata)
-        transition_attributes = { to_state: to,
-                                  sort_key: next_sort_key,
-                                  metadata: metadata }
-
-        transition_attributes[:most_recent] = true
-
+        transition_attributes = transition_attributes(from, to, metadata)
         transition = transitions_for_parent.build(transition_attributes)
 
         ::ActiveRecord::Base.transaction(requires_new: true) do
@@ -90,6 +85,16 @@ module Statesman
             @observer.execute(:after_commit, from, to, transition)
           end,
         )
+      end
+
+      def transition_attributes(from, to, metadata)
+        {
+          from_state: from,
+          to_state: to,
+          sort_key: next_sort_key,
+          metadata: metadata,
+          most_recent: true,
+        }
       end
 
       def transitions_for_parent
