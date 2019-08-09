@@ -88,6 +88,7 @@ module Statesman
             transition.assign_attributes(most_recent: true)
           else
             unset_old_most_recent
+            transition.assign_attributes(most_recent: true)
             transition.save!
           end
 
@@ -136,11 +137,15 @@ module Statesman
         # support partial indexes. By doing the conditioning on the column,
         # rather than Rails' opinion of whether the database supports partial
         # indexes, we're robust to DBs later adding support for partial indexes.
-        if transition_class.columns_hash["most_recent"].null == false
-          most_recent.update_all(with_updated_timestamp(most_recent: false))
-        else
-          most_recent.update_all(with_updated_timestamp(most_recent: nil))
+        update_params = [updated_timestamp].compact.to_h.tap do |params|
+          if transition_class.columns_hash["most_recent"].null == false
+            params[:most_recent] = false
+          else
+            params[:most_recent] = nil
+          end
         end
+
+        most_recent.update_all(update_params)
       end
 
       # Sets the given transition most_recent = t while unsetting the most_recent of any
@@ -148,15 +153,7 @@ module Statesman
       def update_most_recents(most_recent_id) # rubocop:disable Metrics/AbcSize
         update = build_arel_manager(::Arel::UpdateManager)
         update.table(transition_table)
-
-        update.where(
-          transition_table[parent_join_foreign_key.to_sym].eq(parent_model.id).and(
-            transition_table[:id].eq(most_recent_id).or(
-              transition_table[:most_recent].eq(true),
-            ),
-          ),
-        )
-
+        update.where(last_two_transitions(most_recent_id))
         update.set(build_most_recents_update_all_values(most_recent_id))
 
         # MySQL will validate index constraints across the intermediate result of an
@@ -165,6 +162,14 @@ module Statesman
         update.order(transition_table[:most_recent].desc)
 
         ::ActiveRecord::Base.connection.exec_update(update.to_sql)
+      end
+
+      def last_two_transitions(most_recent_id)
+        transition_table[parent_join_foreign_key.to_sym].eq(parent_model.id).and(
+          transition_table[:id].eq(most_recent_id).or(
+            transition_table[:most_recent].eq(true),
+          ),
+        )
       end
 
       # Generates update_all Arel values that will touch the updated timestamp (if valid
@@ -198,6 +203,7 @@ module Statesman
         # Only if we support the updated at timestamps should we add this column to the
         # update
         updated_column, updated_at = updated_timestamp
+
         if updated_column
           values << [
             transition_table[updated_column.to_sym],
@@ -207,6 +213,7 @@ module Statesman
 
         values
       end
+
       # rubocop:enable Metrics/MethodLength
 
       # Provide a wrapper for constructing an update manager which handles a breaking API
