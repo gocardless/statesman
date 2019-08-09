@@ -72,19 +72,24 @@ module Statesman
         ::ActiveRecord::Base.transaction(requires_new: true) do
           @observer.execute(:before, from, to, transition)
 
-          # We save the transition first with most_recent falsy, then mark most_recent
-          # true after to avoid letting MySQL acquire a next-key lock which can cause
-          # deadlocks.
-          #
-          # To avoid an additional query, we manually adjust the most_recent attribute on
-          # our transition assuming that update_most_recents will have set it to true.
-          transition.save!
+          if db_mysql?
+            # We save the transition first with most_recent falsy, then mark most_recent
+            # true after to avoid letting MySQL acquire a next-key lock which can cause
+            # deadlocks.
+            #
+            # To avoid an additional query, we manually adjust the most_recent attribute on
+            # our transition assuming that update_most_recents will have set it to true.
+            transition.save!
 
-          unless update_most_recents(transition.id) > 0
-            raise ActiveRecord::Rollback, "failed to update most_recent"
+            unless update_most_recents(transition.id) > 0
+              raise ActiveRecord::Rollback, "failed to update most_recent"
+            end
+
+            transition.assign_attributes(most_recent: true)
+          else
+            unset_old_most_recent
+            transition.save!
           end
-
-          transition.assign_attributes(most_recent: true)
 
           @last_transition = transition
           @observer.execute(:after, from, to, transition)
@@ -121,6 +126,23 @@ module Statesman
         parent_model.send(@association_name)
       end
 
+      def unset_old_most_recent
+        most_recent = transitions_for_parent.where(most_recent: true)
+
+        # Check whether the `most_recent` column allows null values. If it
+        # doesn't, set old records to `false`, otherwise, set them to `NULL`.
+        #
+        # Some conditioning here is required to support databases that don't
+        # support partial indexes. By doing the conditioning on the column,
+        # rather than Rails' opinion of whether the database supports partial
+        # indexes, we're robust to DBs later adding support for partial indexes.
+        if transition_class.columns_hash["most_recent"].null == false
+          most_recent.update_all(with_updated_timestamp(most_recent: false))
+        else
+          most_recent.update_all(with_updated_timestamp(most_recent: nil))
+        end
+      end
+
       # Sets the given transition most_recent = t while unsetting the most_recent of any
       # previous transitions.
       def update_most_recents(most_recent_id) # rubocop:disable Metrics/AbcSize
@@ -140,7 +162,7 @@ module Statesman
         # MySQL will validate index constraints across the intermediate result of an
         # update. This means we must order our update to deactivate the previous
         # most_recent before setting the new row to be true.
-        update.order(transition_table[:most_recent].desc) if db_mysql?
+        update.order(transition_table[:most_recent].desc)
 
         ::ActiveRecord::Base.connection.exec_update(update.to_sql)
       end
