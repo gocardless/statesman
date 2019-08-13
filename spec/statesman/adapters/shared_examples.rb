@@ -35,7 +35,9 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
     let(:there) { :z }
     let(:create) { adapter.create(from, to) }
 
-    it { is_expected.to change(adapter.history, :count).by(1) }
+    it "adds to history" do
+      expect { create }.to change(adapter.history, :count).by(1)
+    end
 
     context "the new transition" do
       subject(:instance) { create }

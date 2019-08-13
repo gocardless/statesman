@@ -77,8 +77,8 @@ module Statesman
             # true after to avoid letting MySQL acquire a next-key lock which can cause
             # deadlocks.
             #
-            # To avoid an additional query, we manually adjust the most_recent attribute on
-            # our transition assuming that update_most_recents will have set it to true.
+            # To avoid an additional query, we manually adjust the most_recent attribute
+            # on our transition assuming that update_most_recents will have set it to true
             transition.save!
 
             unless update_most_recents(transition.id) > 0
@@ -128,29 +128,26 @@ module Statesman
       end
 
       def unset_old_most_recent
-        most_recent = transitions_for_parent.where(most_recent: true)
-
-        # Check whether the `most_recent` column allows null values. If it
-        # doesn't, set old records to `false`, otherwise, set them to `NULL`.
-        #
-        # Some conditioning here is required to support databases that don't
-        # support partial indexes. By doing the conditioning on the column,
-        # rather than Rails' opinion of whether the database supports partial
-        # indexes, we're robust to DBs later adding support for partial indexes.
         update_params = [updated_timestamp].compact.to_h.tap do |params|
-          if transition_class.columns_hash["most_recent"].null == false
-            params[:most_recent] = false
-          else
-            params[:most_recent] = nil
-          end
+          # Check whether the `most_recent` column allows null values. If it
+          # doesn't, set old records to `false`, otherwise, set them to `NULL`.
+          #
+          # Some conditioning here is required to support databases that don't
+          # support partial indexes. By doing the conditioning on the column,
+          # rather than Rails' opinion of whether the database supports partial
+          # indexes, we're robust to DBs later adding support for partial indexes.
+          most_recent = if transition_class.columns_hash["most_recent"].null == false
+                          false
+                        end
+          params[:most_recent] = most_recent
         end
 
-        most_recent.update_all(update_params)
+        transitions_for_parent.where(most_recent: true).update_all(update_params)
       end
 
       # Sets the given transition most_recent = t while unsetting the most_recent of any
       # previous transitions.
-      def update_most_recents(most_recent_id) # rubocop:disable Metrics/AbcSize
+      def update_most_recents(most_recent_id)
         update = build_arel_manager(::Arel::UpdateManager)
         update.table(transition_table)
         update.where(last_two_transitions(most_recent_id))

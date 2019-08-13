@@ -136,13 +136,17 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           end
         end
 
-        it { is_expected.to raise_exception(ActiveRecord::RecordNotUnique) }
+        it "raises exception" do
+          expect { create }.to raise_exception(error)
+        end
       end
 
       context "other errors" do
         let(:error) { StandardError }
 
-        it { is_expected.to raise_exception(StandardError) }
+        it "raises exception" do
+          expect { create }.to raise_exception(error)
+        end
       end
     end
 

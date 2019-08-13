@@ -9,7 +9,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
     Statesman.configure { storage_adapter(Statesman::Adapters::ActiveRecord) }
 
-    MyActiveRecordModel.send(:include, Statesman::Adapters::ActiveRecordQueries)
+    MyActiveRecordModel.send(:include, described_class)
     MyActiveRecordModel.class_eval do
       def self.transition_class
         MyActiveRecordModelTransition
@@ -21,7 +21,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
 
     OtherActiveRecordModel.send(:include,
-                                Statesman::Adapters::ActiveRecordQueries)
+                                described_class)
     OtherActiveRecordModel.class_eval do
       def self.transition_class
         OtherActiveRecordModelTransition
@@ -151,7 +151,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
   context "with no association with the transition class" do
     before do
-      class UnknownModelTransition < OtherActiveRecordModelTransition; end
+      stub_const("UnknownModelTransition", Class.new(OtherActiveRecordModelTransition))
 
       MyActiveRecordModel.class_eval do
         def self.transition_class
