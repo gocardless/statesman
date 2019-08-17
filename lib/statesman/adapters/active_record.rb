@@ -200,6 +200,10 @@ module Statesman
         @connection = ::ActiveRecord::Base.connection
       end
 
+      def self.trigger_transactional_callbacks?
+        true
+      end
+
       def trigger_transactional_callbacks?
         true
       end
