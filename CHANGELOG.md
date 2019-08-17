@@ -1,3 +1,7 @@
+## v4.1.2, 17th August 2019
+
+- Add support for Rails 6 [@greysteil](https://github.com/gocardless/statesman/pull/360)
+
 ## v4.1.1, 6th July 2019
 
 - Fix statesman index detection for indexes that start t-z [@hmarr](https://github.com/gocardless/statesman/pull/354)
