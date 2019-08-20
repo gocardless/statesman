@@ -164,8 +164,9 @@ class Order < ActiveRecord::Base
   end
 
   # Optionally delegate some methods
-  delegate :can_transition_to?, :transition_to!, :transition_to, :current_state,
-           to: :state_machine
+
+  delegate :can_transition_to?, :current_state, :history, :last_transition,
+           :transition_to!, :transition_to, :in_state?, to: :state_machine
 end
 ```
 #### Using PostgreSQL JSON column
