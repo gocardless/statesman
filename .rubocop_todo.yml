@@ -85,7 +85,6 @@ RSpec/NestedGroups:
 RSpec/ScatteredSetup:
   Exclude:
     - 'spec/statesman/adapters/active_record_spec.rb'
-    - 'spec/statesman/adapters/mongoid_spec.rb'
     - 'spec/statesman/adapters/shared_examples.rb'
     - 'spec/statesman/machine_spec.rb'
 
@@ -96,5 +95,4 @@ RSpec/VerifiedDoubles:
     - 'spec/generators/statesman/active_record_transition_generator_spec.rb'
     - 'spec/generators/statesman/migration_generator_spec.rb'
     - 'spec/statesman/adapters/active_record_spec.rb'
-    - 'spec/statesman/adapters/mongoid_spec.rb'
     - 'spec/statesman/adapters/shared_examples.rb'
