@@ -1,3 +1,26 @@
+## Upcoming breaking changes in v5
+
+- Remove pollution of methods when including `Statesman::Adapters::ActiveRecordQueries`
+  [@isaacseymour](https://github.com/gocardless/statesman/pull/358)
+  Change
+  ```ruby
+    include Statesman::Adapters::ActiveRecordQueries
+    def self.initial_state
+      :initial
+    end
+    def self.transition_class
+      MyTransition
+    end
+  ```
+  to
+  ```ruby
+    include Statesman::Adapters::ActiveRecordQueries[
+      initial_state: :inital,
+      transition_class: MyTransition
+    ]
+  ```
+- Drop support for older Rubies and Rails versions
+
 ## v4.1.2, 17th August 2019
 
 - Add support for Rails 6 [@greysteil](https://github.com/gocardless/statesman/pull/360)
