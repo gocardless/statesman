@@ -266,89 +266,17 @@ jobs:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
     steps: *steps
-  build-ruby227-rails-429-mysql:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
-        environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby227-rails-429-postgres:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby227-rails-505-mysql:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=5.0.5
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
-        environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby227-rails-505-postgres:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=5.0.5
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-    steps: *steps
-  build-ruby227-rails-513-mysql:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=5.1.3
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
-        environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby227-rails-513-postgres:
-    docker:
-      - image: circleci/ruby:2.2.7-node
-        environment:
-          - RAILS_VERSION=5.1.3
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-    steps: *steps
 
 workflows:
   version: 2
   tests:
     jobs:
+      - build-ruby233-rails-429-mysql
+      - build-ruby233-rails-429-postgres
+      - build-ruby233-rails-505-mysql
+      - build-ruby233-rails-505-postgres
+      - build-ruby233-rails-513-mysql
+      - build-ruby233-rails-513-postgres
       - build-ruby241-rails-429-mysql
       - build-ruby241-rails-429-postgres
       - build-ruby241-rails-505-mysql
@@ -361,15 +289,3 @@ workflows:
       - build-ruby262-rails-600-postgres
       - build-ruby262-rails-master-mysql
       - build-ruby262-rails-master-postgres
-      - build-ruby233-rails-429-mysql
-      - build-ruby233-rails-429-postgres
-      - build-ruby233-rails-505-mysql
-      - build-ruby233-rails-505-postgres
-      - build-ruby233-rails-513-mysql
-      - build-ruby233-rails-513-postgres
-      - build-ruby227-rails-429-mysql
-      - build-ruby227-rails-429-postgres
-      - build-ruby227-rails-505-mysql
-      - build-ruby227-rails-505-postgres
-      - build-ruby227-rails-513-mysql
-      - build-ruby227-rails-513-postgres

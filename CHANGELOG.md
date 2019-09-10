@@ -1,3 +1,8 @@
+## v5.0.0, 10 September 2019
+
+- Remove support for Ruby 2.2 in keeping with our compatibility [policy](docs/COMPATIBILITY.md)
+- Bump bundler version to ~> 2.0 now Ruby 2.2 is no longer a support requirement
+
 ## v4.1.2, 17th August 2019
 
 - Add support for Rails 6 [@greysteil](https://github.com/gocardless/statesman/pull/360)
