@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/gocardless/statesman"
   spec.license       = "MIT"
 
-  spec.files         = `git ls-files`.split($INPUT_RECORD_SEPARATOR)
+  spec.files         = `git ls-files`.split($INPUT_RECORD_SEPARATOR) - [".ruby-version"]
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 2.2"
 
   spec.add_development_dependency "ammeter", "~> 1.1"
-  spec.add_development_dependency "bundler", "~> 1.3"
+  spec.add_development_dependency "bundler", "~> 2.0.1"
   spec.add_development_dependency "gc_ruboconfig", "~> 2.3.9"
   spec.add_development_dependency "mysql2", ">= 0.4", "< 0.6"
   spec.add_development_dependency "pg", "~> 0.18"
