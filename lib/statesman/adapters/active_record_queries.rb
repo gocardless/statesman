@@ -1,32 +1,6 @@
 module Statesman
   module Adapters
     module ActiveRecordQueries
-      def self.check_missing_methods!(base)
-        missing_methods = %i[transition_class initial_state].
-          reject { |method| base.respond_to?(method) }
-        return if missing_methods.none?
-
-        raise NotImplementedError,
-              "#{missing_methods.join(', ')} method(s) should be defined on " \
-              "the model. Alternatively, use the new form of `extend " \
-              "Statesman::Adapters::ActiveRecordQueries[" \
-              "transition_class: MyTransition, " \
-              "initial_state: :some_state]`"
-      end
-
-      def self.included(base)
-        check_missing_methods!(base)
-
-        base.include(
-          ClassMethods.new(
-            transition_class: base.transition_class,
-            initial_state: base.initial_state,
-            most_recent_transition_alias: base.try(:most_recent_transition_alias),
-            transition_name: base.try(:transition_name),
-          ),
-        )
-      end
-
       def self.[](**args)
         ClassMethods.new(**args)
       end
