@@ -2,6 +2,7 @@
 
 - Remove support for Ruby 2.2 in keeping with our compatibility [policy](docs/COMPATIBILITY.md)
 - Bump bundler version to ~> 2.0 now Ruby 2.2 is no longer a support requirement
+- Remove support for Rails 4.2 as per published Rails compatibility [policy](https://guides.rubyonrails.org/maintenance_policy.html)
 
 ## v4.1.2, 17th August 2019
 

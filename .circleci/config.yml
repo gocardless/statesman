@@ -31,32 +31,6 @@ references:
       path: /tmp/test-results
 
 jobs:
-  build-ruby241-rails-429-mysql:
-    docker:
-      - image: circleci/ruby:2.4.1
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
-        environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby241-rails-429-postgres:
-    docker:
-      - image: circleci/ruby:2.4.1
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-    steps: *steps
   build-ruby241-rails-505-mysql:
     docker:
       - image: circleci/ruby:2.4.1
@@ -188,32 +162,6 @@ jobs:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
     steps: *steps
-  build-ruby233-rails-429-mysql:
-    docker:
-      - image: circleci/ruby:2.3.3
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
-        environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby233-rails-429-postgres:
-    docker:
-      - image: circleci/ruby:2.3.3
-        environment:
-          - RAILS_VERSION=4.2.9
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-    steps: *steps
   build-ruby233-rails-505-mysql:
     docker:
       - image: circleci/ruby:2.3.3
@@ -271,14 +219,10 @@ workflows:
   version: 2
   tests:
     jobs:
-      - build-ruby233-rails-429-mysql
-      - build-ruby233-rails-429-postgres
       - build-ruby233-rails-505-mysql
       - build-ruby233-rails-505-postgres
       - build-ruby233-rails-513-mysql
       - build-ruby233-rails-513-postgres
-      - build-ruby241-rails-429-mysql
-      - build-ruby241-rails-429-postgres
       - build-ruby241-rails-505-mysql
       - build-ruby241-rails-505-postgres
       - build-ruby241-rails-513-mysql
