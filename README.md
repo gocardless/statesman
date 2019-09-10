@@ -30,7 +30,7 @@ protection.
 To get started, just add Statesman to your `Gemfile`, and then run `bundle`:
 
 ```ruby
-gem 'statesman', '~> 3.4.1'
+gem 'statesman', '~> 4.1.2'
 ```
 
 ## Usage
