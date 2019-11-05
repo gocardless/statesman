@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "pg", "~> 0.18"
   spec.add_development_dependency "pry"
   spec.add_development_dependency "rails", ">= 3.2"
-  spec.add_development_dependency "rake", "~> 12.3.0"
+  spec.add_development_dependency "rake", "~> 13.0.0"
   spec.add_development_dependency "rspec", "~> 3.1"
   spec.add_development_dependency "rspec-its", "~> 1.1"
   spec.add_development_dependency "rspec-rails", "~> 3.1"

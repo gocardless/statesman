@@ -320,6 +320,16 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :guard_transition, :guards
   end
 
+  describe ".after_transition_failure" do
+    it_behaves_like "a callback store",
+                    :after_transition_failure,
+                    :after_transition_failure
+  end
+
+  describe ".after_guard_failure" do
+    it_behaves_like "a callback store", :after_guard_failure, :after_guard_failure
+  end
+
   describe "#initialize" do
     it "accepts an object to manipulate" do
       machine_instance = machine.new(my_model)
@@ -672,6 +682,38 @@ describe Statesman::Machine do
             expect { instance.transition_to!(:y) }.
               to raise_error(Statesman::GuardFailedError)
           end
+
+          context "and a guard failed callback defined" do
+            let(:guard_failure_result) { true }
+            let(:guard_failure_cb) { ->(*_args) { guard_failure_result } }
+
+            before { machine.after_guard_failure(from: :x, to: :y, &guard_failure_cb) }
+
+            it "calls the failure callback" do
+              expect(guard_failure_cb).to receive(:call).once.with(
+                my_model, nil
+              ).and_return(guard_failure_result)
+              expect { instance.transition_to!(:y) }.
+                to raise_error(Statesman::GuardFailedError)
+            end
+          end
+        end
+      end
+
+      context "with a transition failed callback" do
+        let(:result) { true }
+        let(:transition_failed_cb) { ->(*_args) { result } }
+        let(:instance) { machine.new(my_model) }
+
+        before do
+          machine.after_transition_failure(&transition_failed_cb)
+        end
+
+        it "raises and exception and calls the callback" do
+          expect(transition_failed_cb).to receive(:call).once.
+            with(my_model, nil).and_return(true)
+          expect { instance.transition_to!(:z) }.
+            to raise_error(Statesman::TransitionFailedError)
         end
       end
     end
