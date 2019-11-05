@@ -48,6 +48,8 @@ module Statesman
         @callbacks ||= {
           before: [],
           after: [],
+          after_transition_failure: [],
+          after_guard_failure: [],
           after_commit: [],
           guards: [],
         }
@@ -80,6 +82,16 @@ module Statesman
         callback_type = options[:after_commit] ? :after_commit : :after
 
         add_callback(callback_type: callback_type, callback_class: Callback,
+                     from: options[:from], to: options[:to], &block)
+      end
+
+      def after_transition_failure(options = {}, &block)
+        add_callback(callback_type: :after_transition_failure, callback_class: Callback,
+                     from: options[:from], to: options[:to], &block)
+      end
+
+      def after_guard_failure(options = {}, &block)
+        add_callback(callback_type: :after_guard_failure, callback_class: Callback,
                      from: options[:from], to: options[:to], &block)
       end
 
@@ -219,9 +231,15 @@ module Statesman
       @storage_adapter.create(initial_state, new_state, metadata)
 
       true
+    rescue TransitionFailedError
+      execute(:after_transition_failure, initial_state, new_state)
+      raise
+    rescue GuardFailedError
+      execute(:after_guard_failure, initial_state, new_state)
+      raise
     end
 
-    def execute(phase, initial_state, new_state, transition)
+    def execute(phase, initial_state, new_state, transition = nil)
       callbacks = callbacks_for(phase, from: initial_state, to: new_state)
       callbacks.each { |cb| cb.call(@object, transition) }
     end
