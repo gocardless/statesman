@@ -283,10 +283,7 @@ module Statesman
       to   = to_s_or_nil(options[:to])
 
       successors = self.class.successors[from] || []
-      unless successors.include?(to)
-        raise TransitionFailedError,
-              "Cannot transition from '#{from}' to '#{to}'"
-      end
+      raise TransitionFailedError.new(from, to) unless successors.include?(to)
 
       # Call all guards, they raise exceptions if they fail
       guards_for(from: from, to: to).each do |guard|
