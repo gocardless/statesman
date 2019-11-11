@@ -1,3 +1,8 @@
+## v4.1.3, 6th November 2019
+
+- Add accessible from / to state attributes on the `TransitionFailedError` to avoid parsing strings [@ahjmorton](https://github.com/gocardless/statesman/pull/367)
+- Add `after_transition_failure` mechanism [@credric-cordenier](https://github.com/gocardless/statesman/pull/366)
+
 ## v4.1.2, 17th August 2019
 
 - Add support for Rails 6 [@greysteil](https://github.com/gocardless/statesman/pull/360)
