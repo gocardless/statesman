@@ -30,7 +30,7 @@ protection.
 To get started, just add Statesman to your `Gemfile`, and then run `bundle`:
 
 ```ruby
-gem 'statesman', '~> 4.1.4'
+gem 'statesman', '~> 5.0.0'
 ```
 
 ## Usage
@@ -353,10 +353,10 @@ A mixin is provided for the ActiveRecord adapter which adds scopes to easily
 find all models currently in (or not in) a given state. Include it into your
 model and passing in `transition_class` and `initial_state` as options.
 
-In 4.1.1 and below, these two options had to be defined as methods on the model,
-but 4.2.0 and above allow this style of configuration as well. The old method
-pollutes the model with extra class methods, and is deprecated, to be removed
-in 5.0.0.
+In 4.1.2 and below, these two options had to be defined as methods on the model,
+but 5.0.0 and above allow this style of configuration as well.
+The old method pollutes the model with extra class methods, and is deprecated,
+to be removed in 6.0.0.
 
 ```ruby
 class Order < ActiveRecord::Base
