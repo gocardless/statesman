@@ -3,7 +3,7 @@ module Statesman
     module ActiveRecordQueries
       def self.check_missing_methods!(base)
         missing_methods = %i[transition_class initial_state].
-          reject { |_method| base.respond_to?(:method) }
+          reject { |m| base.respond_to?(m) }
         return if missing_methods.none?
 
         raise NotImplementedError,
