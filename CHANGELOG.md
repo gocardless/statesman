@@ -1,3 +1,7 @@
+## v4.1.4, 11th November 2019
+
+- Reverts the breaking changes from [PR#358](https://github.com/gocardless/statesman/pull/358) & `v4.1.3` that where included in the last minor release. If you have changed your code to work with these changes `v5.0.0` will be a copy of `v4.1.3` with a bugfix applied.
+
 ## v4.1.3, 6th November 2019
 
 - Add accessible from / to state attributes on the `TransitionFailedError` to avoid parsing strings [@ahjmorton](https://github.com/gocardless/statesman/pull/367)
