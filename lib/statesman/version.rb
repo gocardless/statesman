@@ -1,3 +1,3 @@
 module Statesman
-  VERSION = "4.1.4".freeze
+  VERSION = "5.0.0".freeze
 end
