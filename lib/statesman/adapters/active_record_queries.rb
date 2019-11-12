@@ -62,7 +62,7 @@ module Statesman
 
         def define_in_state(base, query_builder)
           base.define_singleton_method(:in_state) do |*states|
-            states = states.flatten.map(&:to_s)
+            states = states.flatten
 
             joins(most_recent_transition_join).
               where(query_builder.states_where(states), states)
@@ -71,7 +71,7 @@ module Statesman
 
         def define_not_in_state(base, query_builder)
           base.define_singleton_method(:not_in_state) do |*states|
-            states = states.flatten.map(&:to_s)
+            states = states.flatten
 
             joins(most_recent_transition_join).
               where("NOT (#{query_builder.states_where(states)})", states)

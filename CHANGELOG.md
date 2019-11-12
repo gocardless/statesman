@@ -1,6 +1,23 @@
 ## v5.0.0, 11th November 2019
 
 - Adds new syntax and restrictions to ActiveRecordQueries [PR#358](https://github.com/gocardless/statesman/pull/358). With the introduction of this, defining `self.transition_class` or `self.initial_state` is deprecated and will be removed in the next major release.
+  Change
+  ```ruby
+    include Statesman::Adapters::ActiveRecordQueries
+    def self.initial_state
+      :initial
+    end
+    def self.transition_class
+      MyTransition
+    end
+  ```
+  to
+  ```ruby
+    include Statesman::Adapters::ActiveRecordQueries[
+      initial_state: :inital,
+      transition_class: MyTransition
+    ]
+  ```
 
 ## v4.1.4, 11th November 2019
 
