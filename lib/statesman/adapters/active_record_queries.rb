@@ -8,7 +8,7 @@ module Statesman
 
         raise NotImplementedError,
               "#{missing_methods.join(', ')} method(s) should be defined on " \
-              "the model. Alternatively, use the new form of `extend " \
+              "the model. Alternatively, use the new form of `include " \
               "Statesman::Adapters::ActiveRecordQueries[" \
               "transition_class: MyTransition, " \
               "initial_state: :some_state]`"
