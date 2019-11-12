@@ -171,4 +171,32 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
     # rubocop:enable RSpec/ExampleLength
   end
+
+  describe "check_missing_methods!" do
+    subject(:check_missing_methods!) { described_class.check_missing_methods!(base) }
+
+    context "when base has no missing methods" do
+      let(:base) do
+        Class.new do
+          def self.transition_class; end
+
+          def self.initial_state; end
+        end
+      end
+
+      it "does not raise an error" do
+        expect { check_missing_methods! }.to_not raise_exception(NotImplementedError)
+      end
+    end
+
+    context "when base has missing methods" do
+      let(:base) do
+        Class.new
+      end
+
+      it "raises an error" do
+        expect { check_missing_methods! }.to raise_exception(NotImplementedError)
+      end
+    end
+  end
 end

@@ -30,7 +30,7 @@ protection.
 To get started, just add Statesman to your `Gemfile`, and then run `bundle`:
 
 ```ruby
-gem 'statesman', '~> 4.1.2'
+gem 'statesman', '~> 5.0.0'
 ```
 
 ## Usage
@@ -227,7 +227,8 @@ end
 ```
 Define a guard. `to` and `from` parameters are optional, a nil parameter means
 guard all transitions. The passed block should evaluate to a boolean and must
-be idempotent as it could be called many times.
+be idempotent as it could be called many times. The guard will pass when it
+evaluates to a truthy value and fail when it evaluates to a falsey value (`nil` or `false`).
 
 #### `Machine.before_transition`
 ```ruby
@@ -253,6 +254,35 @@ after the transition.
 
 If you specify `after_commit: true`, the callback will be executed once the
 transition has been committed to the database.
+
+#### `Machine.after_transition_failure`
+```ruby
+Machine.after_transition_failure(from: :some_state, to: :another_state) do |object|
+  Logger.info("transition failed for #{object.id}")
+end
+```
+Define a callback to run if `Statesman::TransitionFailedError` is raised
+during the execution of transition callbacks. `to` and `from`
+parameters are optional, a nil parameter means run after all transitions.
+The model object is passed as an argument to the callback.
+This is executed outside of the transaction wrapping other callbacks.
+If using `transition!` the exception is re-raised after these callbacks are
+executed.
+
+#### `Machine.after_guard_failure`
+```ruby
+Machine.after_guard_failure(from: :some_state, to: :another_state) do |object|
+  Logger.info("guard failed for #{object.id}")
+end
+```
+Define a callback to run if `Statesman::GuardFailedError` is raised
+during the execution of guard callbacks. `to` and `from`
+parameters are optional, a nil parameter means run after all transitions.
+The model object is passed as an argument to the callback.
+This is executed outside of the transaction wrapping other callbacks.
+If using `transition!` the exception is re-raised after these callbacks are
+executed.
+
 
 #### `Machine.new`
 ```ruby
@@ -323,10 +353,10 @@ A mixin is provided for the ActiveRecord adapter which adds scopes to easily
 find all models currently in (or not in) a given state. Include it into your
 model and passing in `transition_class` and `initial_state` as options.
 
-In 4.1.1 and below, these two options had to be defined as methods on the model,
-but 4.2.0 and above allow this style of configuration as well. The old method
-pollutes the model with extra class methods, and is deprecated, to be removed
-in 5.0.0.
+In 4.1.2 and below, these two options had to be defined as methods on the model,
+but 5.0.0 and above allow this style of configuration as well.
+The old method pollutes the model with extra class methods, and is deprecated,
+to be removed in 6.0.0.
 
 ```ruby
 class Order < ActiveRecord::Base
@@ -359,7 +389,7 @@ Returns all models currently in any of the supplied states.
 Returns all models not currently in any of the supplied states.
 
 
-### `Model.most_recent_transition_join`
+#### `Model.most_recent_transition_join`
 This joins the model to its most recent transition whatever that may be.
 We expose this method to ease use of ActiveRecord's `or` e.g
 
@@ -408,6 +438,22 @@ class OrderStateMachine
   ...
 end
 ```
+
+#### Deleting records.
+
+If you need to delete the Parent model regularly you will need to change
+either the association deletion behaviour or add a `DELETE CASCADE` condition
+to foreign key in your database.
+
+E.g
+```
+has_many :order_transitions, autosave: false, dependent: :destroy
+```
+or when migrating the transition model
+```
+add_foreign_key :order_transitions, :orders, on_delete: :cascade
+```
+
 
 ## Testing Statesman Implementations
 

@@ -1,7 +1,6 @@
-## Upcoming breaking changes in v5
+## v5.0.0, 11th November 2019
 
-- Remove pollution of methods when including `Statesman::Adapters::ActiveRecordQueries`
-  [@isaacseymour](https://github.com/gocardless/statesman/pull/358)
+- Adds new syntax and restrictions to ActiveRecordQueries [PR#358](https://github.com/gocardless/statesman/pull/358). With the introduction of this, defining `self.transition_class` or `self.initial_state` is deprecated and will be removed in the next major release.
   Change
   ```ruby
     include Statesman::Adapters::ActiveRecordQueries
@@ -19,7 +18,15 @@
       transition_class: MyTransition
     ]
   ```
-- Drop support for older Rubies and Rails versions
+
+## v4.1.4, 11th November 2019
+
+- Reverts the breaking changes from [PR#358](https://github.com/gocardless/statesman/pull/358) & `v4.1.3` that where included in the last minor release. If you have changed your code to work with these changes `v5.0.0` will be a copy of `v4.1.3` with a bugfix applied.
+
+## v4.1.3, 6th November 2019
+
+- Add accessible from / to state attributes on the `TransitionFailedError` to avoid parsing strings [@ahjmorton](https://github.com/gocardless/statesman/pull/367)
+- Add `after_transition_failure` mechanism [@credric-cordenier](https://github.com/gocardless/statesman/pull/366)
 
 ## v4.1.2, 17th August 2019
 

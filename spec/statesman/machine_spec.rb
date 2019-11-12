@@ -57,7 +57,11 @@ describe Statesman::Machine do
         expect(instance).
           to receive(:transition_to).once.
           and_raise(StandardError)
-        transition_state rescue nil # rubocop:disable RescueModifier
+        begin
+          transition_state
+        rescue StandardError
+          nil
+        end
       end
 
       it "re-raises the exception" do
@@ -86,7 +90,11 @@ describe Statesman::Machine do
             to receive(:transition_to).
             exactly(retry_attempts + 1).times.
             and_raise(Statesman::TransitionConflictError)
-          transition_state rescue nil # rubocop:disable RescueModifier
+          begin
+            transition_state
+          rescue StandardError
+            nil
+          end
         end
 
         it "re-raises the conflict" do
@@ -619,8 +627,12 @@ describe Statesman::Machine do
 
     context "when the state cannot be transitioned to" do
       it "raises an error" do
+        # Hardcoding error message here to ensure backward
+        # compatibility as people may have been parsing the string
+        # to figure out the transitions involved.
         expect { instance.transition_to!(:z) }.
-          to raise_error(Statesman::TransitionFailedError)
+          to raise_error(Statesman::TransitionFailedError,
+                         "Cannot transition from 'x' to 'z'")
       end
     end
 
