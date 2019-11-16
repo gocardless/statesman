@@ -680,6 +680,24 @@ describe Statesman::Machine do
           end
         end
 
+        context "which covers all transitions" do
+          let(:result) { true }
+          let(:guard_cb) { ->(*_args) { false } }
+
+          before { machine.guard_transition(from: :x, to: :y, &guard_cb) }
+
+          it "raises an exception with the transition information" do
+            expect(guard_cb).to receive(:call).once.with(
+              my_model, instance.last_transition, {}
+            ).and_return(false)
+            expect { instance.transition_to!(:y) }.
+              to raise_error(
+                an_instance_of(Statesman::GuardFailedError).
+                and(having_attributes(from: "x", to: ["y"])),
+              )
+          end
+        end
+
         context "which passes" do
           it "changes state" do
             instance.transition_to!(:y)
@@ -749,7 +767,7 @@ describe Statesman::Machine do
     context "when it is unsuccesful" do
       before do
         allow(instance).to receive(:transition_to!).
-          and_raise(Statesman::GuardFailedError)
+          and_raise(Statesman::GuardFailedError.new(:x, :some_state))
       end
 
       it { is_expected.to be_falsey }

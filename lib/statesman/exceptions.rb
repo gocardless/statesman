@@ -2,7 +2,7 @@ module Statesman
   class InvalidStateError < StandardError; end
   class InvalidTransitionError < StandardError; end
   class InvalidCallbackError < StandardError; end
-  class GuardFailedError < StandardError; end
+
   class TransitionFailedError < StandardError
     def initialize(from, to)
       @from = from
@@ -15,6 +15,20 @@ module Statesman
       "Cannot transition from '#{from}' to '#{to}'"
     end
   end
+
+  class GuardFailedError < StandardError
+    def initialize(from, to)
+      @from = from
+      @to = to
+    end
+
+    attr_reader :from, :to
+
+    def message
+      "Guard on transition from: '#{from}' to '#{to}' returned false"
+    end
+  end
+
   class TransitionConflictError < StandardError; end
   class MissingTransitionAssociation < StandardError; end
 
