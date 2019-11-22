@@ -257,28 +257,28 @@ transition has been committed to the database.
 
 #### `Machine.after_transition_failure`
 ```ruby
-Machine.after_transition_failure(from: :some_state, to: :another_state) do |object|
-  Logger.info("transition failed for #{object.id}")
+Machine.after_transition_failure(from: :some_state, to: :another_state) do |object, exception|
+  Logger.info("transition to #{exception.to} failed for #{object.id}")
 end
 ```
 Define a callback to run if `Statesman::TransitionFailedError` is raised
 during the execution of transition callbacks. `to` and `from`
 parameters are optional, a nil parameter means run after all transitions.
-The model object is passed as an argument to the callback.
+The model object, and exception are passed as arguments to the callback.
 This is executed outside of the transaction wrapping other callbacks.
 If using `transition!` the exception is re-raised after these callbacks are
 executed.
 
 #### `Machine.after_guard_failure`
 ```ruby
-Machine.after_guard_failure(from: :some_state, to: :another_state) do |object|
-  Logger.info("guard failed for #{object.id}")
+Machine.after_guard_failure(from: :some_state, to: :another_state) do |object, exception|
+  Logger.info("guard failed during transition to #{exception.to} for #{object.id}")
 end
 ```
 Define a callback to run if `Statesman::GuardFailedError` is raised
 during the execution of guard callbacks. `to` and `from`
 parameters are optional, a nil parameter means run after all transitions.
-The model object is passed as an argument to the callback.
+The model object, and exception are passed as arguments to the callback.
 This is executed outside of the transaction wrapping other callbacks.
 If using `transition!` the exception is re-raised after these callbacks are
 executed.

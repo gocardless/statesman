@@ -231,15 +231,20 @@ module Statesman
       @storage_adapter.create(initial_state, new_state, metadata)
 
       true
-    rescue TransitionFailedError
-      execute(:after_transition_failure, initial_state, new_state)
+    rescue TransitionFailedError => e
+      execute_on_failure(:after_transition_failure, initial_state, new_state, e)
       raise
-    rescue GuardFailedError
-      execute(:after_guard_failure, initial_state, new_state)
+    rescue GuardFailedError => e
+      execute_on_failure(:after_guard_failure, initial_state, new_state, e)
       raise
     end
 
-    def execute(phase, initial_state, new_state, transition = nil)
+    def execute_on_failure(phase, initial_state, new_state, exception)
+      callbacks = callbacks_for(phase, from: initial_state, to: new_state)
+      callbacks.each { |cb| cb.call(@object, exception) }
+    end
+
+    def execute(phase, initial_state, new_state, transition)
       callbacks = callbacks_for(phase, from: initial_state, to: new_state)
       callbacks.each { |cb| cb.call(@object, transition) }
     end
