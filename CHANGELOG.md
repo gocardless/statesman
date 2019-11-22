@@ -1,3 +1,11 @@
+## v5.1.0, 22th November 2019
+
+- Correct `Statesman::Adapters::ActiveRecordQueries` error text [@Bramjetten](https://github.com/gocardless/statesman/pull/376)
+- Removes duplicate `map` call [Isaac Seymour](https://github.com/gocardless/statesman/pull/362)
+- Update changelog with instructions of how to use `ActiveRecordQueries` added
+  in v5.0.0
+- Pass exception into `after_transition_failure` and `after_guard_failure` callbacks [@credric-cordenier](https://github.com/gocardless/statesman/pull/378)
+
 ## v5.0.0, 11th November 2019
 
 - Adds new syntax and restrictions to ActiveRecordQueries [PR#358](https://github.com/gocardless/statesman/pull/358). With the introduction of this, defining `self.transition_class` or `self.initial_state` is deprecated and will be removed in the next major release.
