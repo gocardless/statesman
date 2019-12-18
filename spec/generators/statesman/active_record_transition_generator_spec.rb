@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 require "support/generators_shared_examples"
 require "generators/statesman/active_record_transition_generator"

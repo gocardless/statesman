@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Statesman
   class Railtie < ::Rails::Railtie
     railtie_name :statesman

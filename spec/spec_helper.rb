@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "statesman"
 require "sqlite3"
 require "mysql2"

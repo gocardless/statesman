@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 namespace :statesman do
   desc "Set most_recent to false for old transitions and to true for the "\
        "latest one. Safe to re-run"
