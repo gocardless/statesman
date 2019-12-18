@@ -1,3 +1,7 @@
+## v5.2.0, 17th December 2019
+
+- Issue `most_recent_transition_join` query as a single-line string [#381](https://github.com/gocardless/statesman/pull/381)
+
 ## v5.1.0, 22th November 2019
 
 - Correct `Statesman::Adapters::ActiveRecordQueries` error text [@Bramjetten](https://github.com/gocardless/statesman/pull/376)

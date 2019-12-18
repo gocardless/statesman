@@ -101,10 +101,10 @@ module Statesman
         end
 
         def most_recent_transition_join
-          "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias}
-             ON #{model.table_name}.id =
-                  #{most_recent_transition_alias}.#{model_foreign_key}
-             AND #{most_recent_transition_alias}.most_recent = #{db_true}"
+          "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias} " \
+             "ON #{model.table_name}.id = " \
+                  "#{most_recent_transition_alias}.#{model_foreign_key} " \
+             "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
         private
