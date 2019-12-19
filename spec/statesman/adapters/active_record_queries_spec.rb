@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 
 describe Statesman::Adapters::ActiveRecordQueries, active_record: true do

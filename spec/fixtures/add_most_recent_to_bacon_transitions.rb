@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddMostRecentToBaconTransitions < ActiveRecord::Migration
   def up
     add_column :bacon_transitions, :most_recent, :boolean, null: true

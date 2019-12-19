@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Statesman
   autoload :Config,     "statesman/config"
   autoload :Machine,    "statesman/machine"

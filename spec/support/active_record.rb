@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "json"
 
 MIGRATION_CLASS = if Rails.version.split(".").map(&:to_i).first >= 5

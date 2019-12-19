@@ -1,3 +1,11 @@
+## v6.0.0, 20th December 2019
+
+**Breaking changes**
+
+- Drop official support for Ruby 2.2 and 2.3 following our [compatibility
+  policy](https://github.com/gocardless/statesman/blob/master/docs/COMPATIBILITY.md).
+
+
 ## v5.2.0, 17th December 2019
 
 - Issue `most_recent_transition_join` query as a single-line string [#381](https://github.com/gocardless/statesman/pull/381)

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Statesman
   module Utils
     def self.rails_major_version

@@ -6,6 +6,9 @@
 # Note that changes in the inspected code, or installation of new
 # versions of RuboCop, may require this file to be generated again.
 
+Gemspec/RequiredRubyVersion:
+  Enabled: false # We want to allow Ruby 2.2 even though we don't test on it
+
 # Offense count: 5
 Metrics/AbcSize:
   Max: 18
