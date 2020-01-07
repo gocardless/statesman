@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 2.2"
 
   spec.add_development_dependency "ammeter", "~> 1.1"
-  spec.add_development_dependency "bundler", "~> 1.3"
+  spec.add_development_dependency "bundler", "~> 2.1.4"
   spec.add_development_dependency "gc_ruboconfig", "~> 2.3.9"
   spec.add_development_dependency "mysql2", ">= 0.4", "< 0.6"
   spec.add_development_dependency "pg", "~> 0.18"
