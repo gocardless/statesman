@@ -1,10 +1,16 @@
+## v7.0.0, 8th Jan 2020
+
+**Breaking changes**
+
+- Drop official support for Rails 4.2, 5.0 and 5.1, following our [compatibility
+  policy](https://github.com/gocardless/statesman/blob/master/docs/COMPATIBILITY.md).
+
 ## v6.0.0, 20th December 2019
 
 **Breaking changes**
 
 - Drop official support for Ruby 2.2 and 2.3 following our [compatibility
   policy](https://github.com/gocardless/statesman/blob/master/docs/COMPATIBILITY.md).
-
 
 ## v5.2.0, 17th December 2019
 
