@@ -1,3 +1,7 @@
+## v7.0.1, 8th Jan 2020
+
+- Fix deprecation warning with Ruby 2.7 [#386](https://github.com/gocardless/statesman/pull/386)
+
 ## v7.0.0, 8th Jan 2020
 
 **Breaking changes**
