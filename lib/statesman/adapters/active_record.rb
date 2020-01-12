@@ -195,8 +195,8 @@ module Statesman
     end
 
     class ActiveRecordAfterCommitWrap
-      def initialize
-        @callback = Proc.new
+      def initialize(&block)
+        @callback = block
         @connection = ::ActiveRecord::Base.connection
       end
 
