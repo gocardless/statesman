@@ -1,3 +1,8 @@
+## v7.1.0, 10th Feb 2020
+
+- Fix `to_s` on `TransitionFailedError` & `GuardFailedError`. `.message` and
+    `.to_s` diverged when `from` and `to` accessors where added in v4.1.3
+
 ## v7.0.1, 8th Jan 2020
 
 - Fix deprecation warning with Ruby 2.7 [#386](https://github.com/gocardless/statesman/pull/386)
