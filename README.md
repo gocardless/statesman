@@ -1,3 +1,4 @@
+
 <p align="center"><img src="http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png" alt="Statesman"></p>
 
 A statesmanlike state machine library.
@@ -411,6 +412,20 @@ after_transition do |model, transition|
   model.state = transition.to_state
   model.save!
 end
+```
+
+If you wish to prevent the state column from going into an asynchronous values with the state machine you can force it to sync with rails validates. In your model file:
+
+```ruby
+  enum state: OrderStateMachine.states.collect { |s| [s,s]}.to_h # It is recommended to use string enum.
+  validates :state, inclusion: { in: states.values }, allow_nil: true
+  define_method(:set_initial_state) { self.state = self.current_state if self.state.nil? }
+  after_initialize :set_initial_state, if: :new_record?
+  validate :state_in_sync?
+  private
+  def state_in_sync?
+    errors.add(:state, :invalid, message: 'is not equal current_state', strict: false) unless state == current_state
+  end
 ```
 
 You could also use a calculated column or view in your database.
