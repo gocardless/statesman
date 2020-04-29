@@ -25,9 +25,14 @@ module Statesman
   def self.configure(&block)
     config = Config.new(block)
     @storage_adapter = config.adapter_class
+    @mysql_gaplock_protection = config.mysql_gaplock_protection
   end
 
   def self.storage_adapter
     @storage_adapter || Adapters::Memory
+  end
+
+  def self.mysql_gaplock_protection?
+    @mysql_gaplock_protection
   end
 end

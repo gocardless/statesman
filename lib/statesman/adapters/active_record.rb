@@ -16,6 +16,10 @@ module Statesman
         end
       end
 
+      def self.adapter_name
+        ::ActiveRecord::Base.connection.adapter_name.downcase
+      end
+
       def initialize(transition_class, parent_model, observer, options = {})
         serialized = serialized?(transition_class)
         column_type = transition_class.columns_hash["metadata"].sql_type
@@ -74,7 +78,7 @@ module Statesman
         ::ActiveRecord::Base.transaction(requires_new: true) do
           @observer.execute(:before, from, to, transition)
 
-          if db_mysql?
+          if mysql_gaplock_protection?
             # We save the transition first with most_recent falsy, then mark most_recent
             # true after to avoid letting MySQL acquire a next-key lock which can cause
             # deadlocks.
@@ -136,7 +140,7 @@ module Statesman
         # MySQL will validate index constraints across the intermediate result of an
         # update. This means we must order our update to deactivate the previous
         # most_recent before setting the new row to be true.
-        update.order(transition_table[:most_recent].desc) if db_mysql?
+        update.order(transition_table[:most_recent].desc) if mysql_gaplock_protection?
 
         ::ActiveRecord::Base.connection.update(update.to_sql)
       end
@@ -292,8 +296,8 @@ module Statesman
         ]
       end
 
-      def db_mysql?
-        ::ActiveRecord::Base.connection.adapter_name.downcase.starts_with?("mysql")
+      def mysql_gaplock_protection?
+        Statesman.mysql_gaplock_protection?
       end
 
       def db_true

@@ -20,7 +20,9 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     prepare_other_model_table
     prepare_other_transitions_table
 
-    Statesman.configure { storage_adapter(Statesman::Adapters::ActiveRecord) }
+    Statesman.configure do
+      storage_adapter(Statesman::Adapters::ActiveRecord)
+    end
   end
 
   after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
