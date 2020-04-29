@@ -9,6 +9,11 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   before do
     prepare_model_table
     prepare_transitions_table
+
+    Statesman.configure do
+      # These ENV vars are only set on the MySQL builds
+      mysql_gaplock_protection ENV.fetch("GAPLOCK_PROTECTION", false)
+    end
   end
 
   before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }

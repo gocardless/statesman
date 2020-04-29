@@ -38,6 +38,7 @@ jobs:
           - RAILS_VERSION=5.2.4
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
           - DATABASE_DEPENDENCY_PORT=3306
+          - GAPLOCK_PROTECTION=true
       - image: circleci/mysql:5.7.18
         environment:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true
@@ -66,6 +67,7 @@ jobs:
           - RAILS_VERSION=6.0.2
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
           - DATABASE_DEPENDENCY_PORT=3306
+          - GAPLOCK_PROTECTION=true
       - image: circleci/mysql:5.7.18
         environment:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true
@@ -93,6 +95,7 @@ jobs:
           - RAILS_VERSION=master
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
           - DATABASE_DEPENDENCY_PORT=3306
+          - GAPLOCK_PROTECTION=true
       - image: circleci/mysql:5.7.18
         environment:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true
@@ -122,6 +125,7 @@ jobs:
           - RAILS_VERSION=6.0.2
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
           - DATABASE_DEPENDENCY_PORT=3306
+          - GAPLOCK_PROTECTION=true
       - image: circleci/mysql:5.7.18
         environment:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true
@@ -149,6 +153,7 @@ jobs:
           - RAILS_VERSION=master
           - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
           - DATABASE_DEPENDENCY_PORT=3306
+          - GAPLOCK_PROTECTION=true
       - image: circleci/mysql:5.7.18
         environment:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true

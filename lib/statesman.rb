@@ -25,9 +25,14 @@ module Statesman
   def self.configure(&block)
     config = Config.new(block)
     @storage_adapter = config.adapter_class
+    @gaplock_protection_enabled = config.gaplock_protection_enabled
   end
 
   def self.storage_adapter
     @storage_adapter || Adapters::Memory
+  end
+
+  def self.gaplock_protection_enabled?
+    @gaplock_protection_enabled
   end
 end
