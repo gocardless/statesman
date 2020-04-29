@@ -56,6 +56,7 @@ jobs:
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
+          - POSTGRES_PASSWORD=statesman
     steps: *steps
 
   build-ruby265-rails-602-mysql:
@@ -83,6 +84,7 @@ jobs:
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
+          - POSTGRES_PASSWORD=statesman
     steps: *steps
   build-ruby265-rails-master-mysql:
     docker:
@@ -110,6 +112,7 @@ jobs:
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
+          - POSTGRES_PASSWORD=statesman
     steps: *steps
 
   build-ruby270-rails-602-mysql:
@@ -137,6 +140,7 @@ jobs:
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
+          - POSTGRES_PASSWORD=statesman
     steps: *steps
   build-ruby270-rails-master-mysql:
     docker:
@@ -164,6 +168,7 @@ jobs:
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
+          - POSTGRES_PASSWORD=statesman
     steps: *steps
 
 workflows:
