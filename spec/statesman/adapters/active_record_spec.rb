@@ -9,9 +9,19 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   before do
     prepare_model_table
     prepare_transitions_table
+
+    MyActiveRecordModelTransition.serialize(:metadata, JSON)
+
+    Statesman.configure do
+      # Rubocop requires described_class to be used, but this block
+      # is instance_eval'd and described_class won't be defined
+      # rubocop:disable RSpec/DescribedClass
+      storage_adapter(Statesman::Adapters::ActiveRecord)
+      # rubocop:enable RSpec/DescribedClass
+    end
   end
 
-  before { MyActiveRecordModelTransition.serialize(:metadata, JSON) }
+  after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
 
   let(:observer) { double(Statesman::Machine, execute: nil) }
   let(:model) { MyActiveRecordModel.create(current_state: :pending) }
