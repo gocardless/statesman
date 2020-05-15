@@ -20,12 +20,12 @@ module Statesman
   # Example:
   #   Statesman.configure do
   #     storage_adapter Statesman::ActiveRecordAdapter
+  #     enable_mysql_gaplock_protection
   #   end
   #
   def self.configure(&block)
-    config = Config.new(block)
+    @config = Config.new(block)
     @storage_adapter = config.adapter_class
-    @mysql_gaplock_protection = config.mysql_gaplock_protection
   end
 
   def self.storage_adapter
@@ -33,6 +33,12 @@ module Statesman
   end
 
   def self.mysql_gaplock_protection?
-    @mysql_gaplock_protection
+    return @mysql_gaplock_protection unless @mysql_gaplock_protection.nil?
+
+    @mysql_gaplock_protection = config.mysql_gaplock_protection?
+  end
+
+  def self.config
+    @config ||= Config.new
   end
 end
