@@ -39,7 +39,7 @@ module Statesman
         end
 
         def included(base)
-          ensure_inheritance(base)
+          ensure_inheritance(base) unless base.subclasses.none?
 
           query_builder = QueryBuilder.new(base, **@args)
 
