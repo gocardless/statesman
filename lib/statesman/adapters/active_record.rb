@@ -118,7 +118,7 @@ module Statesman
       end
 
       def add_after_commit_callback(from, to, transition)
-        ::ActiveRecord::Base.connection.add_transaction_record(
+        @transition_class.connection.add_transaction_record(
           ActiveRecordAfterCommitWrap.new do
             @observer.execute(:after_commit, from, to, transition)
           end,
@@ -142,7 +142,7 @@ module Statesman
         # most_recent before setting the new row to be true.
         update.order(transition_table[:most_recent].desc) if mysql_gaplock_protection?
 
-        ::ActiveRecord::Base.connection.update(update.to_sql)
+        @transition_class.connection.update(update.to_sql)
       end
 
       def most_recent_transitions(most_recent_id = nil)
@@ -240,7 +240,7 @@ module Statesman
       end
 
       def unique_indexes
-        ::ActiveRecord::Base.connection.
+        @transition_class.connection.
           indexes(transition_class.table_name).
           select do |index|
             next unless index.unique
@@ -292,7 +292,7 @@ module Statesman
         return nil if column.nil?
 
         [
-          column, ::ActiveRecord::Base.default_timezone == :utc ? Time.now.utc : Time.now
+          column, @transition_class.default_timezone == :utc ? Time.now.utc : Time.now
         ]
       end
 
@@ -301,19 +301,19 @@ module Statesman
       end
 
       def db_true
-        value = ::ActiveRecord::Base.connection.type_cast(
+        value = @transition_class.connection.type_cast(
           true,
           transition_class.columns_hash["most_recent"],
         )
-        ::ActiveRecord::Base.connection.quote(value)
+        @transition_class.connection.quote(value)
       end
 
       def db_false
-        value = ::ActiveRecord::Base.connection.type_cast(
+        value = @transition_class.connection.type_cast(
           false,
           transition_class.columns_hash["most_recent"],
         )
-        ::ActiveRecord::Base.connection.quote(value)
+        @transition_class.connection.quote(value)
       end
 
       # Check whether the `most_recent` column allows null values. If it doesn't, set old
