@@ -119,7 +119,7 @@ module Statesman
 
       def add_after_commit_callback(from, to, transition)
         @transition_class.connection.add_transaction_record(
-          ActiveRecordAfterCommitWrap.new do
+          ActiveRecordAfterCommitWrap.new(@transition_class.connection) do
             @observer.execute(:after_commit, from, to, transition)
           end,
         )
@@ -331,9 +331,9 @@ module Statesman
     end
 
     class ActiveRecordAfterCommitWrap
-      def initialize(&block)
+      def initialize(connection, &block)
         @callback = block
-        @connection = ::ActiveRecord::Base.connection
+        @connection = connection
       end
 
       def self.trigger_transactional_callbacks?
