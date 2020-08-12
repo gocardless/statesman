@@ -75,7 +75,7 @@ module Statesman
           default_transition_attributes(to, metadata),
         )
 
-        ::ActiveRecord::Base.transaction(requires_new: true) do
+        @transition_class.transaction(requires_new: true) do
           @observer.execute(:before, from, to, transition)
 
           if mysql_gaplock_protection?
