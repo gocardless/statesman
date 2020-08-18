@@ -316,6 +316,10 @@ module Statesman
         ::ActiveRecord::Base.connection.quote(value)
       end
 
+      def db_null
+        Arel::Nodes::SqlLiteral.new("NULL")
+      end
+
       # Check whether the `most_recent` column allows null values. If it doesn't, set old
       # records to `false`, otherwise, set them to `NULL`.
       #
@@ -326,7 +330,7 @@ module Statesman
       def not_most_recent_value
         return db_false if transition_class.columns_hash["most_recent"].null == false
 
-        nil
+        db_null
       end
     end
 
