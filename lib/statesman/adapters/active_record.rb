@@ -113,7 +113,7 @@ module Statesman
           to_state: to,
           sort_key: next_sort_key,
           metadata: metadata,
-          most_recent: not_most_recent_value,
+          most_recent: not_most_recent_value(db_cast: false),
         }
       end
 
@@ -327,10 +327,12 @@ module Statesman
       # indexes. By doing the conditioning on the column, rather than Rails' opinion of
       # whether the database supports partial indexes, we're robust to DBs later adding
       # support for partial indexes.
-      def not_most_recent_value
-        return db_false if transition_class.columns_hash["most_recent"].null == false
+      def not_most_recent_value(db_cast: true)
+        if transition_class.columns_hash["most_recent"].null == false
+          return db_cast ? db_false : false
+        end
 
-        db_null
+        db_cast ? db_null : nil
       end
     end
 
