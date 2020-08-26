@@ -5,6 +5,21 @@
 - [Gem Metadata](https://guides.rubygems.org/specification-reference/#metadata)
   to make finding changes between releases even easier.
 
+## v7.3.0, 24th August 2020
+
+### Changed
+
+- Use correct Arel for null [#409](https://github.com/gocardless/statesman/pull/#409)
+
+## v7.2.0, 19th May 2020
+
+### Changed
+
+- Set non-empty password for postgres tests [#398](https://github.com/gocardless/statesman/pull/#398)
+- Handle transitions differently for MySQL [#399](https://github.com/gocardless/statesman/pull/#399)
+- pg requirement from >= 0.18, <= 1.1 to >= 0.18, <= 1.3 [#400](https://github.com/gocardless/statesman/pull/#400)
+- Lazily enable mysql gaplock protection [#402](https://github.com/gocardless/statesman/pull/#402)
+
 ## v7.1.0, 10th Feb 2020
 
 - Fix `to_s` on `TransitionFailedError` & `GuardFailedError`. `.message` and
