@@ -1,3 +1,10 @@
+## Unreleased
+
+### Added
+
+- [Gem Metadata](https://guides.rubygems.org/specification-reference/#metadata)
+  to make finding changes between releases even easier.
+
 ## v7.1.0, 10th Feb 2020
 
 - Fix `to_s` on `TransitionFailedError` & `GuardFailedError`. `.message` and

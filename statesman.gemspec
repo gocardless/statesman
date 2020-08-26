@@ -4,6 +4,8 @@ lib = File.expand_path("lib", __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require "statesman/version"
 
+GITHUB_URL = "https://github.com/gocardless/statesman"
+
 Gem::Specification.new do |spec|
   spec.name          = "statesman"
   spec.version       = Statesman::VERSION
@@ -11,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["developers@gocardless.com"]
   spec.description   = "A statesman-like state machine library"
   spec.summary       = spec.description
-  spec.homepage      = "https://github.com/gocardless/statesman"
+  spec.homepage      = GITHUB_URL
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($INPUT_RECORD_SEPARATOR)
@@ -35,4 +37,12 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec_junit_formatter", "~> 0.4.0"
   spec.add_development_dependency "sqlite3", "~> 1.4.2"
   spec.add_development_dependency "timecop", "~> 0.9.1"
+
+  spec.metadata = {
+    "bug_tracker_uri" => "#{GITHUB_URL}/issues",
+    "changelog_uri" => "#{GITHUB_URL}/blob/master/CHANGELOG.md",
+    "documentation_uri" => "#{GITHUB_URL}/blob/master/README.md",
+    "homepage_uri" => GITHUB_URL,
+    "source_code_uri" => GITHUB_URL,
+  }
 end
