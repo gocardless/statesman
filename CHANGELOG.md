@@ -1,4 +1,4 @@
-## Unreleased
+## v7.4.0 26th August 2020
 
 ### Added
 
