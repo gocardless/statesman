@@ -70,34 +70,34 @@ module Statesman
         successors[from] += to
       end
 
-      def before_transition(from:, to:, &block)
+      def before_transition(from: nil, to: [], &block)
         add_callback(callback_type: :before, callback_class: Callback,
                      from: from, to: to, &block)
       end
 
-      def guard_transition(from:, to:, &block)
+      def guard_transition(from: nil, to: [], &block)
         add_callback(callback_type: :guards, callback_class: Guard,
                      from: from, to: to, &block)
       end
 
-      def after_transition(from:, to:, after_commit: false , &block)
+      def after_transition(from: nil, to: [], after_commit: false , &block)
         callback_type = after_commit ? :after_commit : :after
 
         add_callback(callback_type: callback_type, callback_class: Callback,
                      from: from, to: to, &block)
       end
 
-      def after_transition_failure(options = {}, &block)
+      def after_transition_failure(from: nil, to: [], &block)
         add_callback(callback_type: :after_transition_failure, callback_class: Callback,
-                     from: options[:from], to: options[:to], &block)
+                     from: from, to: to, &block)
       end
 
-      def after_guard_failure(from:, to:, &block)
+      def after_guard_failure(from: nil, to: [], &block)
         add_callback(callback_type: :after_guard_failure, callback_class: Callback,
-                     from: options[:from], to: options[:to], &block)
+                     from: from, to: :to, &block)
       end
 
-      def validate_callback_condition(from: nil, to: nil)
+      def validate_callback_condition(from: nil, to: [])
         from = to_s_or_nil(from)
         to   = array_to_s_or_nil(to)
 
@@ -139,7 +139,7 @@ module Statesman
       private
 
       def add_callback(callback_type: nil, callback_class: nil,
-                       from: nil, to: nil, &block)
+                       from: nil, to: [], &block)
         validate_callback_type_and_class(callback_type, callback_class)
 
         from = to_s_or_nil(from)
