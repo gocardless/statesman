@@ -21,14 +21,14 @@ references:
       paths:
         - vendor/bundle
 
-    - run: bundle exec rubocop
-
     - run: dockerize -wait tcp://localhost:$DATABASE_DEPENDENCY_PORT -timeout 1m
 
     - run: bundle exec rake
 
     - type: store_test_results
       path: /tmp/test-results
+
+    - run: bundle exec rubocop
 
 jobs:
   build-ruby249-rails-524-mysql:
