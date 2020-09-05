@@ -70,21 +70,21 @@ module Statesman
         successors[from] += to
       end
 
-      def before_transition(options = {}, &block)
+      def before_transition(from:, to:, &block)
         add_callback(callback_type: :before, callback_class: Callback,
-                     from: options[:from], to: options[:to], &block)
+                     from: from, to: to, &block)
       end
 
-      def guard_transition(options = {}, &block)
+      def guard_transition(from:, to:, &block)
         add_callback(callback_type: :guards, callback_class: Guard,
-                     from: options[:from], to: options[:to], &block)
+                     from: from, to: to, &block)
       end
 
-      def after_transition(options = { after_commit: false }, &block)
-        callback_type = options[:after_commit] ? :after_commit : :after
+      def after_transition(from:, to:, after_commit: false , &block)
+        callback_type = after_commit ? :after_commit : :after
 
         add_callback(callback_type: callback_type, callback_class: Callback,
-                     from: options[:from], to: options[:to], &block)
+                     from: from, to: to, &block)
       end
 
       def after_transition_failure(options = {}, &block)
@@ -92,14 +92,14 @@ module Statesman
                      from: options[:from], to: options[:to], &block)
       end
 
-      def after_guard_failure(options = {}, &block)
+      def after_guard_failure(from:, to:, &block)
         add_callback(callback_type: :after_guard_failure, callback_class: Callback,
                      from: options[:from], to: options[:to], &block)
       end
 
-      def validate_callback_condition(options = { from: nil, to: nil })
-        from = to_s_or_nil(options[:from])
-        to   = array_to_s_or_nil(options[:to])
+      def validate_callback_condition(from: nil, to: nil)
+        from = to_s_or_nil(from)
+        to   = array_to_s_or_nil(to)
 
         ([from] + to).compact.each { |state| validate_state(state) }
         return if from.nil? && to.empty?
