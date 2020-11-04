@@ -355,6 +355,18 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
     end
   end
 
+  it "resets last with #reload" do
+    model.save!
+    ActiveRecord::Base.transaction do
+      model.state_machine.transition_to!(:succeeded)
+      model.state_machine.current_state
+      raise ActiveRecord::Rollback
+    end
+    expect(model.state_machine.current_state).to eq('succeeded')
+    model.reload
+    expect(model.state_machine.current_state).to eq('initial')
+  end
+
   context "with a namespaced model" do
     before do
       CreateNamespacedARModelMigration.migrate(:up)

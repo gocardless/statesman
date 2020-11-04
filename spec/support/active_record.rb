@@ -33,6 +33,11 @@ class MyActiveRecordModel < ActiveRecord::Base
   def metadata
     super || {}
   end
+
+  def reload(*)
+    state_machine.reset
+    super
+  end
 end
 
 class MyActiveRecordModelTransition < ActiveRecord::Base

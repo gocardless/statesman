@@ -37,6 +37,10 @@ module Statesman
         @history
       end
 
+      def reset
+        @history = []
+      end
+
       private
 
       def next_sort_key
