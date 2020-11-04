@@ -44,7 +44,7 @@ module Statesman
           query_builder = QueryBuilder.new(base, **@args)
 
           base.define_singleton_method(:most_recent_transition_join) do
-            query_builder.most_recent_transition_join
+            query_builder.most_recent_transition_join.map(&:to_sql).join("")
           end
 
           define_in_state(base, query_builder)
@@ -67,7 +67,7 @@ module Statesman
             states = states.flatten
 
             joins(most_recent_transition_join).
-              where(query_builder.states_where(states), states)
+              where(query_builder.in_state_conditions(states))
           end
         end
 
@@ -76,7 +76,7 @@ module Statesman
             states = states.flatten
 
             joins(most_recent_transition_join).
-              where("NOT (#{query_builder.states_where(states)})", states)
+              where(query_builder.in_state_conditions(states).not)
           end
         end
       end
@@ -92,21 +92,22 @@ module Statesman
           @transition_name = transition_name
         end
 
-        def states_where(states)
-          if initial_state.to_s.in?(states.map(&:to_s))
-            "#{most_recent_transition_alias}.to_state IN (?) OR " \
-            "#{most_recent_transition_alias}.to_state IS NULL"
-          else
-            "#{most_recent_transition_alias}.to_state IN (?) AND " \
-            "#{most_recent_transition_alias}.to_state IS NOT NULL"
-          end
+        def most_recent_transition_join
+          table.
+            join(transition_table, Arel::Nodes::OuterJoin).
+            on(transition_table[transition_reflection.foreign_key].eq(table[:id]).
+                and(transition_table[:most_recent].eq(true))).
+            join_sources
         end
 
-        def most_recent_transition_join
-          "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias} " \
-             "ON #{model.table_name}.id = " \
-                  "#{most_recent_transition_alias}.#{model_foreign_key} " \
-             "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
+        def in_state_conditions(states)
+          if initial_state.to_s.in?(states.map(&:to_s))
+            transition_table[:to_state].in(states).
+              or(transition_table[:to_state].eq(nil))
+          else
+            transition_table[:to_state].in(states).
+              and(transition_table[:to_state].not_eq(nil))
+          end
         end
 
         private
@@ -140,8 +141,12 @@ module Statesman
             "most_recent_#{transition_name.to_s.singularize}"
         end
 
-        def db_true
-          ::ActiveRecord::Base.connection.quote(true)
+        def transition_table
+          transition_class.arel_table.alias(most_recent_transition_alias)
+        end
+
+        def table
+          model.arel_table
         end
       end
     end
