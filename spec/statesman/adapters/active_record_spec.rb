@@ -359,12 +359,13 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
     model.save!
     ActiveRecord::Base.transaction do
       model.state_machine.transition_to!(:succeeded)
-      model.state_machine.current_state
+      # force to cache value in last_transition instance variable
+      expect(model.state_machine.current_state).to eq("succeeded")
       raise ActiveRecord::Rollback
     end
-    expect(model.state_machine.current_state).to eq('succeeded')
+    expect(model.state_machine.current_state).to eq("succeeded")
     model.reload
-    expect(model.state_machine.current_state).to eq('initial')
+    expect(model.state_machine.current_state).to eq("initial")
   end
 
   context "with a namespaced model" do
