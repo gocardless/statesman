@@ -257,6 +257,10 @@ module Statesman
       false
     end
 
+    def reset
+      @storage_adapter.reset
+    end
+
     private
 
     def adapter_class(transition_class)

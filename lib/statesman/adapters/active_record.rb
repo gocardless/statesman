@@ -67,6 +67,10 @@ module Statesman
         end
       end
 
+      def reset
+        @last_transition = nil
+      end
+
       private
 
       # rubocop:disable Metrics/MethodLength
