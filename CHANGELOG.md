@@ -1,3 +1,10 @@
+## v7.4.1 11th November 2020
+
+### Added
+
+- Add #reset method to state machine and adapter interfaces
+  [#417](https://github.com/gocardless/statesman/pull/417)
+
 ## v7.4.0 26th August 2020
 
 ### Added
