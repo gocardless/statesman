@@ -404,10 +404,12 @@ Model.in_state(:state_1).or(
 #### Storing the state on the model object
 
 If you wish to store the model state on the model directly, you can keep it up
-to date using an `after_transition` hook:
+to date using an `after_transition` hook.
+Combine it with the `after_commit` option to ensure the model state will only be
+saved once the transition has made it irreversibly to the database:
 
 ```ruby
-after_transition do |model, transition|
+after_transition(after_commit: true) do |model, transition|
   model.state = transition.to_state
   model.save!
 end
