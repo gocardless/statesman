@@ -305,23 +305,21 @@ module Statesman
       end
 
       def db_true
-        value = ::ActiveRecord::Base.connection.type_cast(
-          true,
-          transition_class.columns_hash["most_recent"],
-        )
-        ::ActiveRecord::Base.connection.quote(value)
+        ::ActiveRecord::Base.connection.quote(type_cast(true))
       end
 
       def db_false
-        value = ::ActiveRecord::Base.connection.type_cast(
-          false,
-          transition_class.columns_hash["most_recent"],
-        )
-        ::ActiveRecord::Base.connection.quote(value)
+        ::ActiveRecord::Base.connection.quote(type_cast(false))
       end
 
       def db_null
-        Arel::Nodes::SqlLiteral.new("NULL")
+        type_cast(nil)
+      end
+
+      # Type casting against a column is deprecated and will be removed in Rails 6.2.
+      # See https://github.com/rails/arel/commit/6160bfbda1d1781c3b08a33ec4955f170e95be11
+      def type_cast(value)
+        ::ActiveRecord::Base.connection.type_cast(value)
       end
 
       # Check whether the `most_recent` column allows null values. If it doesn't, set old

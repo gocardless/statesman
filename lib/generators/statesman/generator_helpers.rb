@@ -39,8 +39,16 @@ module Statesman
     end
 
     def mysql?
-      ActiveRecord::Base.configurations[Rails.env].
-        try(:[], "adapter").try(:match, /mysql/)
+      configuration.try(:[], "adapter").try(:match, /mysql/)
+    end
+
+    # [] is deprecated and will be removed in 6.2
+    def configuration
+      if ActiveRecord::Base.configurations.respond_to?(:configs_for)
+        ActiveRecord::Base.configurations.configs_for(env_name: Rails.env).first
+      else
+        ActiveRecord::Base.configurations[Rails.env]
+      end
     end
 
     def database_supports_partial_indexes?
