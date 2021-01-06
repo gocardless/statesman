@@ -1,3 +1,11 @@
+## v8.0.0 6th January 2021
+
+### Added
+
+- Use AR Arel table to type cast booleans in order to avoid deprecation warning [#421](https://github.com/gocardless/statesman/pull/421)
+- Support relationships that doesn't use `id` as a Primary Key
+  [#422](https://github.com/gocardless/statesman/pull/422)
+
 ## v7.4.1 11th November 2020
 
 ### Added
