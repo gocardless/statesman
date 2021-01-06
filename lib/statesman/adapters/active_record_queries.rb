@@ -104,7 +104,7 @@ module Statesman
 
         def most_recent_transition_join
           "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias} " \
-             "ON #{model.table_name}.id = " \
+             "ON #{model.table_name}.#{model_primary_key} = " \
                   "#{most_recent_transition_alias}.#{model_foreign_key} " \
              "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
@@ -125,6 +125,10 @@ module Statesman
           raise MissingTransitionAssociation,
                 "Could not find has_many association between #{self.class} " \
                 "and #{transition_class}."
+        end
+
+        def model_primary_key
+          transition_reflection.active_record_primary_key
         end
 
         def model_foreign_key

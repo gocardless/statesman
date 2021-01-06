@@ -154,6 +154,31 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
       end
     end
 
+    context "with a custom primary key for the model" do
+      before do
+        # Switch to using OtherActiveRecordModelTransition, so the existing
+        # relation with MyActiveRecordModelTransition doesn't interfere with
+        # this spec.
+        # Configure the relationship to use a different primary key,
+        MyActiveRecordModel.send(:has_many,
+                                 :custom_name,
+                                 class_name: "OtherActiveRecordModelTransition",
+                                 primary_key: :external_id)
+
+        MyActiveRecordModel.class_eval do
+          def self.transition_class
+            OtherActiveRecordModelTransition
+          end
+        end
+      end
+
+      describe ".in_state" do
+        subject(:query) { MyActiveRecordModel.in_state(:succeeded) }
+
+        specify { expect { query }.to_not raise_error }
+      end
+    end
+
     context "after_commit transactional integrity" do
       before do
         MyStateMachine.class_eval do
