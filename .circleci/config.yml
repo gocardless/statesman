@@ -52,7 +52,7 @@ jobs:
           - RAILS_VERSION=5.2.4
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
           - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
+      - image: circleci/postgres:10.15
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
@@ -80,7 +80,7 @@ jobs:
           - RAILS_VERSION=6.0.2
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
           - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
+      - image: circleci/postgres:10.15
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
@@ -108,7 +108,7 @@ jobs:
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
           - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
+      - image: circleci/postgres:10.15
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
@@ -136,7 +136,7 @@ jobs:
           - RAILS_VERSION=6.0.2
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
           - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
+      - image: circleci/postgres:10.15
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
@@ -164,7 +164,7 @@ jobs:
           - DATABASE_URL=postgres://postgres@localhost/statesman_test
           - EXCLUDE_MONGOID=true
           - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
+      - image: circleci/postgres:10.15
         environment:
           - POSTGRES_USER=postgres
           - POSTGRES_DB=statesman_test
