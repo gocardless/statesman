@@ -322,6 +322,10 @@ Machine.successors
 #### `Machine#current_state`
 Returns the current state based on existing transition objects.
 
+Takes an optional keyword argument to force a reload of data from the
+database.
+e.g `current_state(force_reload: true)`
+
 #### `Machine#in_state?(:state_1, :state_2, ...)`
 Returns true if the machine is in any of the given states.
 
