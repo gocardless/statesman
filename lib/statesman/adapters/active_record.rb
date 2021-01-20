@@ -313,7 +313,7 @@ module Statesman
       end
 
       def db_null
-        type_cast(nil)
+        Arel::Nodes::SqlLiteral.new("NULL")
       end
 
       # Type casting against a column is deprecated and will be removed in Rails 6.2.
