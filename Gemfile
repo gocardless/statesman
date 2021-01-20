@@ -5,8 +5,8 @@ source 'https://rubygems.org'
 gemspec
 
 # rubocop:disable Bundler/DuplicatedGem
-if ENV['RAILS_VERSION'] == 'master'
-  gem "rails", git: "https://github.com/rails/rails"
+if ENV['RAILS_VERSION'] == 'main'
+  gem "rails", git: "https://github.com/rails/rails", branch: "main"
 elsif ENV['RAILS_VERSION']
   gem "rails", "~> #{ENV['RAILS_VERSION']}"
 end
