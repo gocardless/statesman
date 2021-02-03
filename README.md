@@ -1,4 +1,4 @@
-<p align="center"><img src="http://f.cl.ly/items/410n2A0S3l1W0i3i0o2K/statesman.png" alt="Statesman"></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/110275/106792848-96e4ee80-664e-11eb-8fd1-16ff24b41eb2.png" alt="Statesman" width="512"></p>
 
 A statesmanlike state machine library.
 
