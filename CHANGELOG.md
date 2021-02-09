@@ -86,7 +86,7 @@
   to
   ```ruby
     include Statesman::Adapters::ActiveRecordQueries[
-      initial_state: :inital,
+      initial_state: :initial,
       transition_class: MyTransition
     ]
   ```
