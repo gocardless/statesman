@@ -1,3 +1,10 @@
+## UNRELEASE
+
+### Changed
+
+- Fixed a bug where the `history` of a model was left in an incorrect state after a transition
+  conflict [#433](https://github.com/gocardless/statesman/pull/433)
+
 ## v8.0.0 6th January 2021
 
 ### Added
@@ -24,16 +31,16 @@
 
 ### Changed
 
-- Use correct Arel for null [#409](https://github.com/gocardless/statesman/pull/#409)
+- Use correct Arel for null [#409](https://github.com/gocardless/statesman/pull/409)
 
 ## v7.2.0, 19th May 2020
 
 ### Changed
 
-- Set non-empty password for postgres tests [#398](https://github.com/gocardless/statesman/pull/#398)
-- Handle transitions differently for MySQL [#399](https://github.com/gocardless/statesman/pull/#399)
-- pg requirement from >= 0.18, <= 1.1 to >= 0.18, <= 1.3 [#400](https://github.com/gocardless/statesman/pull/#400)
-- Lazily enable mysql gaplock protection [#402](https://github.com/gocardless/statesman/pull/#402)
+- Set non-empty password for postgres tests [#398](https://github.com/gocardless/statesman/pull/398)
+- Handle transitions differently for MySQL [#399](https://github.com/gocardless/statesman/pull/399)
+- pg requirement from >= 0.18, <= 1.1 to >= 0.18, <= 1.3 [#400](https://github.com/gocardless/statesman/pull/400)
+- Lazily enable mysql gaplock protection [#402](https://github.com/gocardless/statesman/pull/402)
 
 ## v7.1.0, 10th Feb 2020
 

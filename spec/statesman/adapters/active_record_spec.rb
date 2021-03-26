@@ -130,6 +130,31 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         expect { adapter.create(:y, :z) }.
           to raise_exception(Statesman::TransitionConflictError)
       end
+
+      it "does not pollute the state when the transition fails" do
+        # this increments the sort_key in the database
+        adapter.create(:x, :y)
+
+        # we then pre-load the transitions for efficiency
+        preloaded_model = MyActiveRecordModel.
+          includes(:my_active_record_model_transitions).
+          find(model.id)
+
+        adapter2 = described_class.
+          new(MyActiveRecordModelTransition, preloaded_model, observer)
+
+        # Now we generate a race
+        adapter.create(:y, :z)
+        expect { adapter2.create(:y, :a) }.
+          to raise_error(Statesman::TransitionConflictError)
+
+        # The preloaded adapter should discard the preloaded info
+        expect(adapter2.last).to have_attributes(to_state: "z")
+        expect(adapter2.history).to contain_exactly(
+          have_attributes(to_state: "y"),
+          have_attributes(to_state: "z"),
+        )
+      end
     end
 
     context "when other exceptions occur" do

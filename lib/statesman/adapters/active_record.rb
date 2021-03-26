@@ -42,7 +42,13 @@ module Statesman
       def create(from, to, metadata = {})
         create_transition(from.to_s, to.to_s, metadata)
       rescue ::ActiveRecord::RecordNotUnique => e
-        raise TransitionConflictError, e.message if transition_conflict_error? e
+        if transition_conflict_error? e
+          # The history has the invalid transition on the end of it, which means
+          # `current_state` would then be incorrect. We force a reload of the history to
+          # avoid this.
+          transitions_for_parent.reload
+          raise TransitionConflictError, e.message
+        end
 
         raise
       ensure
