@@ -86,34 +86,6 @@ jobs:
           - POSTGRES_DB=statesman_test
           - POSTGRES_PASSWORD=statesman
     steps: *steps
-  build-ruby265-rails-main-mysql:
-    docker:
-      - image: circleci/ruby:2.6.5-node
-        environment:
-          - RAILS_VERSION=main
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
-        environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby265-rails-main-postgres:
-    docker:
-      - image: circleci/ruby:2.6.5-node
-        environment:
-          - RAILS_VERSION=main
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-          - POSTGRES_PASSWORD=statesman
-    steps: *steps
 
   build-ruby270-rails-602-mysql:
     docker:
@@ -179,8 +151,6 @@ workflows:
       - build-ruby249-rails-524-postgres
       - build-ruby265-rails-602-mysql
       - build-ruby265-rails-602-postgres
-      - build-ruby265-rails-main-mysql
-      - build-ruby265-rails-main-postgres
       - build-ruby270-rails-602-mysql
       - build-ruby270-rails-602-postgres
       - build-ruby270-rails-main-mysql
