@@ -1,9 +1,16 @@
-## UNRELEASE
+## v8.0.2 30th March 2021
 
 ### Changed
 
 - Fixed a bug where the `history` of a model was left in an incorrect state after a transition
   conflict [#433](https://github.com/gocardless/statesman/pull/433)
+
+## v8.0.1 20th January 2021
+
+### Changed
+
+- Fixed `no implicit conversion of nil into String` error when quoting null values
+  [#427](https://github.com/gocardless/statesman/pull/427)
 
 ## v8.0.0 6th January 2021
 
