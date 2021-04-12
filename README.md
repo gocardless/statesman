@@ -351,6 +351,66 @@ Transition to the passed state, returning `true` on success. Swallows all
 Statesman exceptions and returns false on failure. (NB. if your guard or
 callback code throws an exception, it will not be caught.)
 
+
+## Errors
+
+### Initialization errors
+These errors are raised when the Machine and/or Model is initialized. A simple spec like
+```ruby
+expect { OrderStateMachine.new(Order.new, transition_class: OrderTransition) }.to_not raise_error
+```
+will expose these errors as part of your test suite
+
+#### InvalidStateError
+Raised if:
+  * Attempting to define a transition without a `to` state.
+  * Attempting to define a transition with a non-existent state.
+  * Attempting to define multiple states as `initial`.
+
+#### InvalidTransitionError
+Raised if:
+  * Attempting to define a callback `from` a state that has no valid transitions (A terminal state).
+  * Attempting to define a callback `to` the `initial` state if that state has no transitions to it.
+  * Attempting to define a callback with `from` and `to` where any of the pairs have no transition between them.
+
+#### InvalidCallbackError
+Raised if:
+  * Attempting to define a callback without a block.
+
+#### UnserializedMetadataError
+Raised if:
+  * ActiveRecord is configured to not serialize the `metadata` attribute into
+    to Database column backing it. See the `Using PostgreSQL JSON column` section.
+
+#### IncompatibleSerializationError
+Raised if:
+  * There is a mismatch between the column type of the `metadata` in the
+    Database and the model. See the `Using PostgreSQL JSON column` section.
+
+#### MissingTransitionAssociation
+Raised if:
+  * The model that `Statesman::Adapters::ActiveRecordQueries` is included in
+    does not have a `has_many` association to the `transition_class`.
+
+### Runtime errors
+These errors are raised by `transition_to!`. Using `transition_to` will
+supress `GuardFailedError` and `TransitionFailedError` and return `false` instead.
+
+#### GuardFailedError
+Raised if:
+  * A guard callback between `from` and `to` state returned a falsey value.
+
+#### TransitionFailedError
+Raised if:
+  * A transition is attempted but `current_state -> new_state` is not a valid pair.
+
+#### TransitionConflictError
+Raised if:
+  * A database conflict affecting the `sort_key` or `most_recent` columns occurs
+    when attempting a transition.
+    Retried automatically if it occurs wrapped in `retry_conflicts`.
+
+
 ## Model scopes
 
 A mixin is provided for the ActiveRecord adapter which adds scopes to easily
