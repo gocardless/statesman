@@ -537,6 +537,34 @@ describe Statesman::Machine do
     end
   end
 
+  describe "#last_transition_to" do
+    subject { instance.last_transition_to(:y) }
+
+    before do
+      machine.class_eval do
+        state :x, initial: true
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :y, to: :z
+        transition from: :z, to: :y
+      end
+
+      instance.transition_to!(:y)
+      instance.transition_to!(:z)
+    end
+
+    let(:instance) { machine.new(my_model) }
+
+    it { is_expected.to have_attributes(to_state: "y") }
+
+    context "when there are 2 transitions to the state" do
+      before { instance.transition_to!(:y) }
+
+      it { is_expected.to eq(instance.last_transition) }
+    end
+  end
+
   describe "#can_transition_to?" do
     subject(:can_transition_to?) { instance.can_transition_to?(new_state, metadata) }
 

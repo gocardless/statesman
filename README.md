@@ -30,7 +30,7 @@ protection.
 To get started, just add Statesman to your `Gemfile`, and then run `bundle`:
 
 ```ruby
-gem 'statesman', '~> 7.1.0'
+gem 'statesman', '~> 8.0.3'
 ```
 
 ## Usage
@@ -109,6 +109,8 @@ Order.first.state_machine.allowed_transitions # => ["checking_out", "cancelled"]
 Order.first.state_machine.can_transition_to?(:cancelled) # => true/false
 Order.first.state_machine.transition_to(:cancelled, optional: :metadata) # => true/false
 Order.first.state_machine.transition_to!(:cancelled) # => true/exception
+Order.first.state_machine.last_transition # => transition model or nil
+Order.first.state_machine.last_transition_to(:pending) # => transition model or nil
 
 Order.in_state(:cancelled) # => [#<Order id: "123">]
 Order.not_in_state(:checking_out) # => [#<Order id: "123">]
@@ -159,7 +161,8 @@ class Order < ActiveRecord::Base
 
   # Optionally delegate some methods
 
-  delegate :can_transition_to?, :current_state, :history, :last_transition,
+  delegate :can_transition_to?,
+           :current_state, :history, :last_transition, :last_transition_to,
            :transition_to!, :transition_to, :in_state?, to: :state_machine
 end
 ```
@@ -334,6 +337,9 @@ Returns a sorted array of all transition objects.
 
 #### `Machine#last_transition`
 Returns the most recent transition object.
+
+#### `Machine#last_transition_to(:state)`
+Returns the most recent transition object to a given state.
 
 #### `Machine#allowed_transitions`
 Returns an array of states you can `transition_to` from current state.

@@ -1,3 +1,9 @@
+## UNRELEASED
+
+### Added
+- Implement `Machine#last_transition_to`, to find the last transition to a given state
+  [#xxx](https://github.com/gocardless/statesman/pull/xxx)
+
 ## v8.0.2 30th March 2021
 
 ### Changed

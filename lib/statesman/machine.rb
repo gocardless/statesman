@@ -209,6 +209,10 @@ module Statesman
       @storage_adapter.last(force_reload: force_reload)
     end
 
+    def last_transition_to(state)
+      history.reverse.find { |transition| transition.to_state.to_sym == state.to_sym }
+    end
+
     def can_transition_to?(new_state, metadata = {})
       validate_transition(from: current_state,
                           to: new_state,
