@@ -19,3 +19,21 @@ request passes by running `rubocop`.
 
 Please add a section to the readme for any new feature additions or behaviour
 changes.
+
+## Releasing
+
+We publish new versions of Stateman using [RubyGems](https://guides.rubygems.org/publishing/). Once
+the relevant changes have been merged and `VERSION` has been appropriately bumped to the new
+version, we run the following command.
+```
+$ gem build statesman.gemspec
+```
+This builds a `.gem` file locally that will be named something like `statesman-X` where `X` is the
+new version. For example, if we are releasing version 9.0.0, the file would be
+`statesman-9.0.0.gem`.
+
+To publish, run `gem push` with the new `.gem` file we just generated. This requires a OTP that is currently only available
+to GoCardless engineers. For example, if we were to continue to publish version 9.0.0, we would run:
+```
+$ gem push statesman-9.0.0.gem
+```
