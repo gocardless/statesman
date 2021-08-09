@@ -64,7 +64,7 @@ class CreateMyActiveRecordModelMigration < MIGRATION_CLASS
 end
 
 # TODO: make this a module we can extend from the app? Or a generator?
-# rubocop:disable MethodLength, Metrics/AbcSize
+# rubocop:disable Metrics/MethodLength
 class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_model_transitions do |t|
@@ -110,7 +110,7 @@ class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
     end
   end
 end
-# rubocop:enable MethodLength, Metrics/AbcSize
+# rubocop:enable Metrics/MethodLength
 
 class OtherActiveRecordModel < ActiveRecord::Base
   has_many :other_active_record_model_transitions, autosave: false
@@ -144,7 +144,7 @@ class CreateOtherActiveRecordModelMigration < MIGRATION_CLASS
   end
 end
 
-# rubocop:disable MethodLength
+# rubocop:disable Metrics/MethodLength
 class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :other_active_record_model_transitions do |t|
@@ -188,7 +188,7 @@ class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
     end
   end
 end
-# rubocop:enable MethodLength
+# rubocop:enable Metrics/MethodLength
 
 class DropMostRecentColumn < MIGRATION_CLASS
   def change
@@ -242,7 +242,7 @@ class CreateNamespacedARModelMigration < MIGRATION_CLASS
   end
 end
 
-# rubocop:disable MethodLength
+# rubocop:disable Metrics/MethodLength
 class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
   def change
     create_table :my_namespace_my_active_record_model_transitions do |t|
@@ -282,5 +282,5 @@ class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
                 name: "index_namespace_model_transitions_parent_latest"
     end
   end
-  # rubocop:enable MethodLength
+  # rubocop:enable Metrics/MethodLength
 end

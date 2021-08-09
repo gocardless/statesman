@@ -65,6 +65,7 @@ module Statesman
         end
       end
 
+      # rubocop:disable Naming/MemoizedInstanceVariableName
       def last(force_reload: false)
         if force_reload
           @last_transition = history(force_reload: true).last
@@ -72,6 +73,7 @@ module Statesman
           @last_transition ||= history.last
         end
       end
+      # rubocop:enable Naming/MemoizedInstanceVariableName
 
       def reset
         @last_transition = nil

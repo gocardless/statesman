@@ -50,10 +50,11 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
   shared_examples "testing methods" do
     before do
-      if config_type == :old
+      case config_type
+      when :old
         configure_old(MyActiveRecordModel, MyActiveRecordModelTransition)
         configure_old(OtherActiveRecordModel, OtherActiveRecordModelTransition)
-      elsif config_type == :new
+      when :new
         configure_new(MyActiveRecordModel, MyActiveRecordModelTransition)
         configure_new(OtherActiveRecordModel, OtherActiveRecordModelTransition)
       else
@@ -201,7 +202,6 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         MyActiveRecordModel.create
       end
 
-      # rubocop:disable RSpec/ExampleLength
       it do
         expect do
           ActiveRecord::Base.transaction do
@@ -210,7 +210,6 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
           end
         end.to_not change(MyStateMachine, :after_commit_callback_executed)
       end
-      # rubocop:enable RSpec/ExampleLength
     end
   end
 

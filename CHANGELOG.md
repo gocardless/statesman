@@ -1,3 +1,12 @@
+## v9.0.0 9th August 2021
+
+### Added
+- Added Ruby 3.0 support
+
+### Breaking changes
+
+- Removed Ruby 2.4
+
 ## v8.0.3 8th June 2021
 
 ### Added

@@ -234,11 +234,9 @@ describe Statesman::Machine do
 
       it "does not add a callback" do
         expect do
-          begin
-            set_callback
-          rescue error_type
-            nil
-          end
+          set_callback
+        rescue error_type
+          nil
         end.to_not change(machine.callbacks[callback_store], :count)
       end
     end
