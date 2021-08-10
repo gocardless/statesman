@@ -2,9 +2,13 @@
 
 module Statesman
   class InvalidStateError < StandardError; end
+
   class InvalidTransitionError < StandardError; end
+
   class InvalidCallbackError < StandardError; end
+
   class TransitionConflictError < StandardError; end
+
   class MissingTransitionAssociation < StandardError; end
 
   class TransitionFailedError < StandardError

@@ -1,157 +1,127 @@
 ---
-version: 2
+version: 2.1
 
 references:
-  steps: &steps
-    - checkout
+  bundle_install: &bundle_install
+    run:
+      name: Bundle
+      command: |
+        gem install bundler --no-document && \
+        bundle config set no-cache 'true' && \
+        bundle config set jobs '4' && \
+        bundle config set retry '3' && \
+        bundle install
 
-    - type: shell
-      name: Write RAILS_VERSION to a file so we can use it for caching purposes
-      command: echo "$RAILS_VERSION" > ~/RAILS_VERSION.txt
-
-    - type: cache-restore
-      key: statesman-{{ checksum "Gemfile" }}-{{ checksum "~/RAILS_VERSION.txt" }}
-
-    - run: gem install bundler -v 2.1.4
-
-    - run: bundle install --path vendor/bundle
-
-    - type: cache-save
-      key: statesman-{{ checksum "Gemfile" }}-{{ checksum "~/RAILS_VERSION.txt" }}
+  cache_bundle: &cache_bundle
+    save_cache:
+      key: bundle-<< parameters.ruby_version >>-<< parameters.rails_version >>-{{ checksum "statesman.gemspec" }}-{{ checksum "Gemfile" }}
       paths:
         - vendor/bundle
 
-    - run: bundle exec rubocop
+  restore_bundle: &restore_bundle
+    restore_cache:
+      key: bundle-<< parameters.ruby_version >>-<< parameters.rails_version >>-{{ checksum "statesman.gemspec" }}-{{ checksum "Gemfile" }}
 
+  steps: &steps
+    - add_ssh_keys
+    - checkout
+    - run:
+        name: "Add dependencies"
+        command: |
+          sudo apt-get update && sudo apt-get install -y sqlite3 libsqlite3-dev
+    - *restore_bundle
+    - *bundle_install
+    - *cache_bundle
     - run: dockerize -wait tcp://localhost:$DATABASE_DEPENDENCY_PORT -timeout 1m
+    - run:
+        name: Run specs
+        command: |
+          bundle exec rspec $(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings) --profile --format progress --format RspecJunitFormatter -o /tmp/circle_artifacts/rspec.xml
+    - run:
+        name: "Rubocop"
+        command: bundle exec rubocop --extra-details --display-style-guide --parallel --force-exclusion
+    - store_artifacts:
+        path: /tmp/circle_artifacts/
+    - store_test_results:
+        path: /tmp/circle_artifacts/
 
-    - run: bundle exec rake
+  ruby_versions: &ruby_versions
+    - "2.5"
+    - "2.6"
+    - "2.7"
+    - "3.0"
 
-    - type: store_test_results
-      path: /tmp/test-results
+  rails_versions: &rails_versions
+    - "5.2.6"
+    - "6.0.4"
+    - "6.1.4"
+    - "main"
+
+  mysql_versions: &mysql_versions
+    - "5.7.18"
+
+  psql_versions: &psql_versions
+    - "9.6"
 
 jobs:
-  build-ruby249-rails-524-mysql:
+  rspec_mysql:
+    working_directory: /mnt/ramdisk
+    parameters:
+      ruby_version:
+        type: string
+      rails_version:
+        type: string
+      mysql_version:
+        type: string
     docker:
-      - image: circleci/ruby:2.4.9-node
+      - image: cimg/ruby:<< parameters.ruby_version >>
         environment:
-          - RAILS_VERSION=5.2.4
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
+          CIRCLE_TEST_REPORTS: /tmp/circle_artifacts/
+          DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
+          DATABASE_DEPENDENCY_PORT: "3306"
+      - image: circleci/mysql:<< parameters.mysql_version >>
         environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby249-rails-524-postgres:
-    docker:
-      - image: circleci/ruby:2.4.9-node
-        environment:
-          - RAILS_VERSION=5.2.4
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-          - POSTGRES_PASSWORD=statesman
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_USER: foobar
+          MYSQL_PASSWORD: password
+          MYSQL_DATABASE: statesman_test
     steps: *steps
 
-  build-ruby265-rails-602-mysql:
+  rspec_postgres:
+    working_directory: /mnt/ramdisk
+    parameters:
+      ruby_version:
+        type: string
+      rails_version:
+        type: string
+      psql_version:
+        type: string
     docker:
-      - image: circleci/ruby:2.6.5-node
+      - image: cimg/ruby:<< parameters.ruby_version >>
         environment:
-          - RAILS_VERSION=6.0.2
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
+          CIRCLE_TEST_REPORTS: /tmp/circle_artifacts/
+          DATABASE_URL: postgres://postgres@localhost/statesman_test
+          DATABASE_DEPENDENCY_PORT: "5432"
+      - image: circleci/postgres:<< parameters.psql_version >>
         environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby265-rails-602-postgres:
-    docker:
-      - image: circleci/ruby:2.6.5-node
-        environment:
-          - RAILS_VERSION=6.0.2
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-          - POSTGRES_PASSWORD=statesman
-    steps: *steps
-
-  build-ruby270-rails-602-mysql:
-    docker:
-      - image: circleci/ruby:2.7.0-node
-        environment:
-          - RAILS_VERSION=6.0.2
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
-        environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby270-rails-602-postgres:
-    docker:
-      - image: circleci/ruby:2.7.0-node
-        environment:
-          - RAILS_VERSION=6.0.2
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-          - POSTGRES_PASSWORD=statesman
-    steps: *steps
-  build-ruby270-rails-main-mysql:
-    docker:
-      - image: circleci/ruby:2.7.0-node
-        environment:
-          - RAILS_VERSION=main
-          - DATABASE_URL=mysql2://root@127.0.0.1/statesman_test
-          - DATABASE_DEPENDENCY_PORT=3306
-      - image: circleci/mysql:5.7.18
-        environment:
-          - MYSQL_ALLOW_EMPTY_PASSWORD=true
-          - MYSQL_USER=root
-          - MYSQL_PASSWORD=
-          - MYSQL_DATABASE=statesman_test
-    steps: *steps
-  build-ruby270-rails-main-postgres:
-    docker:
-      - image: circleci/ruby:2.7.0-node
-        environment:
-          - RAILS_VERSION=main
-          - DATABASE_URL=postgres://postgres@localhost/statesman_test
-          - EXCLUDE_MONGOID=true
-          - DATABASE_DEPENDENCY_PORT=5432
-      - image: circleci/postgres:9.6
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_DB=statesman_test
-          - POSTGRES_PASSWORD=statesman
+          POSTGRES_USER: postgres
+          POSTGRES_DB: statesman_test
+          POSTGRES_PASSWORD: statesman
     steps: *steps
 
 workflows:
   version: 2
   tests:
     jobs:
-      - build-ruby249-rails-524-mysql
-      - build-ruby249-rails-524-postgres
-      - build-ruby265-rails-602-mysql
-      - build-ruby265-rails-602-postgres
-      - build-ruby270-rails-602-mysql
-      - build-ruby270-rails-602-postgres
-      - build-ruby270-rails-main-mysql
-      - build-ruby270-rails-main-postgres
+      - rspec_mysql:
+          matrix:
+            parameters:
+              mysql_version: *mysql_versions
+              ruby_version: *ruby_versions
+              rails_version: *rails_versions
+      - rspec_postgres:
+          matrix:
+            parameters:
+              psql_version: *psql_versions
+              ruby_version: *ruby_versions
+              rails_version: *rails_versions
