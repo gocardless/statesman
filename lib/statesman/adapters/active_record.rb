@@ -304,8 +304,15 @@ module Statesman
         return nil if column.nil?
 
         [
-          column, ::ActiveRecord::Base.default_timezone == :utc ? Time.now.utc : Time.now
+          column, default_timezone == :utc ? Time.now.utc : Time.now
         ]
+      end
+
+      def default_timezone
+        # Rails 7 deprecates ActiveRecord::Base.default_timezone in favour of ActiveRecord.default_timezone
+        return ::ActiveRecord.default_timezone if ::ActiveRecord.respond_to?(:default_timezone)
+
+        ::ActiveRecord::Base.default_timezone
       end
 
       def mysql_gaplock_protection?
