@@ -81,7 +81,6 @@ module Statesman
 
       private
 
-      # rubocop:disable Metrics/MethodLength
       def create_transition(from, to, metadata)
         transition = transitions_for_parent.build(
           default_transition_attributes(to, metadata),
@@ -118,7 +117,6 @@ module Statesman
 
         transition
       end
-      # rubocop:enable Metrics/MethodLength
 
       def default_transition_attributes(to, metadata)
         {
@@ -309,8 +307,11 @@ module Statesman
       end
 
       def default_timezone
-        # Rails 7 deprecates ActiveRecord::Base.default_timezone in favour of ActiveRecord.default_timezone
-        return ::ActiveRecord.default_timezone if ::ActiveRecord.respond_to?(:default_timezone)
+        # Rails 7 deprecates ActiveRecord::Base.default_timezone in favour
+        # of ActiveRecord.default_timezone
+        if ::ActiveRecord.respond_to?(:default_timezone)
+          return ::ActiveRecord.default_timezone
+        end
 
         ::ActiveRecord::Base.default_timezone
       end
