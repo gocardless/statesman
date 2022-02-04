@@ -1,3 +1,8 @@
+## v9.0.1 4th February 2021
+
+### Changed
+- Deprecate `ActiveRecord::Base.default_timezone` in favour of `ActiveRecord.default_timezone` [#446](https://github.com/gocardless/statesman/pull/446)
+
 ## v9.0.0 9th August 2021
 
 ### Added
