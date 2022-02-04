@@ -309,8 +309,11 @@ module Statesman
       end
 
       def default_timezone
-        # Rails 7 deprecates ActiveRecord::Base.default_timezone in favour of ActiveRecord.default_timezone
-        return ::ActiveRecord.default_timezone if ::ActiveRecord.respond_to?(:default_timezone)
+        # Rails 7 deprecates ActiveRecord::Base.default_timezone
+        # in favour of ActiveRecord.default_timezone
+        if ::ActiveRecord.respond_to?(:default_timezone)
+          return ::ActiveRecord.default_timezone
+        end
 
         ::ActiveRecord::Base.default_timezone
       end
