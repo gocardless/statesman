@@ -58,7 +58,7 @@ references:
     - "main"
 
   mysql_versions: &mysql_versions
-    - "5.7.18"
+    - "5.7"
 
   psql_versions: &psql_versions
     - "9.6"
@@ -74,12 +74,12 @@ jobs:
       mysql_version:
         type: string
     docker:
-      - image: circleci/ruby:<< parameters.ruby_version >>-node
+      - image: cimg/ruby:<< parameters.ruby_version >>
         environment:
           CIRCLE_TEST_REPORTS: /tmp/circle_artifacts/
           DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
           DATABASE_DEPENDENCY_PORT: "3306"
-      - image: circleci/mysql:<< parameters.mysql_version >>
+      - image: cimg/mysql:<< parameters.mysql_version >>
         environment:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_USER: foobar
@@ -102,7 +102,7 @@ jobs:
           CIRCLE_TEST_REPORTS: /tmp/circle_artifacts/
           DATABASE_URL: postgres://postgres@localhost/statesman_test
           DATABASE_DEPENDENCY_PORT: "5432"
-      - image: circleci/postgres:<< parameters.psql_version >>
+      - image: cimg/postgres:<< parameters.psql_version >>
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: statesman_test
