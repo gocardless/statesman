@@ -74,7 +74,7 @@ jobs:
       mysql_version:
         type: string
     docker:
-      - image: cimg/ruby:<< parameters.ruby_version >>
+      - image: circleci/ruby:<< parameters.ruby_version >>-node
         environment:
           CIRCLE_TEST_REPORTS: /tmp/circle_artifacts/
           DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
