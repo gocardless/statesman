@@ -77,13 +77,13 @@ jobs:
       - image: cimg/ruby:<< parameters.ruby_version >>
         environment:
           CIRCLE_TEST_REPORTS: /tmp/circle_artifacts/
-          DATABASE_URL: mysql2://root@127.0.0.1/statesman_test
+          DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
           DATABASE_DEPENDENCY_PORT: "3306"
       - image: circleci/mysql:<< parameters.mysql_version >>
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_USER: foo
-          MYSQL_PASSWORD:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_USER: foobar
+          MYSQL_PASSWORD: password
           MYSQL_DATABASE: statesman_test
     steps: *steps
 

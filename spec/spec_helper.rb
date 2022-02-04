@@ -14,7 +14,7 @@ require "rspec/rails"
 require "support/active_record"
 require "rspec/its"
 require "pry"
-puts ENV
+
 RSpec.configure do |config|
   config.raise_errors_for_deprecations!
   config.mock_with(:rspec) { |mocks| mocks.verify_partial_doubles = true }
