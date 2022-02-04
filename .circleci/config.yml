@@ -81,9 +81,9 @@ jobs:
           DATABASE_DEPENDENCY_PORT: "3306"
       - image: circleci/mysql:<< parameters.mysql_version >>
         environment:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_USER: foobar
-          MYSQL_PASSWORD: password
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_USER: foo
+          MYSQL_PASSWORD:
           MYSQL_DATABASE: statesman_test
     steps: *steps
 
