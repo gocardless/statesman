@@ -81,6 +81,7 @@ module Statesman
 
       private
 
+      # rubocop:disable Metrics/MethodLength
       def create_transition(from, to, metadata)
         transition = transitions_for_parent.build(
           default_transition_attributes(to, metadata),
@@ -117,6 +118,7 @@ module Statesman
 
         transition
       end
+      # rubocop:enable Metrics/MethodLength
 
       def default_transition_attributes(to, metadata)
         {
