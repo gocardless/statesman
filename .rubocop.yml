@@ -5,3 +5,12 @@ inherit_gem:
 
 AllCops:
   TargetRubyVersion: 3.0
+
+Metrics/AbcSize:
+  Max: 60
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 11
