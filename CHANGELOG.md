@@ -1,3 +1,10 @@
+## v10.0.0 17th May 2022
+
+### Changed
+- Added support for Ruby 3.1 [#462](https://github.com/gocardless/statesman/pull/462)
+- Removed support for Ruby 2.5 and 2.6 [#462](https://github.com/gocardless/statesman/pull/462)
+- Added `remove_state` and `remove_transitions` methods to `Statesman::Machine` [#464](https://github.com/gocardless/statesman/pull/464)
+
 ## v9.0.1 4th February 2021
 
 ### Changed
