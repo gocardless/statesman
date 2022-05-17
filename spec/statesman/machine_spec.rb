@@ -27,6 +27,112 @@ describe Statesman::Machine do
     end
   end
 
+  describe ".remove_state" do
+    subject(:remove_state) { -> { machine.remove_state(:x) } }
+
+    before do
+      machine.class_eval do
+        state :x
+        state :y
+        state :z
+      end
+    end
+
+    it "removes the state" do
+      expect(remove_state).
+        to change(machine, :states).
+        from(match_array(%w[x y z])).
+        to(%w[y z])
+    end
+
+    context "with a transition from the removed state" do
+      before { machine.transition from: :x, to: :y }
+
+      it "removes the transition" do
+        expect(remove_state).
+          to change(machine, :successors).
+          from({ "x" => ["y"] }).
+          to({})
+      end
+
+      context "with multiple transitions" do
+        before { machine.transition from: :x, to: :z }
+
+        it "removes all transitions" do
+          expect(remove_state).
+            to change(machine, :successors).
+            from({ "x" => %w[y z] }).
+            to({})
+        end
+      end
+    end
+
+    context "with a transition to the removed state" do
+      before { machine.transition from: :y, to: :x }
+
+      it "removes the transition" do
+        expect(remove_state).
+          to change(machine, :successors).
+          from({ "y" => ["x"] }).
+          to({})
+      end
+
+      context "with multiple transitions" do
+        before { machine.transition from: :z, to: :x }
+
+        it "removes all transitions" do
+          expect(remove_state).
+            to change(machine, :successors).
+            from({ "y" => ["x"], "z" => ["x"] }).
+            to({})
+        end
+      end
+    end
+
+    context "with a callback from the removed state" do
+      before do
+        machine.class_eval do
+          transition from: :x, to: :y
+          transition from: :x, to: :z
+          guard_transition(from: :x) { return false }
+          guard_transition(from: :x, to: :z) { return true }
+        end
+      end
+
+      let(:guards) do
+        [having_attributes(from: "x", to: []), having_attributes(from: "x", to: ["z"])]
+      end
+
+      it "removes the guard" do
+        expect(remove_state).
+          to change(machine, :callbacks).
+          from(a_hash_including(guards: match_array(guards))).
+          to(a_hash_including(guards: []))
+      end
+    end
+
+    context "with a callback to the removed state" do
+      before do
+        machine.class_eval do
+          transition from: :y, to: :x
+          guard_transition(to: :x) { return false }
+          guard_transition(from: :y, to: :x) { return true }
+        end
+      end
+
+      let(:guards) do
+        [having_attributes(from: nil, to: ["x"]), having_attributes(from: "y", to: ["x"])]
+      end
+
+      it "removes the guard" do
+        expect(remove_state).
+          to change(machine, :callbacks).
+          from(a_hash_including(guards: match_array(guards))).
+          to(a_hash_including(guards: []))
+      end
+    end
+  end
+
   describe ".retry_conflicts" do
     subject(:transition_state) do
       described_class.retry_conflicts(retry_attempts) do
@@ -167,6 +273,42 @@ describe Statesman::Machine do
         machine.transition(from: :x, to: :z)
         expect(machine.successors).to eq("x" => %w[y z])
       end
+    end
+  end
+
+  describe ".remove_transitions" do
+    before do
+      machine.class_eval do
+        state :x
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :x, to: :z
+        transition from: :y, to: :z
+      end
+    end
+
+    let(:initial_successors) { { "x" => %w[y z], "y" => ["z"] } }
+
+    it "removes the correct transitions when given a from state" do
+      expect { machine.remove_transitions(from: :x) }.
+        to change(machine, :successors).
+        from(initial_successors).
+        to({ "y" => ["z"] })
+    end
+
+    it "removes the correct transitions when given a to state" do
+      expect { machine.remove_transitions(to: :z) }.
+        to change(machine, :successors).
+        from(initial_successors).
+        to({ "x" => ["y"] })
+    end
+
+    it "removes the correct transitions when given a from and to state" do
+      expect { machine.remove_transitions(from: :x, to: :z) }.
+        to change(machine, :successors).
+        from(initial_successors).
+        to({ "x" => ["y"], "y" => ["z"] })
     end
   end
 
