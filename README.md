@@ -14,7 +14,7 @@ Statesman is an opinionated state machine library designed to provide a robust
 audit trail and data integrity. It decouples the state machine logic from the
 underlying model and allows for easy composition with one or more model classes.
 
-As such, the design of statesman is a little different from other state machine
+As such, the design of Statesman is a little different from other state machine
 libraries:
 - State behaviour is defined in a separate, "state machine" class, rather than
 added directly onto a model. State machines are then instantiated with the model
@@ -27,11 +27,7 @@ protection.
 
 ## Installation
 
-To get started, just add Statesman to your `Gemfile`, and then run `bundle`:
-
-```ruby
-gem 'statesman', '~> 8.0.3'
-```
+To get started, add Statesman to your project with `bundle add statesman`.
 
 ## Usage
 
