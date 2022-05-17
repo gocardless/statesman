@@ -116,6 +116,52 @@ Order.in_state(:cancelled) # => [#<Order id: "123">]
 Order.not_in_state(:checking_out) # => [#<Order id: "123">]
 ```
 
+If you'd like, you can also define a template for a generic state machine, then alter classes which extend it as required:
+
+```ruby
+module Template
+  def define_states
+    state :a, initial: true
+    state :b
+    state :c
+  end
+
+  def define_transitions
+    transition from: :a, to: :b
+    transition from: :b, to: :c
+    transition from: :c, to: :a
+  end
+end
+
+class Circular
+  include Statesman::Machine
+  extend Template
+  
+  define_states
+  define_transitions
+end
+
+class Linear
+  include Statesman::Machine
+  extend Template
+  
+  define_states
+  define_transitions
+  
+  remove_transitions from: :c, to: :a
+end
+
+class Shorter
+  include Statesman::Machine
+  extend Template
+
+  define_states
+  define_transitions
+
+  remove_state :c
+end
+```
+
 ## Persistence
 
 By default Statesman stores transition history in memory only. It can be
