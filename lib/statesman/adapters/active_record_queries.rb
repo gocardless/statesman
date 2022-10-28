@@ -95,18 +95,18 @@ module Statesman
         def states_where(states)
           if initial_state.to_s.in?(states.map(&:to_s))
             "#{most_recent_transition_alias}.to_state IN (?) OR " \
-            "#{most_recent_transition_alias}.to_state IS NULL"
+              "#{most_recent_transition_alias}.to_state IS NULL"
           else
             "#{most_recent_transition_alias}.to_state IN (?) AND " \
-            "#{most_recent_transition_alias}.to_state IS NOT NULL"
+              "#{most_recent_transition_alias}.to_state IS NOT NULL"
           end
         end
 
         def most_recent_transition_join
           "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias} " \
-             "ON #{model.table_name}.#{model_primary_key} = " \
-                  "#{most_recent_transition_alias}.#{model_foreign_key} " \
-             "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
+            "ON #{model.table_name}.#{model_primary_key} = " \
+            "#{most_recent_transition_alias}.#{model_foreign_key} " \
+            "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
         private
