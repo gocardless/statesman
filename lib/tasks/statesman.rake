@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 namespace :statesman do
-  desc "Set most_recent to false for old transitions and to true for the "\
+  desc "Set most_recent to false for old transitions and to true for the " \
        "latest one. Safe to re-run"
   task :backfill_most_recent, [:parent_model_name] => :environment do |_, args|
     parent_model_name = args.parent_model_name
@@ -56,8 +56,8 @@ namespace :statesman do
       end
 
       done_models += batch_size
-      puts "Updated #{transition_class.name.pluralize} for "\
-           "#{[done_models, total_models].min}/#{total_models} "\
+      puts "Updated #{transition_class.name.pluralize} for " \
+           "#{[done_models, total_models].min}/#{total_models} " \
            "#{parent_model_name.pluralize}"
     end
   end

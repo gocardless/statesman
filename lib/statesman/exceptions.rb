@@ -52,8 +52,8 @@ module Statesman
 
     def _message(transition_class_name)
       "#{transition_class_name}#metadata is not serialized. If you " \
-      "are using a non-json column type, you should `include " \
-      "Statesman::Adapters::ActiveRecordTransition`"
+        "are using a non-json column type, you should `include " \
+        "Statesman::Adapters::ActiveRecordTransition`"
     end
   end
 
@@ -66,9 +66,9 @@ module Statesman
 
     def _message(transition_class_name)
       "#{transition_class_name}#metadata column type cannot be json " \
-      "and serialized simultaneously. If you are using a json " \
-      "column type, it is not necessary to `include " \
-      "Statesman::Adapters::ActiveRecordTransition`"
+        "and serialized simultaneously. If you are using a json " \
+        "column type, it is not necessary to `include " \
+        "Statesman::Adapters::ActiveRecordTransition`"
     end
   end
 end
