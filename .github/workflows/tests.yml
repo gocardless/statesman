@@ -54,4 +54,40 @@ jobs:
           ruby-version: "${{ matrix.ruby-version }}"
       - name: Run specs
         run: |
-          bundle exec rspec --profile --format progress --format  RSpec::Github::Formatter
+          bundle exec rspec --profile --format progress --format RSpec::Github::Formatter
+
+  mysql:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: [2.7, 3.0, 3.1]
+        rails-version:
+          - "6.1.5"
+          - "7.0.4"
+          - "main"
+        mysql-version:
+          - "5.7"
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql-version }}
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_USER: foobar
+          MYSQL_PASSWORD: password
+          MYSQL_DATABASE: statesman_test
+        ports:
+          - "3306:3306"
+    env:
+      DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
+      DATABASE_DEPENDENCY_PORT: "3306"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: "${{ matrix.ruby-version }}"
+      - name: Run specs
+        run: |
+          bundle exec rspec --profile --format progress --format RSpec::Github::Formatter
