@@ -1,0 +1,57 @@
+name: tests
+
+on:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rubocop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - run: bundle exec rubocop --extra-details --display-style-guide --parallel --force-exclusion
+
+  postgres:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: [2.7, 3.0, 3.1]
+        rails-version:
+          - "6.1.5"
+          - "7.0.4"
+          - "main"
+        postgres-version: [9.6, 11, 14]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: statesman_test
+          POSTGRES_PASSWORD: statesman
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:statesman@localhost/statesman_test
+      DATABASE_DEPENDENCY_PORT: "5432"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: "${{ matrix.ruby-version }}"
+      - name: Run specs
+        run: |
+          bundle exec rspec --profile --format progress --format  RSpec::Github::Formatter
