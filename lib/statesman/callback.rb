@@ -19,7 +19,16 @@ module Statesman
     end
 
     def call(*args)
-      callback.call(*args)
+      ActiveSupport::Notifications.instrument "callback.statesman", { 
+        subject: args.first.class.name,
+        subject_id: args.first.id,
+        to_state: to,
+        from_state: from,
+        callback: callback.to_s,
+        resource: self.class.name
+      } do
+        callback.call(*args)
+      end
     end
 
     def applies_to?(options = { from: nil, to: nil })
