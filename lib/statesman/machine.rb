@@ -279,14 +279,20 @@ module Statesman
     end
 
     def transition_to!(new_state, metadata = {})
-      initial_state = current_state
-      new_state = new_state.to_s
+      ActiveSupport::Notifications.instrument "transition.statesman", {
+        to_state: new_state,
+        from_state: current_state,
+        resource: self.class.name,
+      } do
+        initial_state = current_state
+        new_state = new_state.to_s
 
-      validate_transition(from: initial_state,
-                          to: new_state,
-                          metadata: metadata)
+        validate_transition(from: initial_state,
+                            to: new_state,
+                            metadata: metadata)
 
-      @storage_adapter.create(initial_state, new_state, metadata)
+        @storage_adapter.create(initial_state, new_state, metadata)
+      end
 
       true
     rescue TransitionFailedError => e
@@ -298,13 +304,25 @@ module Statesman
     end
 
     def execute_on_failure(phase, initial_state, new_state, exception)
-      callbacks = callbacks_for(phase, from: initial_state, to: new_state)
-      callbacks.each { |cb| cb.call(@object, exception) }
+      ActiveSupport::Notifications.instrument "execute_on_failure.statesman", {
+        to_state: new_state,
+        from_state: initial_state,
+        resource: self.class.name,
+      } do
+        callbacks = callbacks_for(phase, from: initial_state, to: new_state)
+        callbacks.each { |cb| cb.call(@object, exception) }
+      end
     end
 
     def execute(phase, initial_state, new_state, transition)
-      callbacks = callbacks_for(phase, from: initial_state, to: new_state)
-      callbacks.each { |cb| cb.call(@object, transition) }
+      ActiveSupport::Notifications.instrument "execute.statesman", {
+        to_state: new_state,
+        from_state: initial_state,
+        resource: self.class.name,
+      } do
+        callbacks = callbacks_for(phase, from: initial_state, to: new_state)
+        callbacks.each { |cb| cb.call(@object, transition) }
+      end
     end
 
     def transition_to(new_state, metadata = {})
