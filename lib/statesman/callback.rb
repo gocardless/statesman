@@ -19,13 +19,13 @@ module Statesman
     end
 
     def call(*args)
-      ActiveSupport::Notifications.instrument "callback.statesman", { 
+      ActiveSupport::Notifications.instrument "callback.statesman", {
         subject: args.first.class.name,
         subject_id: args.first.id,
         to_state: to,
         from_state: from,
         callback: callback.to_s,
-        resource: self.class.name
+        resource: self.class.name,
       } do
         callback.call(*args)
       end
