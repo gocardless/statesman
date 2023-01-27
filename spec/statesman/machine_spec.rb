@@ -486,6 +486,63 @@ describe Statesman::Machine do
       expect(machine_instance.object).to be(my_model)
     end
 
+    context "initial state is configured" do
+      before { machine.state(:x, initial: true) }
+
+      context "initial_transition is not provided" do
+        let(:options) { {} }
+
+        it "doesn't call .create on storage adapter" do
+          expect_any_instance_of(Statesman.storage_adapter).to_not receive(:create)
+          machine.new(my_model, options)
+        end
+
+        it "doesn't create a new transition object" do
+          instance = machine.new(my_model, options)
+
+          expect(instance.history.count).to eq(0)
+        end
+      end
+
+      context "initial_transition is provided" do
+        context "initial_transition is true" do
+          let(:options) do
+            { initial_transition: true,
+              transition_class: Statesman::Adapters::MemoryTransition }
+          end
+
+          it "calls .create on storage adapter" do
+            expect_any_instance_of(Statesman.storage_adapter).to receive(:create).with(nil,
+                                                                                       "x")
+            machine.new(my_model, options)
+          end
+
+          it "creates a new transition object" do
+            instance = machine.new(my_model, options)
+
+            expect(instance.history.count).to eq(1)
+            expect(instance.history.first).to be_a(Statesman::Adapters::MemoryTransition)
+            expect(instance.history.first.to_state).to eq("x")
+          end
+        end
+
+        context "initial_transition is false" do
+          let(:options) { { initial_transition: false } }
+
+          it "doesn't call .create on storage adapter" do
+            expect_any_instance_of(Statesman.storage_adapter).to_not receive(:create)
+            machine.new(my_model, options)
+          end
+
+          it "doesn't create a new transition object" do
+            instance = machine.new(my_model, options)
+
+            expect(instance.history.count).to eq(0)
+          end
+        end
+      end
+    end
+
     context "transition class" do
       it "sets a default" do
         expect(Statesman.storage_adapter).to receive(:new).once.

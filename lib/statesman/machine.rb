@@ -233,7 +233,7 @@ module Statesman
     def initialize(object,
                    options = {
                      transition_class: Statesman::Adapters::MemoryTransition,
-                     initial_transition: false
+                     initial_transition: false,
                    })
       @object = object
       @transition_class = options[:transition_class]
@@ -242,7 +242,7 @@ module Statesman
       )
 
       if options[:initial_transition]
-        @storage_adapter.create(nil, self.class.initial_state, {})
+        @storage_adapter.create(nil, self.class.initial_state)
       end
 
       send(:after_initialize) if respond_to? :after_initialize
