@@ -242,7 +242,9 @@ module Statesman
       )
 
       if options[:initial_transition]
-        @storage_adapter.create(nil, self.class.initial_state)
+        if history.empty? && self.class.initial_state
+          @storage_adapter.create(nil, self.class.initial_state)
+        end
       end
 
       send(:after_initialize) if respond_to? :after_initialize
