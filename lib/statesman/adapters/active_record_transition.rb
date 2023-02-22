@@ -15,6 +15,14 @@ module Statesman
         class_attribute :updated_timestamp_column
         self.updated_timestamp_column = DEFAULT_UPDATED_TIMESTAMP_COLUMN
       end
+
+      def from_state
+        if has_attribute?(:from_state)
+          self[:from_state]
+        else
+          nil
+        end
+      end
     end
   end
 end

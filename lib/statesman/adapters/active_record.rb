@@ -83,7 +83,7 @@ module Statesman
 
       def create_transition(from, to, metadata)
         transition = transitions_for_parent.build(
-          default_transition_attributes(to, metadata),
+          default_transition_attributes(from, to, metadata),
         )
 
         ::ActiveRecord::Base.transaction(requires_new: true) do
@@ -118,13 +118,19 @@ module Statesman
         transition
       end
 
-      def default_transition_attributes(to, metadata)
-        {
+      def default_transition_attributes(from, to, metadata)
+        attributes = {
           to_state: to,
           sort_key: next_sort_key,
           metadata: metadata,
           most_recent: not_most_recent_value(db_cast: false),
         }
+
+        if @transition_class.has_attribute?(:from_state)
+          attributes[:from_state] = from
+        end
+
+        attributes
       end
 
       def add_after_commit_callback(from, to, transition)
