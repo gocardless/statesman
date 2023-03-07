@@ -27,7 +27,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "gc_ruboconfig", "~> 3.6.0"
   spec.add_development_dependency "mysql2", ">= 0.4", "< 0.6"
   spec.add_development_dependency "pg", ">= 0.18", "<= 1.3"
-  spec.add_development_dependency "pry"
   spec.add_development_dependency "rails", ">= 5.2"
   spec.add_development_dependency "rake", "~> 13.0.0"
   spec.add_development_dependency "rspec", "~> 3.1"
