@@ -16,8 +16,6 @@ module Statesman
           ),
         )
       end
-
-      def self.included(base); end
     end
   end
 end
