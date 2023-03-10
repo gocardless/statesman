@@ -86,6 +86,11 @@ jobs:
           MYSQL_DATABASE: statesman_test
         ports:
           - "3306:3306"
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
       DATABASE_DEPENDENCY_PORT: "3306"
