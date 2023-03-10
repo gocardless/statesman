@@ -1,3 +1,8 @@
+## v10.1.0 10th March 2023
+
+### CHanged
+- Add the source location of the guard callback to `Statesman::GuardFailedError`
+
 ## v10.0.0 17th May 2022
 
 ### Changed
