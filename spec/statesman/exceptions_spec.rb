@@ -64,10 +64,16 @@ describe Statesman do
   end
 
   describe "GuardFailedError" do
-    subject(:error) { Statesman::GuardFailedError.new("from", "to") }
+    subject(:error) { Statesman::GuardFailedError.new("from", "to", callback) }
+
+    let(:callback) { -> { "hello" } }
 
     its(:message) do
       is_expected.to eq("Guard on transition from: 'from' to 'to' returned false")
+    end
+
+    its(:backtrace) do
+      is_expected.to eq([callback.source_location.join(":")])
     end
 
     its "string matches its message" do
