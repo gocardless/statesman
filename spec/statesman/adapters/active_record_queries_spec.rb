@@ -117,8 +117,8 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         subject(:not_in_state) { MyActiveRecordModel.not_in_state(:succeeded, :failed) }
 
         it do
-          expect(not_in_state).to match_array([initial_state_model,
-                                               returned_to_initial_model])
+          expect(not_in_state).to contain_exactly(initial_state_model,
+                                                  returned_to_initial_model)
         end
       end
 
@@ -126,8 +126,8 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
         subject(:not_in_state) { MyActiveRecordModel.not_in_state(%i[succeeded failed]) }
 
         it do
-          expect(not_in_state).to match_array([initial_state_model,
-                                               returned_to_initial_model])
+          expect(not_in_state).to contain_exactly(initial_state_model,
+                                                  returned_to_initial_model)
         end
       end
     end
