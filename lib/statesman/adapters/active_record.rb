@@ -158,13 +158,24 @@ module Statesman
 
       def most_recent_transitions(most_recent_id = nil)
         if most_recent_id
-          transitions_of_parent.and(
+          concrete_transitions_of_parent.and(
             transition_table[:id].eq(most_recent_id).or(
               transition_table[:most_recent].eq(true),
             ),
           )
         else
-          transitions_of_parent.and(transition_table[:most_recent].eq(true))
+          concrete_transitions_of_parent.and(transition_table[:most_recent].eq(true))
+        end
+      end
+
+      def concrete_transitions_of_parent
+        if transition_sti?
+          transitions_of_parent.and(
+            transition_table[transition_class.inheritance_column].
+              eq(transition_class.name),
+          )
+        else
+          transitions_of_parent
         end
       end
 
@@ -263,13 +274,18 @@ module Statesman
           end
       end
 
-      def parent_join_foreign_key
-        association =
-          parent_model.class.
-            reflect_on_all_associations(:has_many).
-            find { |r| r.name.to_s == @association_name.to_s }
+      def transition_sti?
+        transition_class.column_names.include?(transition_class.inheritance_column)
+      end
 
-        association_join_primary_key(association)
+      def parent_association
+        parent_model.class.
+          reflect_on_all_associations(:has_many).
+          find { |r| r.name.to_s == @association_name.to_s }
+      end
+
+      def parent_join_foreign_key
+        association_join_primary_key(parent_association)
       end
 
       def association_join_primary_key(association)

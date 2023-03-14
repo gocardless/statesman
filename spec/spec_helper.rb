@@ -48,6 +48,8 @@ RSpec.configure do |config|
       my_namespace_my_active_record_model_transitions
       other_active_record_models
       other_active_record_model_transitions
+      sti_active_record_models
+      sti_active_record_model_transitions
     ]
     tables.each do |table_name|
       sql = "DROP TABLE IF EXISTS #{table_name};"
@@ -70,6 +72,15 @@ RSpec.configure do |config|
     def prepare_other_transitions_table
       CreateOtherActiveRecordModelTransitionMigration.migrate(:up)
       OtherActiveRecordModelTransition.reset_column_information
+    end
+
+    def prepare_sti_model_table
+      CreateStiActiveRecordModelMigration.migrate(:up)
+    end
+
+    def prepare_sti_transitions_table
+      CreateStiActiveRecordModelTransitionMigration.migrate(:up)
+      StiActiveRecordModelTransition.reset_column_information
     end
 
     MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)

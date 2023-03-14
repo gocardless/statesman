@@ -278,3 +278,94 @@ class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
     end
   end
 end
+
+class StiActiveRecordModel < ActiveRecord::Base
+  has_many :sti_a_active_record_model_transitions, autosave: false
+  has_many :sti_b_active_record_model_transitions, autosave: false
+
+  def state_machine_a
+    @state_machine_a ||= MyStateMachine.new(
+      self, transition_class: StiAActiveRecordModelTransition
+    )
+  end
+
+  def state_machine_b
+    @state_machine_b ||= MyStateMachine.new(
+      self, transition_class: StiBActiveRecordModelTransition
+    )
+  end
+
+  def metadata
+    super || {}
+  end
+
+  def reload(*)
+    state_machine_a.reset
+    state_machine_b.reset
+    super
+  end
+end
+
+class StiActiveRecordModelTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
+  belongs_to :sti_active_record_model
+  serialize :metadata, JSON
+end
+
+class StiAActiveRecordModelTransition < StiActiveRecordModelTransition
+end
+
+class StiBActiveRecordModelTransition < StiActiveRecordModelTransition
+end
+
+class CreateStiActiveRecordModelMigration < MIGRATION_CLASS
+  def change
+    create_table :sti_active_record_models do |t|
+      t.timestamps null: false
+    end
+  end
+end
+
+class CreateStiActiveRecordModelTransitionMigration < MIGRATION_CLASS
+  def change
+    create_table :sti_active_record_model_transitions do |t|
+      t.string  :to_state
+      t.integer :sti_active_record_model_id
+      t.integer :sort_key
+      t.string  :type
+
+      # MySQL doesn't allow default values on text fields
+      if ActiveRecord::Base.connection.adapter_name == "Mysql2"
+        t.text :metadata
+      else
+        t.text :metadata, default: "{}"
+      end
+
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+        t.boolean :most_recent, default: true, null: false
+      else
+        t.boolean :most_recent, default: true
+      end
+
+      t.timestamps null: false
+    end
+
+    add_index :sti_active_record_model_transitions,
+              %i[type sti_active_record_model_id sort_key],
+              unique: true, name: "sti_sort_key_index"
+
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      add_index :sti_active_record_model_transitions,
+                %i[type sti_active_record_model_id most_recent],
+                unique: true,
+                where: "most_recent",
+                name: "index_sti_active_record_model_transitions_parent_latest"
+    else
+      add_index :sti_active_record_model_transitions,
+                %i[type sti_active_record_model_id most_recent],
+                unique: true,
+                name: "index_sti_active_record_model_transitions_parent_latest"
+    end
+  end
+end
