@@ -31,7 +31,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rails", ">= 5.2"
   spec.add_development_dependency "rake", "~> 13.0.0"
   spec.add_development_dependency "rspec", "~> 3.1"
-  spec.add_development_dependency "rspec-github", "~> 2.3.1"
+  spec.add_development_dependency "rspec-github", "~> 2.4.0"
   spec.add_development_dependency "rspec-its", "~> 1.1"
   spec.add_development_dependency "rspec-rails", "~> 3.1"
   spec.add_development_dependency "sqlite3", "~> 1.6.1"
