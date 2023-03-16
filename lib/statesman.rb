@@ -14,6 +14,8 @@ module Statesman
              "statesman/adapters/active_record_transition"
     autoload :ActiveRecordQueries,
              "statesman/adapters/active_record_queries"
+    autoload :TypeSafeActiveRecordQueries,
+             "statesman/adapters/type_safe_active_record_queries"
   end
   require "statesman/railtie" if defined?(::Rails::Railtie)
 

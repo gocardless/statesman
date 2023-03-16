@@ -1006,10 +1006,10 @@ describe Statesman::Machine do
       it { is_expected.to be(:some_state) }
     end
 
-    context "when it is unsuccesful" do
+    context "when it is unsuccessful" do
       before do
         allow(instance).to receive(:transition_to!).
-          and_raise(Statesman::GuardFailedError.new(:x, :some_state))
+          and_raise(Statesman::GuardFailedError.new(:x, :some_state, nil))
       end
 
       it { is_expected.to be_falsey }

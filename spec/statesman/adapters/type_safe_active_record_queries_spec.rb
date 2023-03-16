@@ -2,16 +2,13 @@
 
 require "spec_helper"
 
-describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
-  def configure_old(klass, transition_class)
-    klass.define_singleton_method(:transition_class) { transition_class }
-    klass.define_singleton_method(:initial_state) { :initial }
-    klass.send(:include, described_class)
-  end
-
-  def configure_new(klass, transition_class)
-    klass.send(:include, described_class[transition_class: transition_class,
-                                         initial_state: :initial])
+describe Statesman::Adapters::TypeSafeActiveRecordQueries, active_record: true do
+  def configure(klass, transition_class)
+    klass.send(:extend, described_class)
+    klass.configure_state_machine(
+      transition_class: transition_class,
+      initial_state: :initial,
+    )
   end
 
   before do
@@ -50,16 +47,8 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
 
   shared_examples "testing methods" do
     before do
-      case config_type
-      when :old
-        configure_old(MyActiveRecordModel, MyActiveRecordModelTransition)
-        configure_old(OtherActiveRecordModel, OtherActiveRecordModelTransition)
-      when :new
-        configure_new(MyActiveRecordModel, MyActiveRecordModelTransition)
-        configure_new(OtherActiveRecordModel, OtherActiveRecordModelTransition)
-      else
-        raise "Unknown config type #{config_type}"
-      end
+      configure(MyActiveRecordModel, MyActiveRecordModelTransition)
+      configure(OtherActiveRecordModel, OtherActiveRecordModelTransition)
 
       MyActiveRecordModel.send(:has_one, :other_active_record_model)
       OtherActiveRecordModel.send(:belongs_to, :my_active_record_model)
@@ -213,59 +202,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
     end
   end
 
-  context "using old configuration method" do
-    let(:config_type) { :old }
-
+  context "using configuration method" do
     include_examples "testing methods"
-  end
-
-  context "using new configuration method" do
-    let(:config_type) { :new }
-
-    include_examples "testing methods"
-  end
-
-  context "with no association with the transition class" do
-    before do
-      class UnknownModelTransition < OtherActiveRecordModelTransition; end
-
-      configure_old(MyActiveRecordModel, UnknownModelTransition)
-    end
-
-    describe ".in_state" do
-      subject(:query) { MyActiveRecordModel.in_state(:succeeded) }
-
-      it "raises a helpful error" do
-        expect { query }.to raise_error(Statesman::MissingTransitionAssociation)
-      end
-    end
-  end
-
-  describe "check_missing_methods!" do
-    subject(:check_missing_methods!) { described_class.check_missing_methods!(base) }
-
-    context "when base has no missing methods" do
-      let(:base) do
-        Class.new do
-          def self.transition_class; end
-
-          def self.initial_state; end
-        end
-      end
-
-      it "does not raise an error" do
-        expect { check_missing_methods! }.to_not raise_exception
-      end
-    end
-
-    context "when base has missing methods" do
-      let(:base) do
-        Class.new
-      end
-
-      it "raises an error" do
-        expect { check_missing_methods! }.to raise_exception(NotImplementedError)
-      end
-    end
   end
 end

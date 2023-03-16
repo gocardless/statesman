@@ -28,13 +28,15 @@ module Statesman
   end
 
   class GuardFailedError < StandardError
-    def initialize(from, to)
+    def initialize(from, to, callback)
       @from = from
       @to = to
+      @callback = callback
       super(_message)
+      set_backtrace(callback.source_location.join(":")) if callback&.source_location
     end
 
-    attr_reader :from, :to
+    attr_reader :from, :to, :callback
 
     private
 

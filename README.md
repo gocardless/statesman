@@ -611,6 +611,30 @@ describe "some callback" do
 end
 ```
 
+## Compatibility with type checkers
+
+Including ActiveRecordQueries to your model can cause issues with type checkers
+such as Sorbet, this is because this technically is using a dynamic include,
+which is not supported by Sorbet.
+
+To avoid these issues you can instead include the TypeSafeActiveRecordQueries
+module and pass in configuration.
+
+```ruby
+class Order < ActiveRecord::Base
+  has_many :order_transitions, autosave: false
+
+  include Statesman::Adapters::TypeSafeActiveRecordQueries
+
+  configure_state_machine transition_class: OrderTransition,
+                          initial_state: :pending
+
+  def state_machine
+    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
+  end
+end
+```
+
 # Third-party extensions
 
 [statesman-sequel](https://github.com/badosu/statesman-sequel) - An adapter to make Statesman work with [Sequel](https://github.com/jeremyevans/sequel)
