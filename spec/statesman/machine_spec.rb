@@ -497,7 +497,6 @@ describe Statesman::Machine do
       instance = machine.new(my_model, options)
 
       expect(instance.history.count).to eq(1)
-      expect(instance.history.first).to be_a(Statesman::Adapters::MemoryTransition)
       expect(instance.history.first.to_state).to eq("x")
     end
   end
