@@ -534,7 +534,8 @@ describe Statesman::Machine do
 
         context "history is not empty" do
           before do
-            allow_any_instance_of(Statesman.storage_adapter).to receive(:history).and_return([{}])
+            allow_any_instance_of(Statesman.storage_adapter).to receive(:history).
+              and_return([{}])
           end
 
           context "initial state is defined" do
