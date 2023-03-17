@@ -4,7 +4,7 @@ inherit_gem:
   gc_ruboconfig: rubocop.yml
 
 AllCops:
-  TargetRubyVersion: 3.0
+  TargetRubyVersion: 2.7
   NewCops: enable
 
 Metrics/AbcSize:
