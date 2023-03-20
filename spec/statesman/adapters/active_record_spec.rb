@@ -35,8 +35,8 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         allow(metadata_column).to receive_messages(sql_type: "")
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { "metadata" => metadata_column })
-        if ::ActiveRecord.respond_to?(:gem_version) &&
-            ::ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
+        if ActiveRecord.respond_to?(:gem_version) &&
+            ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
           expect(MyActiveRecordModelTransition).
             to receive(:type_for_attribute).with("metadata").
             and_return(ActiveRecord::Type::Value.new)
@@ -60,10 +60,10 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         allow(metadata_column).to receive_messages(sql_type: "json")
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { "metadata" => metadata_column })
-        if ::ActiveRecord.respond_to?(:gem_version) &&
-            ::ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
-          serialized_type = ::ActiveRecord::Type::Serialized.new(
-            "", ::ActiveRecord::Coders::JSON
+        if ActiveRecord.respond_to?(:gem_version) &&
+            ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
+          serialized_type = ActiveRecord::Type::Serialized.new(
+            "", ActiveRecord::Coders::JSON
           )
           expect(MyActiveRecordModelTransition).
             to receive(:type_for_attribute).with("metadata").
@@ -88,10 +88,10 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         allow(metadata_column).to receive_messages(sql_type: "jsonb")
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { "metadata" => metadata_column })
-        if ::ActiveRecord.respond_to?(:gem_version) &&
-            ::ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
-          serialized_type = ::ActiveRecord::Type::Serialized.new(
-            "", ::ActiveRecord::Coders::JSON
+        if ActiveRecord.respond_to?(:gem_version) &&
+            ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
+          serialized_type = ActiveRecord::Type::Serialized.new(
+            "", ActiveRecord::Coders::JSON
           )
           expect(MyActiveRecordModelTransition).
             to receive(:type_for_attribute).with("metadata").
@@ -165,8 +165,8 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
 
       context "ActiveRecord::RecordNotUnique unrelated to this transition" do
         let(:error) do
-          if ::ActiveRecord.respond_to?(:gem_version) &&
-              ::ActiveRecord.gem_version >= Gem::Version.new("4.0.0")
+          if ActiveRecord.respond_to?(:gem_version) &&
+              ActiveRecord.gem_version >= Gem::Version.new("4.0.0")
             ActiveRecord::RecordNotUnique.new("unrelated")
           else
             ActiveRecord::RecordNotUnique.new("unrelated", nil)
