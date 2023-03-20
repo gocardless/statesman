@@ -254,7 +254,7 @@ describe Statesman::Adapters::ActiveRecordQueries, active_record: true do
       end
 
       it "does not raise an error" do
-        expect { check_missing_methods! }.to_not raise_exception(NotImplementedError)
+        expect { check_missing_methods! }.to_not raise_exception
       end
     end
 

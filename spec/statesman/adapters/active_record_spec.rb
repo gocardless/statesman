@@ -112,7 +112,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
   end
 
   describe "#create" do
-    subject { -> { create } }
+    subject(:transition) { create }
 
     let!(:adapter) do
       described_class.new(MyActiveRecordModelTransition, model, observer)
@@ -173,19 +173,17 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           end
         end
 
-        it { is_expected.to raise_exception(ActiveRecord::RecordNotUnique) }
+        it { expect { transition }.to raise_exception(ActiveRecord::RecordNotUnique) }
       end
 
       context "other errors" do
         let(:error) { StandardError }
 
-        it { is_expected.to raise_exception(StandardError) }
+        it { expect { transition }.to raise_exception(StandardError) }
       end
     end
 
     describe "updating the most_recent column" do
-      subject { create }
-
       context "with no previous transition" do
         its(:most_recent) { is_expected.to eq(true) }
       end

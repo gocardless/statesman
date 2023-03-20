@@ -28,7 +28,7 @@ describe Statesman::Machine do
   end
 
   describe ".remove_state" do
-    subject(:remove_state) { -> { machine.remove_state(:x) } }
+    subject(:remove_state) { machine.remove_state(:x) }
 
     before do
       machine.class_eval do
@@ -39,7 +39,7 @@ describe Statesman::Machine do
     end
 
     it "removes the state" do
-      expect(remove_state).
+      expect { remove_state }.
         to change(machine, :states).
         from(match_array(%w[x y z])).
         to(%w[y z])
@@ -49,7 +49,7 @@ describe Statesman::Machine do
       before { machine.transition from: :x, to: :y }
 
       it "removes the transition" do
-        expect(remove_state).
+        expect { remove_state }.
           to change(machine, :successors).
           from({ "x" => ["y"] }).
           to({})
@@ -59,7 +59,7 @@ describe Statesman::Machine do
         before { machine.transition from: :x, to: :z }
 
         it "removes all transitions" do
-          expect(remove_state).
+          expect { remove_state }.
             to change(machine, :successors).
             from({ "x" => %w[y z] }).
             to({})
@@ -71,7 +71,7 @@ describe Statesman::Machine do
       before { machine.transition from: :y, to: :x }
 
       it "removes the transition" do
-        expect(remove_state).
+        expect { remove_state }.
           to change(machine, :successors).
           from({ "y" => ["x"] }).
           to({})
@@ -81,7 +81,7 @@ describe Statesman::Machine do
         before { machine.transition from: :z, to: :x }
 
         it "removes all transitions" do
-          expect(remove_state).
+          expect { remove_state }.
             to change(machine, :successors).
             from({ "y" => ["x"], "z" => ["x"] }).
             to({})
@@ -104,7 +104,7 @@ describe Statesman::Machine do
       end
 
       it "removes the guard" do
-        expect(remove_state).
+        expect { remove_state }.
           to change(machine, :callbacks).
           from(a_hash_including(guards: match_array(guards))).
           to(a_hash_including(guards: []))
@@ -125,7 +125,7 @@ describe Statesman::Machine do
       end
 
       it "removes the guard" do
-        expect(remove_state).
+        expect { remove_state }.
           to change(machine, :callbacks).
           from(a_hash_including(guards: match_array(guards))).
           to(a_hash_including(guards: []))
