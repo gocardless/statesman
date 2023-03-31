@@ -52,7 +52,7 @@ module Statesman
 
         raise
       ensure
-        @last_transition = nil
+        remove_instance_variable(:@last_transition)
       end
 
       def history(force_reload: false)
@@ -65,18 +65,18 @@ module Statesman
         end
       end
 
-      # rubocop:disable Naming/MemoizedInstanceVariableName
       def last(force_reload: false)
         if force_reload
           @last_transition = history(force_reload: true).last
+        elsif instance_variable_defined?(:@last_transition)
+          @last_transition
         else
-          @last_transition ||= history.last
+          @last_transition = history.last
         end
       end
-      # rubocop:enable Naming/MemoizedInstanceVariableName
 
       def reset
-        @last_transition = nil
+        remove_instance_variable(:@last_transition)
       end
 
       private
