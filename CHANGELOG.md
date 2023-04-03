@@ -1,3 +1,8 @@
+## v10.2.0 3rd April 2023
+
+### Changed
+- Fixed caching of `last_transition` [#505](https://github.com/gocardless/statesman/pull/505)
+
 ## v10.1.0 10th March 2023
 
 ### CHanged
