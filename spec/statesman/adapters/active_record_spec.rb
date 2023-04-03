@@ -308,9 +308,9 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       described_class.new(MyActiveRecordModelTransition, model, observer)
     end
 
-    before { adapter.create(:x, :y) }
-
     context "with a previously looked up transition" do
+      before { adapter.create(:x, :y) }
+
       before { adapter.last }
 
       it "caches the transition" do
@@ -374,6 +374,16 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
       it "doesn't query the database" do
         expect(MyActiveRecordModelTransition).to_not receive(:connection)
         expect(adapter.last.to_state).to eq("y")
+      end
+    end
+
+    context "without previous transitions" do
+      it "does query the database only once" do
+        expect(model.my_active_record_model_transitions).
+          to receive(:order).once.and_call_original
+
+        expect(adapter.last).to eq(nil)
+        expect(adapter.last).to eq(nil)
       end
     end
   end
