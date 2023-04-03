@@ -20,9 +20,21 @@ class MyStateMachine
   transition from: :failed,  to: :initial
 end
 
+class MyActiveRecordModelTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
+  belongs_to :my_active_record_model
+  serialize :metadata, JSON
+end
+
 class MyActiveRecordModel < ActiveRecord::Base
   has_many :my_active_record_model_transitions, autosave: false
   alias_method :transitions, :my_active_record_model_transitions
+
+  include Statesman::Adapters::ActiveRecordQueries[
+    transition_class: MyActiveRecordModelTransition,
+    initial_state: :initial
+  ]
 
   def state_machine
     @state_machine ||= MyStateMachine.new(
@@ -33,18 +45,6 @@ class MyActiveRecordModel < ActiveRecord::Base
   def metadata
     super || {}
   end
-
-  def reload(*)
-    state_machine.reset
-    super
-  end
-end
-
-class MyActiveRecordModelTransition < ActiveRecord::Base
-  include Statesman::Adapters::ActiveRecordTransition
-
-  belongs_to :my_active_record_model
-  serialize :metadata, JSON
 end
 
 class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base
