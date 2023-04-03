@@ -388,6 +388,12 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
     end
   end
 
+  describe "#reset" do
+    it "works with empty cache" do
+      expect { model.state_machine.reset }.to_not raise_error
+    end
+  end
+
   it "resets last with #reload" do
     model.save!
     ActiveRecord::Base.transaction do

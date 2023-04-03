@@ -1,3 +1,8 @@
+## v10.2.1 3rd April 2023
+
+### Changed
+- Fixed an edge case where `adapter.reset` were failing if the cache is empty
+
 ## v10.2.0 3rd April 2023
 
 ### Changed

@@ -52,7 +52,7 @@ module Statesman
 
         raise
       ensure
-        remove_instance_variable(:@last_transition)
+        reset
       end
 
       def history(force_reload: false)
@@ -76,7 +76,8 @@ module Statesman
       end
 
       def reset
-        remove_instance_variable(:@last_transition)
+        remove_instance_variable(:@last_transition) \
+          if instance_variable_defined?(:@last_transition)
       end
 
       private
