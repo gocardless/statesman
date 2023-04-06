@@ -12,6 +12,9 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
 
     MyActiveRecordModelTransition.serialize(:metadata, JSON)
 
+    prepare_sti_model_table
+    prepare_sti_transitions_table
+
     Statesman.configure do
       # Rubocop requires described_class to be used, but this block
       # is instance_eval'd and described_class won't be defined
@@ -298,6 +301,57 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
           expect { create }.
             to change { another_previous_transition.reload.most_recent }.
             from(true).to be_falsey
+        end
+      end
+
+      context "when transition uses STI" do
+        let(:sti_model) { StiActiveRecordModel.create }
+
+        let(:adapter_a) do
+          described_class.new(
+            StiAActiveRecordModelTransition,
+            sti_model,
+            observer,
+            { association_name: :sti_a_active_record_model_transitions },
+          )
+        end
+        let(:adapter_b) do
+          described_class.new(
+            StiBActiveRecordModelTransition,
+            sti_model,
+            observer,
+            { association_name: :sti_b_active_record_model_transitions },
+          )
+        end
+        let(:create) { adapter_a.create(from, to) }
+
+        context "with a previous unrelated transition" do
+          let!(:transition_b) { adapter_b.create(from, to) }
+
+          its(:most_recent) { is_expected.to eq(true) }
+
+          it "doesn't update the previous transition's most_recent flag" do
+            expect { create }.
+              to_not(change { transition_b.reload.most_recent })
+          end
+        end
+
+        context "with previous related and unrelated transitions" do
+          let!(:transition_a) { adapter_a.create(from, to) }
+          let!(:transition_b) { adapter_b.create(from, to) }
+
+          its(:most_recent) { is_expected.to eq(true) }
+
+          it "updates the previous transition's most_recent flag" do
+            expect { create }.
+              to change { transition_a.reload.most_recent }.
+              from(true).to be_falsey
+          end
+
+          it "doesn't update the previous unrelated transition's most_recent flag" do
+            expect { create }.
+              to_not(change { transition_b.reload.most_recent })
+          end
         end
       end
     end
