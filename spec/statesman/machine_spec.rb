@@ -976,20 +976,20 @@ describe Statesman::Machine do
     end
 
     context "with defined callbacks" do
-      let(:callback_1) { -> { "Hi" } }
-      let(:callback_2) { -> { "Bye" } }
+      let(:callback_one) { -> { "Hi" } }
+      let(:callback_two) { -> { "Bye" } }
 
       before do
-        machine.send(definer, from: :x, to: :y, &callback_1)
-        machine.send(definer, from: :y, to: :z, &callback_2)
+        machine.send(definer, from: :x, to: :y, &callback_one)
+        machine.send(definer, from: :y, to: :z, &callback_two)
       end
 
       it "contains the relevant callback" do
-        expect(callbacks.map(&:callback)).to include(callback_1)
+        expect(callbacks.map(&:callback)).to include(callback_one)
       end
 
       it "does not contain the irrelevant callback" do
-        expect(callbacks.map(&:callback)).to_not include(callback_2)
+        expect(callbacks.map(&:callback)).to_not include(callback_two)
       end
     end
   end
