@@ -76,8 +76,9 @@ module Statesman
       end
 
       def reset
-        remove_instance_variable(:@last_transition) \
-          if instance_variable_defined?(:@last_transition)
+        if instance_variable_defined?(:@last_transition)
+          remove_instance_variable(:@last_transition)
+        end
       end
 
       private

@@ -1,3 +1,8 @@
+## v10.2.2 21st April 2023
+
+### Changed
+- Calling `active_record.reload` resets the adapater's internal cache
+
 ## v10.2.1 3rd April 2023
 
 ### Changed

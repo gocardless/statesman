@@ -49,6 +49,14 @@ module Statesman
 
           define_in_state(base, query_builder)
           define_not_in_state(base, query_builder)
+
+          define_method(:reload) do |*a|
+            instance = super(*a)
+            if instance.respond_to?(:state_machine, true)
+              instance.state_machine.reset
+            end
+            instance
+          end
         end
 
         private
