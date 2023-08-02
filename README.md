@@ -407,6 +407,16 @@ Machine.successors
 }
 ```
 
+## Class constants
+Each machine's state will turn into a constant:
+```ruby
+Machine.state(:some_state, initial: true)
+Machine.state(:another_state)
+
+Machine::SOME_STATE #=> "some_state"
+Machine::ANOTHER_STATE # => "another_state"
+```
+
 ## Instance methods
 
 ### `Machine#current_state`

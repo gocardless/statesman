@@ -11,16 +11,29 @@ describe Statesman::Machine do
 
     specify { expect(machine.states).to eq(%w[x y]) }
 
-    context "initial" do
-      before { machine.state(:x, initial: true) }
+    specify { expect(machine::X).to eq "x" }
 
-      specify { expect(machine.initial_state).to eq("x") }
+    specify { expect(machine::Y).to eq "y" }
+
+    context "initial" do
+      before { machine.state(:z, initial: true) }
+
+      specify { expect(machine.initial_state).to eq("z") }
 
       context "when an initial state is already defined" do
         it "raises an error" do
           expect { machine.state(:y, initial: true) }.
             to raise_error(Statesman::InvalidStateError)
         end
+      end
+    end
+
+    context "when state name constant is already defined" do
+      it "warns about name conflict" do
+        machine.const_set(:SOME_CONST, "some const")
+        warning_message = "Name conflict: 'Class::SOME_CONST' is already defined\n"
+
+        expect { machine.state(:some_const) }.to output(warning_message).to_stderr
       end
     end
   end
