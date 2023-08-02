@@ -1,3 +1,8 @@
+## v10.2.3 2nd Aug 2023
+
+### Changed
+- Fixed calls to reloading internal cache is the state_machine was made private / protected
+
 ## v10.2.2 21st April 2023
 
 ### Changed
