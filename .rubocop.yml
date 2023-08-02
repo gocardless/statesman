@@ -15,3 +15,6 @@ Metrics/CyclomaticComplexity:
 
 Metrics/PerceivedComplexity:
   Max: 11
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
