@@ -53,7 +53,7 @@ module Statesman
           define_method(:reload) do |*a|
             instance = super(*a)
             if instance.respond_to?(:state_machine, true)
-              instance.state_machine.reset
+              instance.send(:state_machine).reset
             end
             instance
           end
