@@ -39,6 +39,8 @@ module Statesman
           validate_initial_state(name)
           @initial_state = name
         end
+        define_state_constant(name)
+
         states << name
       end
 
@@ -162,6 +164,16 @@ module Statesman
       end
 
       private
+
+      def define_state_constant(state_name)
+        constant_name = state_name.upcase
+
+        if const_defined?(constant_name)
+          warn "Name conflict: '#{self.class.name}::#{constant_name}' is already defined"
+        else
+          const_set(constant_name, state_name)
+        end
+      end
 
       def add_callback(callback_type: nil, callback_class: nil,
                        from: nil, to: nil, &block)
