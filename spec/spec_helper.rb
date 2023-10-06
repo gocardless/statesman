@@ -83,6 +83,6 @@ RSpec.configure do |config|
       StiActiveRecordModelTransition.reset_column_information
     end
 
-    MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
+    MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, coder: JSON)
   end
 end

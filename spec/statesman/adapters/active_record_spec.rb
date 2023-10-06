@@ -10,7 +10,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
     prepare_model_table
     prepare_transitions_table
 
-    MyActiveRecordModelTransition.serialize(:metadata, JSON)
+    MyActiveRecordModelTransition.serialize(:metadata, coder: JSON)
 
     prepare_sti_model_table
     prepare_sti_transitions_table
@@ -468,7 +468,7 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
     end
 
     before do
-      MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
+      MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, coder: JSON)
     end
 
     let(:observer) { double(Statesman::Machine, execute: nil) }

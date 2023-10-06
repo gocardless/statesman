@@ -8,7 +8,7 @@ describe Statesman::Adapters::ActiveRecordTransition do
 
   describe "including behaviour" do
     it "calls Class.serialize" do
-      expect(transition_class).to receive(:serialize).with(:metadata, JSON).once
+      expect(transition_class).to receive(:serialize).with(:metadata, coder: JSON).once
       transition_class.send(:include, described_class)
     end
   end

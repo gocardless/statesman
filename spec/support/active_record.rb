@@ -24,7 +24,7 @@ class MyActiveRecordModelTransition < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
   belongs_to :my_active_record_model
-  serialize :metadata, JSON
+  serialize :metadata, coder: JSON
 end
 
 class MyActiveRecordModel < ActiveRecord::Base
@@ -51,7 +51,7 @@ class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base
   self.table_name = "my_active_record_model_transitions"
 
   belongs_to :my_active_record_model
-  serialize :metadata, JSON
+  serialize :metadata, coder: JSON
 end
 
 class CreateMyActiveRecordModelMigration < MIGRATION_CLASS
@@ -129,7 +129,7 @@ class OtherActiveRecordModelTransition < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
   belongs_to :other_active_record_model
-  serialize :metadata, JSON
+  serialize :metadata, coder: JSON
 end
 
 class CreateOtherActiveRecordModelMigration < MIGRATION_CLASS
@@ -221,7 +221,7 @@ module MyNamespace
 
     belongs_to :my_active_record_model,
                class_name: "MyNamespace::MyActiveRecordModel"
-    serialize :metadata, JSON
+    serialize :metadata, coder: JSON
 
     def self.table_name_prefix
       "my_namespace_"
@@ -310,7 +310,7 @@ class StiActiveRecordModelTransition < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
   belongs_to :sti_active_record_model
-  serialize :metadata, JSON
+  serialize :metadata, coder: JSON
 end
 
 class StiAActiveRecordModelTransition < StiActiveRecordModelTransition
