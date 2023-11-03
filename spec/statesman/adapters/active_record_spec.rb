@@ -5,12 +5,12 @@ require "timecop"
 require "statesman/adapters/shared_examples"
 require "statesman/exceptions"
 
-describe Statesman::Adapters::ActiveRecord, active_record: true do
+describe Statesman::Adapters::ActiveRecord, :active_record do
   before do
     prepare_model_table
     prepare_transitions_table
 
-    MyActiveRecordModelTransition.serialize(:metadata, JSON)
+    # MyActiveRecordModelTransition.serialize(:metadata, JSON)
 
     prepare_sti_model_table
     prepare_sti_transitions_table
@@ -38,15 +38,9 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         allow(metadata_column).to receive_messages(sql_type: "")
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { "metadata" => metadata_column })
-        if ActiveRecord.respond_to?(:gem_version) &&
-            ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
-          expect(MyActiveRecordModelTransition).
-            to receive(:type_for_attribute).with("metadata").
-            and_return(ActiveRecord::Type::Value.new)
-        else
-          expect(MyActiveRecordModelTransition).
-            to receive_messages(serialized_attributes: {})
-        end
+        expect(MyActiveRecordModelTransition).
+          to receive(:type_for_attribute).with("metadata").
+          and_return(ActiveRecord::Type::Value.new)
       end
 
       it "raises an exception" do
@@ -91,18 +85,12 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
         allow(metadata_column).to receive_messages(sql_type: "jsonb")
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { "metadata" => metadata_column })
-        if ActiveRecord.respond_to?(:gem_version) &&
-            ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
-          serialized_type = ActiveRecord::Type::Serialized.new(
-            "", ActiveRecord::Coders::JSON
-          )
-          expect(MyActiveRecordModelTransition).
-            to receive(:type_for_attribute).with("metadata").
-            and_return(serialized_type)
-        else
-          expect(MyActiveRecordModelTransition).
-            to receive_messages(serialized_attributes: { "metadata" => "" })
-        end
+        serialized_type = ActiveRecord::Type::Serialized.new(
+          "", ActiveRecord::Coders::JSON
+        )
+        expect(MyActiveRecordModelTransition).
+          to receive(:type_for_attribute).with("metadata").
+          and_return(serialized_type)
       end
 
       it "raises an exception" do
@@ -465,10 +453,6 @@ describe Statesman::Adapters::ActiveRecord, active_record: true do
     before do
       CreateNamespacedARModelMigration.migrate(:up)
       CreateNamespacedARModelTransitionMigration.migrate(:up)
-    end
-
-    before do
-      MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
     end
 
     let(:observer) { double(Statesman::Machine, execute: nil) }

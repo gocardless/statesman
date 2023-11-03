@@ -40,7 +40,7 @@ RSpec.configure do |config|
     ActiveRecord::Migration.verbose = false
   end
 
-  config.before(:each, active_record: true) do
+  config.before(:each, :active_record) do
     tables = %w[
       my_active_record_models
       my_active_record_model_transitions
@@ -82,7 +82,5 @@ RSpec.configure do |config|
       CreateStiActiveRecordModelTransitionMigration.migrate(:up)
       StiActiveRecordModelTransition.reset_column_information
     end
-
-    MyNamespace::MyActiveRecordModelTransition.serialize(:metadata, JSON)
   end
 end

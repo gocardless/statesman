@@ -246,13 +246,8 @@ module Statesman
       end
 
       def serialized?(transition_class)
-        if ::ActiveRecord.respond_to?(:gem_version) &&
-            ::ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
-          transition_class.type_for_attribute("metadata").
-            is_a?(::ActiveRecord::Type::Serialized)
-        else
-          transition_class.serialized_attributes.include?("metadata")
-        end
+        transition_class.type_for_attribute("metadata").
+          is_a?(::ActiveRecord::Type::Serialized)
       end
 
       def transition_conflict_error?(err)

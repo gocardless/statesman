@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-describe Statesman do
+describe "Exceptions" do
   describe "InvalidStateError" do
     subject(:error) { Statesman::InvalidStateError.new }
 
