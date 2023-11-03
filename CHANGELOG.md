@@ -1,3 +1,12 @@
+## v11.0.0 3rd November 2023
+
+### Changed
+- Updated to support ActiveRecord > 7.2
+- Remove support for:
+  - Ruby; 2.7
+  - Postgres; 9.6, 10, 11
+  - MySQL; 5.7
+
 ## v10.2.3 2nd Aug 2023
 
 ### Changed
