@@ -28,6 +28,7 @@ jobs:
         rails-version:
           - "6.1.5"
           - "7.0.4"
+          - "7.1.1"
           - "main"
         postgres-version: ["9.6", "11", "14"]
         exclude:
@@ -70,6 +71,7 @@ jobs:
         rails-version:
           - "6.1.5"
           - "7.0.4"
+          - "7.1.1"
           - "main"
         mysql-version: ["5.7", "8.0"]
         exclude:
