@@ -10,7 +10,7 @@ module Statesman
       extend ActiveSupport::Concern
 
       included do
-        if Gem::Version.new(ActiveRecord::VERSION::STRING) >= Gem::Version.new("7.1")
+        if ::ActiveRecord.gem_version >= Gem::Version.new("7.1")
           serialize :metadata, coder: JSON
         else
           serialize :metadata, JSON
