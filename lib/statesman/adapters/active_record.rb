@@ -7,6 +7,7 @@ module Statesman
     class ActiveRecord
       JSON_COLUMN_TYPES = %w[json jsonb].freeze
 
+      # TODO: this should really take `connection` as an argument
       def self.database_supports_partial_indexes?
         # Rails 3 doesn't implement `supports_partial_index?`
         if ::ActiveRecord::Base.connection.respond_to?(:supports_partial_index?)
@@ -16,6 +17,9 @@ module Statesman
         end
       end
 
+      # TODO: this used in Statesman::Config to determine if it is a MySQL database
+      # so that it can set some specific config. Feels like the right thing to do is
+      # for users to initialise the config per-database.
       def self.adapter_name
         ::ActiveRecord::Base.connection.adapter_name.downcase
       end
@@ -29,6 +33,7 @@ module Statesman
           raise IncompatibleSerializationError, transition_class.name
         end
 
+        # TODO: We should probably check `@transition_class.is_a?(::ActiveRecord::Base)`
         @transition_class = transition_class
         @transition_table = transition_class.arel_table
         @parent_model = parent_model
@@ -88,7 +93,7 @@ module Statesman
           default_transition_attributes(to, metadata),
         )
 
-        ::ActiveRecord::Base.transaction(requires_new: true) do
+        @transition_class.transaction(requires_new: true) do
           @observer.execute(:before, from, to, transition)
 
           if mysql_gaplock_protection?
@@ -130,8 +135,8 @@ module Statesman
       end
 
       def add_after_commit_callback(from, to, transition)
-        ::ActiveRecord::Base.connection.add_transaction_record(
-          ActiveRecordAfterCommitWrap.new do
+        @transition_class.connection.add_transaction_record(
+          ActiveRecordAfterCommitWrap.new(@transition_class.connection) do
             @observer.execute(:after_commit, from, to, transition)
           end,
         )
@@ -154,7 +159,7 @@ module Statesman
         # most_recent before setting the new row to be true.
         update.order(transition_table[:most_recent].desc) if mysql_gaplock_protection?
 
-        ::ActiveRecord::Base.connection.update(update.to_sql)
+        @transition_class.connection.update(update.to_sql)
       end
 
       def most_recent_transitions(most_recent_id = nil)
@@ -237,7 +242,7 @@ module Statesman
         if manager.instance_method(:initialize).arity.zero?
           manager.new
         else
-          manager.new(::ActiveRecord::Base)
+          manager.new(@transition_class)
         end
       end
 
@@ -258,7 +263,7 @@ module Statesman
       end
 
       def unique_indexes
-        ::ActiveRecord::Base.connection.
+        @transition_class.connection.
           indexes(transition_class.table_name).
           select do |index|
             next unless index.unique
@@ -326,7 +331,8 @@ module Statesman
           return ::ActiveRecord.default_timezone
         end
 
-        ::ActiveRecord::Base.default_timezone
+        # TODO: In light of the comment above, consider deprecating?
+        @transition_class.default_timezone
       end
 
       def mysql_gaplock_protection?
@@ -334,11 +340,11 @@ module Statesman
       end
 
       def db_true
-        ::ActiveRecord::Base.connection.quote(type_cast(true))
+        @transition_class.connection.quote(type_cast(true))
       end
 
       def db_false
-        ::ActiveRecord::Base.connection.quote(type_cast(false))
+        @transition_class.connection.quote(type_cast(false))
       end
 
       def db_null
@@ -348,7 +354,8 @@ module Statesman
       # Type casting against a column is deprecated and will be removed in Rails 6.2.
       # See https://github.com/rails/arel/commit/6160bfbda1d1781c3b08a33ec4955f170e95be11
       def type_cast(value)
-        ::ActiveRecord::Base.connection.type_cast(value)
+        # TODO: See if this should be deprecated based on above comment.
+        @transition_class.connection.type_cast(value)
       end
 
       # Check whether the `most_recent` column allows null values. If it doesn't, set old
@@ -368,9 +375,9 @@ module Statesman
     end
 
     class ActiveRecordAfterCommitWrap
-      def initialize(&block)
+      def initialize(connection, &block)
         @callback = block
-        @connection = ::ActiveRecord::Base.connection
+        @connection = connection
       end
 
       def self.trigger_transactional_callbacks?
