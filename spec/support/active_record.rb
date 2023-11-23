@@ -81,7 +81,7 @@ class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
         t.text :metadata, default: "{}"
       end
 
-      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
         t.boolean :most_recent, default: true, null: false
       else
         t.boolean :most_recent, default: true
@@ -98,7 +98,7 @@ class CreateMyActiveRecordModelTransitionMigration < MIGRATION_CLASS
               %i[my_active_record_model_id sort_key],
               unique: true, name: "sort_key_index"
 
-    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
       add_index :my_active_record_model_transitions,
                 %i[my_active_record_model_id most_recent],
                 unique: true,
@@ -134,6 +134,48 @@ class OtherActiveRecordModelTransition < ActiveRecord::Base
   belongs_to :other_active_record_model
 end
 
+class SecondaryRecord < ActiveRecord::Base
+  self.abstract_class = true
+
+  connects_to database: { writing: :secondary, reading: :secondary }
+end
+
+class SecondaryActiveRecordModelTransition < SecondaryRecord
+  self.table_name = "my_active_record_model_transitions"
+
+  include Statesman::Adapters::ActiveRecordTransition
+
+  belongs_to :my_active_record_model,
+             class_name: "SecondaryActiveRecordModel",
+             foreign_key: "my_active_record_model_transition_id"
+end
+
+class SecondaryActiveRecordModel < SecondaryRecord
+  self.table_name = "my_active_record_models"
+
+  has_many :my_active_record_model_transitions,
+           class_name: "SecondaryActiveRecordModelTransition",
+           foreign_key: "my_active_record_model_id",
+           autosave: false
+
+  alias_method :transitions, :my_active_record_model_transitions
+
+  include Statesman::Adapters::ActiveRecordQueries[
+            transition_class: SecondaryActiveRecordModelTransition,
+            initial_state: :initial
+          ]
+
+  def state_machine
+    @state_machine ||= MyStateMachine.new(
+      self, transition_class: SecondaryActiveRecordModelTransition
+    )
+  end
+
+  def metadata
+    super || {}
+  end
+end
+
 class CreateOtherActiveRecordModelMigration < MIGRATION_CLASS
   def change
     create_table :other_active_record_models do |t|
@@ -158,7 +200,7 @@ class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
         t.text :metadata, default: "{}"
       end
 
-      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
         t.boolean :most_recent, default: true, null: false
       else
         t.boolean :most_recent, default: true
@@ -171,7 +213,7 @@ class CreateOtherActiveRecordModelTransitionMigration < MIGRATION_CLASS
               %i[other_active_record_model_id sort_key],
               unique: true, name: "other_sort_key_index"
 
-    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
       add_index :other_active_record_model_transitions,
                 %i[other_active_record_model_id most_recent],
                 unique: true,
@@ -253,7 +295,7 @@ class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
         t.text :metadata, default: "{}"
       end
 
-      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
         t.boolean :most_recent, default: true, null: false
       else
         t.boolean :most_recent, default: true
@@ -265,7 +307,7 @@ class CreateNamespacedARModelTransitionMigration < MIGRATION_CLASS
     add_index :my_namespace_my_active_record_model_transitions, :sort_key,
               unique: true, name: "my_namespaced_key"
 
-    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
       add_index :my_namespace_my_active_record_model_transitions,
                 %i[my_active_record_model_id most_recent],
                 unique: true,
@@ -342,7 +384,7 @@ class CreateStiActiveRecordModelTransitionMigration < MIGRATION_CLASS
         t.text :metadata, default: "{}"
       end
 
-      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
         t.boolean :most_recent, default: true, null: false
       else
         t.boolean :most_recent, default: true
@@ -355,7 +397,7 @@ class CreateStiActiveRecordModelTransitionMigration < MIGRATION_CLASS
               %i[type sti_active_record_model_id sort_key],
               unique: true, name: "sti_sort_key_index"
 
-    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
       add_index :sti_active_record_model_transitions,
                 %i[type sti_active_record_model_id most_recent],
                 unique: true,

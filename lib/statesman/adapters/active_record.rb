@@ -7,17 +7,13 @@ module Statesman
     class ActiveRecord
       JSON_COLUMN_TYPES = %w[json jsonb].freeze
 
-      def self.database_supports_partial_indexes?
+      def self.database_supports_partial_indexes?(model)
         # Rails 3 doesn't implement `supports_partial_index?`
-        if ::ActiveRecord::Base.connection.respond_to?(:supports_partial_index?)
-          ::ActiveRecord::Base.connection.supports_partial_index?
+        if model.connection.respond_to?(:supports_partial_index?)
+          model.connection.supports_partial_index?
         else
-          ::ActiveRecord::Base.connection.adapter_name == "PostgreSQL"
+          model.connection.adapter_name.casecmp("postgresql").zero?
         end
-      end
-
-      def self.adapter_name
-        ::ActiveRecord::Base.connection.adapter_name.downcase
       end
 
       def initialize(transition_class, parent_model, observer, options = {})
@@ -88,10 +84,10 @@ module Statesman
           default_transition_attributes(to, metadata),
         )
 
-        ::ActiveRecord::Base.transaction(requires_new: true) do
+        transition_class.transaction(requires_new: true) do
           @observer.execute(:before, from, to, transition)
 
-          if mysql_gaplock_protection?
+          if mysql_gaplock_protection?(transition_class.connection)
             # We save the transition first with most_recent falsy, then mark most_recent
             # true after to avoid letting MySQL acquire a next-key lock which can cause
             # deadlocks.
@@ -130,8 +126,8 @@ module Statesman
       end
 
       def add_after_commit_callback(from, to, transition)
-        ::ActiveRecord::Base.connection.add_transaction_record(
-          ActiveRecordAfterCommitWrap.new do
+        transition_class.connection.add_transaction_record(
+          ActiveRecordAfterCommitWrap.new(transition_class.connection) do
             @observer.execute(:after_commit, from, to, transition)
           end,
         )
@@ -144,7 +140,7 @@ module Statesman
       # Sets the given transition most_recent = t while unsetting the most_recent of any
       # previous transitions.
       def update_most_recents(most_recent_id = nil)
-        update = build_arel_manager(::Arel::UpdateManager)
+        update = build_arel_manager(::Arel::UpdateManager, transition_class)
         update.table(transition_table)
         update.where(most_recent_transitions(most_recent_id))
         update.set(build_most_recents_update_all_values(most_recent_id))
@@ -152,9 +148,11 @@ module Statesman
         # MySQL will validate index constraints across the intermediate result of an
         # update. This means we must order our update to deactivate the previous
         # most_recent before setting the new row to be true.
-        update.order(transition_table[:most_recent].desc) if mysql_gaplock_protection?
+        if mysql_gaplock_protection?(transition_class.connection)
+          update.order(transition_table[:most_recent].desc)
+        end
 
-        ::ActiveRecord::Base.connection.update(update.to_sql)
+        transition_class.connection.update(update.to_sql(transition_class))
       end
 
       def most_recent_transitions(most_recent_id = nil)
@@ -223,7 +221,7 @@ module Statesman
         if most_recent_id
           Arel::Nodes::Case.new.
             when(transition_table[:id].eq(most_recent_id)).then(db_true).
-            else(not_most_recent_value).to_sql
+            else(not_most_recent_value).to_sql(transition_class)
         else
           Arel::Nodes::SqlLiteral.new(not_most_recent_value)
         end
@@ -233,11 +231,11 @@ module Statesman
       # change in Arel as we move into Rails >6.0.
       #
       # https://github.com/rails/rails/commit/7508284800f67b4611c767bff9eae7045674b66f
-      def build_arel_manager(manager)
+      def build_arel_manager(manager, engine)
         if manager.instance_method(:initialize).arity.zero?
           manager.new
         else
-          manager.new(::ActiveRecord::Base)
+          manager.new(engine)
         end
       end
 
@@ -258,7 +256,7 @@ module Statesman
       end
 
       def unique_indexes
-        ::ActiveRecord::Base.connection.
+        transition_class.connection.
           indexes(transition_class.table_name).
           select do |index|
             next unless index.unique
@@ -329,16 +327,16 @@ module Statesman
         ::ActiveRecord::Base.default_timezone
       end
 
-      def mysql_gaplock_protection?
-        Statesman.mysql_gaplock_protection?
+      def mysql_gaplock_protection?(connection)
+        Statesman.mysql_gaplock_protection?(connection)
       end
 
       def db_true
-        ::ActiveRecord::Base.connection.quote(type_cast(true))
+        transition_class.connection.quote(type_cast(true))
       end
 
       def db_false
-        ::ActiveRecord::Base.connection.quote(type_cast(false))
+        transition_class.connection.quote(type_cast(false))
       end
 
       def db_null
@@ -348,7 +346,7 @@ module Statesman
       # Type casting against a column is deprecated and will be removed in Rails 6.2.
       # See https://github.com/rails/arel/commit/6160bfbda1d1781c3b08a33ec4955f170e95be11
       def type_cast(value)
-        ::ActiveRecord::Base.connection.type_cast(value)
+        transition_class.connection.type_cast(value)
       end
 
       # Check whether the `most_recent` column allows null values. If it doesn't, set old
@@ -368,9 +366,9 @@ module Statesman
     end
 
     class ActiveRecordAfterCommitWrap
-      def initialize(&block)
+      def initialize(connection, &block)
         @callback = block
-        @connection = ::ActiveRecord::Base.connection
+        @connection = connection
       end
 
       def self.trigger_transactional_callbacks?

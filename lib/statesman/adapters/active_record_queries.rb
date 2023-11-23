@@ -153,7 +153,7 @@ module Statesman
         end
 
         def db_true
-          ::ActiveRecord::Base.connection.quote(true)
+          model.connection.quote(true)
         end
       end
     end
