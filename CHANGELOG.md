@@ -1,3 +1,9 @@
+## v12.0.0 30th November 2023
+
+### Changed
+- Added multi-database support [#522](https://github.com/gocardless/statesman/pull/522)
+  - This now uses the correct ActiveRecord connection for the model or transition in a multi-database environment
+
 ## v11.0.0 3rd November 2023
 
 ### Changed
