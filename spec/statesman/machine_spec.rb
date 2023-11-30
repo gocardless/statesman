@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Statesman::Machine do
   let(:machine) { Class.new { include Statesman::Machine } }
   let(:my_model) { Class.new { attr_accessor :current_state }.new }
