@@ -4,6 +4,11 @@ require "support/generators_shared_examples"
 require "generators/statesman/migration_generator"
 
 describe Statesman::MigrationGenerator, type: :generator do
+  before do
+    stub_const("Yummy::Bacon", Class.new(ActiveRecord::Base))
+    stub_const("Yummy::BaconTransition", Class.new(ActiveRecord::Base))
+  end
+
   it_behaves_like "a generator" do
     let(:migration_name) { "db/migrate/add_statesman_to_bacon_transitions.rb" }
   end

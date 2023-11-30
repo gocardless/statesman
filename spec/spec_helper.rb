@@ -5,13 +5,14 @@ require "sqlite3"
 require "mysql2"
 require "pg"
 require "active_record"
+require "active_record/database_configurations"
 # We have to include all of Rails to make rspec-rails work
 require "rails"
 require "action_view"
 require "action_dispatch"
 require "action_controller"
 require "rspec/rails"
-require "support/active_record"
+require "support/exactly_query_databases"
 require "rspec/its"
 require "pry"
 
@@ -28,10 +29,31 @@ RSpec.configure do |config|
   if config.exclusion_filter[:active_record]
     puts "Skipping ActiveRecord tests"
   else
-    # Connect to the database for activerecord tests
-    db_conn_spec = ENV["DATABASE_URL"]
-    db_conn_spec ||= { adapter: "sqlite3", database: ":memory:" }
-    ActiveRecord::Base.establish_connection(db_conn_spec)
+    current_env = ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
+
+    # We have to parse this to a hash since ActiveRecord::Base.configurations
+    # will only consider a single URL config.
+    url_config = if ENV["DATABASE_URL"]
+                   ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.
+                     new(ENV["DATABASE_URL"]).to_hash.merge({ sslmode: "disable" })
+                 end
+
+    db_config = {
+      current_env => {
+        primary: url_config || {
+          adapter: "sqlite3",
+          database: "/tmp/statesman.db",
+        },
+        secondary: url_config || {
+          adapter: "sqlite3",
+          database: "/tmp/statesman.db",
+        },
+      },
+    }
+
+    # Connect to the primary database for activerecord tests.
+    ActiveRecord::Base.configurations = db_config
+    ActiveRecord::Base.establish_connection(:primary)
 
     db_adapter = ActiveRecord::Base.connection.adapter_name
     puts "Running with database adapter '#{db_adapter}'"
@@ -40,6 +62,8 @@ RSpec.configure do |config|
     ActiveRecord::Migration.verbose = false
   end
 
+  # Since our primary and secondary connections point to the same database, we don't
+  # need to worry about applying these actions to both.
   config.before(:each, :active_record) do
     tables = %w[
       my_active_record_models
@@ -53,6 +77,7 @@ RSpec.configure do |config|
     ]
     tables.each do |table_name|
       sql = "DROP TABLE IF EXISTS #{table_name};"
+
       ActiveRecord::Base.connection.execute(sql)
     end
 
@@ -84,3 +109,6 @@ RSpec.configure do |config|
     end
   end
 end
+
+# We have to require this after the databases are configured.
+require "support/active_record"
