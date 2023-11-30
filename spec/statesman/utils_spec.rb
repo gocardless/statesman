@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Statesman::Utils do
   describe ".rails_major_version" do
     subject { described_class.rails_major_version }

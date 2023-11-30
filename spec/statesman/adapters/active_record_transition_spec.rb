@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
 require "json"
 
 describe Statesman::Adapters::ActiveRecordTransition do

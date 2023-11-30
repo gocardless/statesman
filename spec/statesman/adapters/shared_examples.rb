@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 # All adpators must define seven methods:
 #   initialize:       Accepts a transition class, parent model and state_attr.
 #   transition_class: Returns the transition class object passed to initialize.
