@@ -4,6 +4,19 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v12.1.0 5th January 2024
+
+### Fixed
+
+- Fixed autoloading the VERSION constants
+- Fixed Ensuring inheritance issues with STI tabled
+- Enabled gaplock protection when using trilogy mysql adapter
+
+### Added
+
+- Added Ruby 3.3 to build matrix
+- Added optional initial transition
+
 ## v12.0.0 30th November 2023
 
 ### Added
