@@ -39,7 +39,7 @@ module Statesman
         end
 
         def included(base)
-          ensure_inheritance(base)
+          ensure_inheritance(base) if base.respond_to?(:subclasses) && base.subclasses.any?
 
           query_builder = QueryBuilder.new(base, **@args)
 
@@ -153,7 +153,7 @@ module Statesman
         end
 
         def db_true
-          ::ActiveRecord::Base.connection.quote(true)
+          model.connection.quote(true)
         end
       end
     end

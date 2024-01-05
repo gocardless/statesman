@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Statesman::Adapters::ActiveRecordQueries, :active_record do
   def configure_old(klass, transition_class)
     klass.define_singleton_method(:transition_class) { transition_class }

@@ -52,7 +52,7 @@ module Statesman
     end
 
     def database_supports_partial_indexes?
-      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(klass.constantize)
     end
 
     def metadata_default_value

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Statesman::Machine do
   let(:machine) { Class.new { include Statesman::Machine } }
   let(:my_model) { Class.new { attr_accessor :current_state }.new }
@@ -480,10 +478,81 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :after_guard_failure, :after_guard_failure
   end
 
+  shared_examples "initial transition is not created" do
+    it "doesn't call .create on storage adapter" do
+      expect_any_instance_of(Statesman.storage_adapter).to_not receive(:create)
+      machine.new(my_model, options)
+    end
+  end
+
+  shared_examples "initial transition is created" do
+    it "calls .create on storage adapter" do
+      expect_any_instance_of(Statesman.storage_adapter).to receive(:create).with(nil, "x")
+      machine.new(my_model, options)
+    end
+
+    it "creates a new transition object" do
+      instance = machine.new(my_model, options)
+
+      expect(instance.history.count).to eq(1)
+      expect(instance.history.first.to_state).to eq("x")
+    end
+  end
+
   describe "#initialize" do
     it "accepts an object to manipulate" do
       machine_instance = machine.new(my_model)
       expect(machine_instance.object).to be(my_model)
+    end
+
+    context "initial_transition is not provided" do
+      let(:options) { {} }
+
+      it_behaves_like "initial transition is not created"
+    end
+
+    context "initial_transition is provided" do
+      context "initial_transition is true" do
+        let(:options) do
+          { initial_transition: true,
+            transition_class: Statesman::Adapters::MemoryTransition }
+        end
+
+        context "history is empty" do
+          context "initial state is defined" do
+            before { machine.state(:x, initial: true) }
+
+            it_behaves_like "initial transition is created"
+          end
+
+          context "initial state is not defined" do
+            it_behaves_like "initial transition is not created"
+          end
+        end
+
+        context "history is not empty" do
+          before do
+            allow_any_instance_of(Statesman.storage_adapter).to receive(:history).
+              and_return([{}])
+          end
+
+          context "initial state is defined" do
+            before { machine.state(:x, initial: true) }
+
+            it_behaves_like "initial transition is not created"
+          end
+
+          context "initial state is not defined" do
+            it_behaves_like "initial transition is not created"
+          end
+        end
+      end
+
+      context "initial_transition is false" do
+        let(:options) { { initial_transition: false } }
+
+        it_behaves_like "initial transition is not created"
+      end
     end
 
     context "transition class" do

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
 require "timecop"
 require "statesman/adapters/shared_examples"
 require "statesman/exceptions"
@@ -9,8 +8,6 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
   before do
     prepare_model_table
     prepare_transitions_table
-
-    # MyActiveRecordModelTransition.serialize(:metadata, JSON)
 
     prepare_sti_model_table
     prepare_sti_transitions_table
@@ -26,8 +23,10 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
 
   after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
 
+  let(:model_class) { MyActiveRecordModel }
+  let(:transition_class) { MyActiveRecordModelTransition }
   let(:observer) { double(Statesman::Machine, execute: nil) }
-  let(:model) { MyActiveRecordModel.create(current_state: :pending) }
+  let(:model) { model_class.create(current_state: :pending) }
 
   it_behaves_like "an adapter", described_class, MyActiveRecordModelTransition
 
@@ -36,8 +35,8 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       before do
         metadata_column = double
         allow(metadata_column).to receive_messages(sql_type: "")
-        allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
-                                           { "metadata" => metadata_column })
+        allow(MyActiveRecordModelTransition).
+          to receive_messages(columns_hash: { "metadata" => metadata_column })
         expect(MyActiveRecordModelTransition).
           to receive(:type_for_attribute).with("metadata").
           and_return(ActiveRecord::Type::Value.new)
@@ -105,12 +104,14 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
   describe "#create" do
     subject(:transition) { create }
 
-    let!(:adapter) do
-      described_class.new(MyActiveRecordModelTransition, model, observer)
-    end
+    let!(:adapter) { described_class.new(transition_class, model, observer) }
     let(:from) { :x }
     let(:to) { :y }
     let(:create) { adapter.create(from, to) }
+
+    it "only connects to the primary database" do
+      expect { create }.to exactly_query_databases({ primary: [:writing] })
+    end
 
     context "when there is a race" do
       it "raises a TransitionConflictError" do
@@ -119,7 +120,8 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         adapter.last
         adapter2.create(:y, :z)
         expect { adapter.create(:y, :z) }.
-          to raise_exception(Statesman::TransitionConflictError)
+          to raise_exception(Statesman::TransitionConflictError).
+          and exactly_query_databases({ primary: [:writing] })
       end
 
       it "does not pollute the state when the transition fails" do
@@ -343,12 +345,34 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         end
       end
     end
+
+    context "when using the secondary database" do
+      let(:model_class) { SecondaryActiveRecordModel }
+      let(:transition_class) { SecondaryActiveRecordModelTransition }
+
+      it "doesn't connect to the primary database" do
+        expect { create }.to exactly_query_databases({ secondary: [:writing] })
+        expect(adapter.last.to_state).to eq("y")
+      end
+
+      context "when there is a race" do
+        it "raises a TransitionConflictError and uses the correct database" do
+          adapter2 = adapter.dup
+          adapter2.create(:x, :y)
+          adapter.last
+          adapter2.create(:y, :z)
+
+          expect { adapter.create(:y, :z) }.
+            to raise_exception(Statesman::TransitionConflictError).
+            and exactly_query_databases({ secondary: [:writing] })
+        end
+      end
+    end
   end
 
   describe "#last" do
-    let(:adapter) do
-      described_class.new(MyActiveRecordModelTransition, model, observer)
-    end
+    let(:transition_class) { MyActiveRecordModelTransition }
+    let(:adapter) { described_class.new(transition_class, model, observer) }
 
     context "with a previously looked up transition" do
       before { adapter.create(:x, :y) }
@@ -365,7 +389,18 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         before { adapter.create(:y, :z, []) }
 
         it "retrieves the new transition from the database" do
+          expect { adapter.last.to_state }.to exactly_query_databases({ primary: [:writing] })
           expect(adapter.last.to_state).to eq("z")
+        end
+
+        context "when using the secondary database" do
+          let(:model_class) { SecondaryActiveRecordModel }
+          let(:transition_class) { SecondaryActiveRecordModelTransition }
+
+          it "retrieves the new transition from the database" do
+            expect { adapter.last.to_state }.to exactly_query_databases({ secondary: [:writing] })
+            expect(adapter.last.to_state).to eq("z")
+          end
         end
       end
 

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
 require "statesman/adapters/shared_examples"
 require "statesman/adapters/memory_transition"
 
