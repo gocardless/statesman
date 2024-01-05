@@ -8,7 +8,7 @@ To that end, [our build matrix](../.circleci/config.yml) includes all these vers
 
 Any time Statesman doesn't work on a supported combination of Ruby and Rails, it's a bug, and can be reported [here](https://github.com/gocardless/statesman/issues).
 
-# Deprecation
+## Deprecation
 
 Whenever a version of Ruby or Rails falls out of support, we will mirror that change in Statesman by updating the build matrix and releasing a new major version.
 
