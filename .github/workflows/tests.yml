@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ["3.0", "3.1", "3.2"]
+        ruby-version: ["3.0", "3.1", "3.2", "3.3"]
         rails-version:
           - "6.1.7.6"
           - "7.0.8"
@@ -33,6 +33,8 @@ jobs:
         postgres-version: ["12", "13", "14", "15", "16"]
         exclude:
           - ruby-version: "3.2"
+            rails-version: "6.1.7.6"
+          - ruby-version: "3.3"
             rails-version: "6.1.7.6"
     runs-on: ubuntu-latest
     services:
@@ -67,7 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ["3.0", "3.1", "3.2"]
+        ruby-version: ["3.0", "3.1", "3.2", "3.3"]
         rails-version:
           - "6.1.7.6"
           - "7.0.8"
@@ -75,7 +77,9 @@ jobs:
           - "main"
         mysql-version: ["8.0", "8.2"]
         exclude:
-          - ruby-version: 3.2
+          - ruby-version: "3.2"
+            rails-version: "6.1.7.6"
+          - ruby-version: "3.3"
             rails-version: "6.1.7.6"
     runs-on: ubuntu-latest
     services:
