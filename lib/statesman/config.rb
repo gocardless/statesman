@@ -27,7 +27,7 @@ module Statesman
       adapter_name = adapter_name(adapter_class)
       return false unless adapter_name
 
-      adapter_name.downcase.start_with?("mysql")
+      adapter_name.downcase.start_with?("mysql", "trilogy")
     end
 
     def adapter_name(adapter_class)
