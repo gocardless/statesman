@@ -9,7 +9,8 @@ if ENV['RAILS_VERSION'] == 'main'
 elsif ENV['RAILS_VERSION']
   gem "rails", "~> #{ENV['RAILS_VERSION']}"
 end
+
 group :development do
-  # test/unit is no longer bundled with Ruby 2.2, but required by Rails
-  gem "test-unit", "~> 3.3" if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("2.2.0")
+  gem "pry"
+  gem "test-unit", "~> 3.3"
 end

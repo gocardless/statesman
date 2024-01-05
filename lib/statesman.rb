@@ -34,10 +34,8 @@ module Statesman
     @storage_adapter || Adapters::Memory
   end
 
-  def self.mysql_gaplock_protection?
-    return @mysql_gaplock_protection unless @mysql_gaplock_protection.nil?
-
-    @mysql_gaplock_protection = config.mysql_gaplock_protection?
+  def self.mysql_gaplock_protection?(connection)
+    config.mysql_gaplock_protection?(connection)
   end
 
   def self.config

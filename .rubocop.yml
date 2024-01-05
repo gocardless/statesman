@@ -4,7 +4,8 @@ inherit_gem:
   gc_ruboconfig: rubocop.yml
 
 AllCops:
-  TargetRubyVersion: 3.0
+  TargetRubyVersion: 2.7
+  NewCops: enable
 
 Metrics/AbcSize:
   Max: 60
@@ -14,3 +15,6 @@ Metrics/CyclomaticComplexity:
 
 Metrics/PerceivedComplexity:
   Max: 11
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false

@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
-describe Statesman::Adapters::TypeSafeActiveRecordQueries, active_record: true do
+describe Statesman::Adapters::TypeSafeActiveRecordQueries, :active_record do
   def configure(klass, transition_class)
     klass.send(:extend, described_class)
     klass.configure_state_machine(

@@ -1,3 +1,38 @@
+## v12.0.0 30th November 2023
+
+### Changed
+- Added multi-database support [#522](https://github.com/gocardless/statesman/pull/522)
+  - This now uses the correct ActiveRecord connection for the model or transition in a multi-database environment
+
+## v11.0.0 3rd November 2023
+
+### Changed
+- Updated to support ActiveRecord > 7.2
+- Remove support for:
+  - Ruby; 2.7
+  - Postgres; 9.6, 10, 11
+  - MySQL; 5.7
+
+## v10.2.3 2nd Aug 2023
+
+### Changed
+- Fixed calls to reloading internal cache is the state_machine was made private / protected
+
+## v10.2.2 21st April 2023
+
+### Changed
+- Calling `active_record.reload` resets the adapater's internal cache
+
+## v10.2.1 3rd April 2023
+
+### Changed
+- Fixed an edge case where `adapter.reset` were failing if the cache is empty
+
+## v10.2.0 3rd April 2023
+
+### Changed
+- Fixed caching of `last_transition` [#505](https://github.com/gocardless/statesman/pull/505)
+
 ## v10.1.0 10th March 2023
 
 ### CHanged

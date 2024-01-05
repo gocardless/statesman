@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Statesman::Machine do
   let(:machine) { Class.new { include Statesman::Machine } }
   let(:my_model) { Class.new { attr_accessor :current_state }.new }
@@ -28,7 +26,7 @@ describe Statesman::Machine do
   end
 
   describe ".remove_state" do
-    subject(:remove_state) { -> { machine.remove_state(:x) } }
+    subject(:remove_state) { machine.remove_state(:x) }
 
     before do
       machine.class_eval do
@@ -39,7 +37,7 @@ describe Statesman::Machine do
     end
 
     it "removes the state" do
-      expect(remove_state).
+      expect { remove_state }.
         to change(machine, :states).
         from(match_array(%w[x y z])).
         to(%w[y z])
@@ -49,7 +47,7 @@ describe Statesman::Machine do
       before { machine.transition from: :x, to: :y }
 
       it "removes the transition" do
-        expect(remove_state).
+        expect { remove_state }.
           to change(machine, :successors).
           from({ "x" => ["y"] }).
           to({})
@@ -59,7 +57,7 @@ describe Statesman::Machine do
         before { machine.transition from: :x, to: :z }
 
         it "removes all transitions" do
-          expect(remove_state).
+          expect { remove_state }.
             to change(machine, :successors).
             from({ "x" => %w[y z] }).
             to({})
@@ -71,7 +69,7 @@ describe Statesman::Machine do
       before { machine.transition from: :y, to: :x }
 
       it "removes the transition" do
-        expect(remove_state).
+        expect { remove_state }.
           to change(machine, :successors).
           from({ "y" => ["x"] }).
           to({})
@@ -81,7 +79,7 @@ describe Statesman::Machine do
         before { machine.transition from: :z, to: :x }
 
         it "removes all transitions" do
-          expect(remove_state).
+          expect { remove_state }.
             to change(machine, :successors).
             from({ "y" => ["x"], "z" => ["x"] }).
             to({})
@@ -104,7 +102,7 @@ describe Statesman::Machine do
       end
 
       it "removes the guard" do
-        expect(remove_state).
+        expect { remove_state }.
           to change(machine, :callbacks).
           from(a_hash_including(guards: match_array(guards))).
           to(a_hash_including(guards: []))
@@ -125,7 +123,7 @@ describe Statesman::Machine do
       end
 
       it "removes the guard" do
-        expect(remove_state).
+        expect { remove_state }.
           to change(machine, :callbacks).
           from(a_hash_including(guards: match_array(guards))).
           to(a_hash_including(guards: []))
@@ -1047,20 +1045,20 @@ describe Statesman::Machine do
     end
 
     context "with defined callbacks" do
-      let(:callback_1) { -> { "Hi" } }
-      let(:callback_2) { -> { "Bye" } }
+      let(:callback_one) { -> { "Hi" } }
+      let(:callback_two) { -> { "Bye" } }
 
       before do
-        machine.send(definer, from: :x, to: :y, &callback_1)
-        machine.send(definer, from: :y, to: :z, &callback_2)
+        machine.send(definer, from: :x, to: :y, &callback_one)
+        machine.send(definer, from: :y, to: :z, &callback_two)
       end
 
       it "contains the relevant callback" do
-        expect(callbacks.map(&:callback)).to include(callback_1)
+        expect(callbacks.map(&:callback)).to include(callback_one)
       end
 
       it "does not contain the irrelevant callback" do
-        expect(callbacks.map(&:callback)).to_not include(callback_2)
+        expect(callbacks.map(&:callback)).to_not include(callback_two)
       end
     end
   end

@@ -49,6 +49,14 @@ module Statesman
 
           define_in_state(base, query_builder)
           define_not_in_state(base, query_builder)
+
+          define_method(:reload) do |*a|
+            instance = super(*a)
+            if instance.respond_to?(:state_machine, true)
+              instance.send(:state_machine).reset
+            end
+            instance
+          end
         end
 
         private
@@ -145,7 +153,7 @@ module Statesman
         end
 
         def db_true
-          ::ActiveRecord::Base.connection.quote(true)
+          model.connection.quote(true)
         end
       end
     end
