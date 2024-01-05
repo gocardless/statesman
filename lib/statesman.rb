@@ -6,7 +6,7 @@ module Statesman
   autoload :Callback,   "statesman/callback"
   autoload :Guard,      "statesman/guard"
   autoload :Utils,      "statesman/utils"
-  autoload :Version,    "statesman/version"
+  autoload :VERSION,    "statesman/version"
   module Adapters
     autoload :Memory,       "statesman/adapters/memory"
     autoload :ActiveRecord, "statesman/adapters/active_record"
