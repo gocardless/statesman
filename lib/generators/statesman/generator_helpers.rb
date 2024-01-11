@@ -11,7 +11,7 @@ module Statesman
     end
 
     def migration_class_name
-      klass.gsub(/::/, "").pluralize
+      klass.gsub("::", "").pluralize
     end
 
     def next_migration_number
@@ -52,7 +52,7 @@ module Statesman
     end
 
     def database_supports_partial_indexes?
-      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(klass.constantize)
     end
 
     def metadata_default_value

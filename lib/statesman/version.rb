@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module Statesman
-  VERSION = "10.0.0"
+  VERSION = "12.1.0"
 end

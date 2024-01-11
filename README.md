@@ -1,4 +1,6 @@
+<!-- markdownlint-disable no-inline-html first-line-heading -->
 <p align="center"><img src="https://user-images.githubusercontent.com/110275/106792848-96e4ee80-664e-11eb-8fd1-16ff24b41eb2.png" alt="Statesman" width="512"></p>
+<!-- markdownlint-enable no-inline-html first-line-heading -->
 
 A statesmanlike state machine library.
 
@@ -8,7 +10,7 @@ For our policy on compatibility with Ruby and Rails versions, see [COMPATIBILITY
 [![CircleCI](https://circleci.com/gh/gocardless/statesman.svg?style=shield)](https://circleci.com/gh/gocardless/statesman)
 [![Code Climate](https://codeclimate.com/github/gocardless/statesman.svg)](https://codeclimate.com/github/gocardless/statesman)
 [![Gitter](https://badges.gitter.im/join.svg)](https://gitter.im/gocardless/statesman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=statesman&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=statesman&package-manager=bundler&version-scheme=semver)
+[![SemVer](https://dependabot-badges.githubapp.com/badges/compatibility_score?dependency-name=statesman&package-manager=bundler&version-scheme=semver&previous-version=11.0.0&new-version=12.0.0)](https://dependabot-badges.githubapp.com/badges/compatibility_score?dependency-name=statesman&package-manager=bundler&version-scheme=semver&previous-version=11.0.0&new-version=12.0.0)
 
 Statesman is an opinionated state machine library designed to provide a robust
 audit trail and data integrity. It decouples the state machine logic from the
@@ -16,6 +18,7 @@ underlying model and allows for easy composition with one or more model classes.
 
 As such, the design of statesman is a little different from other state machine
 libraries:
+
 - State behaviour is defined in a separate, "state machine" class, rather than
 added directly onto a model. State machines are then instantiated with the model
 to which they should apply.
@@ -30,7 +33,7 @@ protection.
 To get started, just add Statesman to your `Gemfile`, and then run `bundle`:
 
 ```ruby
-gem 'statesman', '~> 10.0.0'
+gem 'statesman', '~> 12.0.0'
 ```
 
 ## Usage
@@ -136,7 +139,7 @@ end
 class Circular
   include Statesman::Machine
   extend Template
-  
+
   define_states
   define_transitions
 end
@@ -144,10 +147,10 @@ end
 class Linear
   include Statesman::Machine
   extend Template
-  
+
   define_states
   define_transitions
-  
+
   remove_transitions from: :c, to: :a
 end
 
@@ -179,7 +182,7 @@ end
 Generate the transition model:
 
 ```bash
-$ rails g statesman:active_record_transition Order OrderTransition
+rails g statesman:active_record_transition Order OrderTransition
 ```
 
 Your transition class should
@@ -212,13 +215,14 @@ class Order < ActiveRecord::Base
            :transition_to!, :transition_to, :in_state?, to: :state_machine
 end
 ```
-#### Using PostgreSQL JSON column
+
+### Using PostgreSQL JSON column
 
 By default, Statesman uses `serialize` to store the metadata in JSON format.
 It is also possible to use the PostgreSQL JSON column if you are using Rails 4
 or 5. To do that
 
-* Change `metadata` column type in the transition model migration to `json` or `jsonb`
+- Change `metadata` column type in the transition model migration to `json` or `jsonb`
 
   ```ruby
   # Before
@@ -229,7 +233,7 @@ or 5. To do that
   t.json :metadata, default: {}
   ```
 
-* Remove the `include Statesman::Adapters::ActiveRecordTransition` statement from
+- Remove the `include Statesman::Adapters::ActiveRecordTransition` statement from
   your transition model. (If you want to customise your transition class's "updated
   timestamp column", as described above, you should define a
   `.updated_timestamp_column` method on your class and return the name of the column
@@ -238,63 +242,73 @@ or 5. To do that
 
 ## Configuration
 
-#### `storage_adapter`
+### `storage_adapter`
 
 ```ruby
 Statesman.configure do
   storage_adapter(Statesman::Adapters::ActiveRecord)
 end
 ```
+
 Statesman defaults to storing transitions in memory. If you're using rails, you
 can instead configure it to persist transitions to the database by using the
 ActiveRecord adapter.
 
 Statesman will fallback to memory unless you specify a transition_class when instantiating your state machine. This allows you to only persist transitions on certain state machines in your app.
 
-
 ## Class methods
 
-#### `Machine.state`
+### `Machine.state`
+
 ```ruby
 Machine.state(:some_state, initial: true)
 Machine.state(:another_state)
 ```
+
 Define a new state and optionally mark as the initial state.
 
-#### `Machine.transition`
+### `Machine.transition`
+
 ```ruby
 Machine.transition(from: :some_state, to: :another_state)
 ```
+
 Define a transition rule. Both method parameters are required, `to` can also be
 an array of states (`.transition(from: :some_state, to: [:another_state, :some_other_state])`).
 
-#### `Machine.guard_transition`
+### `Machine.guard_transition`
+
 ```ruby
 Machine.guard_transition(from: :some_state, to: :another_state) do |object|
   object.some_boolean?
 end
 ```
+
 Define a guard. `to` and `from` parameters are optional, a nil parameter means
 guard all transitions. The passed block should evaluate to a boolean and must
 be idempotent as it could be called many times. The guard will pass when it
 evaluates to a truthy value and fail when it evaluates to a falsey value (`nil` or `false`).
 
-#### `Machine.before_transition`
+### `Machine.before_transition`
+
 ```ruby
 Machine.before_transition(from: :some_state, to: :another_state) do |object|
   object.side_effect
 end
 ```
+
 Define a callback to run before a transition. `to` and `from` parameters are
 optional, a nil parameter means run before all transitions. This callback can
 have side-effects as it will only be run once immediately before the transition.
 
-#### `Machine.after_transition`
+### `Machine.after_transition`
+
 ```ruby
 Machine.after_transition(from: :some_state, to: :another_state) do |object, transition|
   object.side_effect
 end
 ```
+
 Define a callback to run after a successful transition. `to` and `from`
 parameters are optional, a nil parameter means run after all transitions. The
 model object and transition object are passed as arguments to the callback.
@@ -304,12 +318,14 @@ after the transition.
 If you specify `after_commit: true`, the callback will be executed once the
 transition has been committed to the database.
 
-#### `Machine.after_transition_failure`
+### `Machine.after_transition_failure`
+
 ```ruby
 Machine.after_transition_failure(from: :some_state, to: :another_state) do |object, exception|
   Logger.info("transition to #{exception.to} failed for #{object.id}")
 end
 ```
+
 Define a callback to run if `Statesman::TransitionFailedError` is raised
 during the execution of transition callbacks. `to` and `from`
 parameters are optional, a nil parameter means run after all transitions.
@@ -318,12 +334,14 @@ This is executed outside of the transaction wrapping other callbacks.
 If using `transition!` the exception is re-raised after these callbacks are
 executed.
 
-#### `Machine.after_guard_failure`
+### `Machine.after_guard_failure`
+
 ```ruby
 Machine.after_guard_failure(from: :some_state, to: :another_state) do |object, exception|
   Logger.info("guard failed during transition to #{exception.to} for #{object.id}")
 end
 ```
+
 Define a callback to run if `Statesman::GuardFailedError` is raised
 during the execution of guard callbacks. `to` and `from`
 parameters are optional, a nil parameter means run after all transitions.
@@ -332,29 +350,35 @@ This is executed outside of the transaction wrapping other callbacks.
 If using `transition!` the exception is re-raised after these callbacks are
 executed.
 
+### `Machine.new`
 
-#### `Machine.new`
 ```ruby
 my_machine = Machine.new(my_model, transition_class: MyTransitionModel)
 ```
+
 Initialize a new state machine instance. `my_model` is required. If using the
 ActiveRecord adapter `my_model` should have a `has_many` association with
 `MyTransitionModel`.
 
-#### `Machine.retry_conflicts`
+### `Machine.retry_conflicts`
+
 ```ruby
 Machine.retry_conflicts { instance.transition_to(:new_state) }
 ```
+
 Automatically retry the given block if a `TransitionConflictError` is raised.
 If you know you want to retry a transition if it fails due to a race condition
 call it from within this block. Takes an (optional) argument for the maximum
 number of retry attempts (defaults to 1).
 
-#### `Machine.states`
+### `Machine.states`
+
 Returns an array of all possible state names as strings.
 
-#### `Machine.successors`
+### `Machine.successors`
+
 Returns a hash of states and the states it is valid for them to transition to.
+
 ```ruby
 Machine.successors
 
@@ -368,100 +392,129 @@ Machine.successors
 
 ## Instance methods
 
-#### `Machine#current_state`
+### `Machine#current_state`
+
 Returns the current state based on existing transition objects.
 
 Takes an optional keyword argument to force a reload of data from the
 database.
 e.g `current_state(force_reload: true)`
 
-#### `Machine#in_state?(:state_1, :state_2, ...)`
+### `Machine#in_state?(:state_1, :state_2, ...)`
+
 Returns true if the machine is in any of the given states.
 
-#### `Machine#history`
+### `Machine#history`
+
 Returns a sorted array of all transition objects.
 
-#### `Machine#last_transition`
+### `Machine#last_transition`
+
 Returns the most recent transition object.
 
-#### `Machine#last_transition_to(:state)`
+### `Machine#last_transition_to(:state)`
+
 Returns the most recent transition object to a given state.
 
-#### `Machine#allowed_transitions`
+### `Machine#allowed_transitions`
+
 Returns an array of states you can `transition_to` from current state.
 
-#### `Machine#can_transition_to?(:state)`
+### `Machine#can_transition_to?(:state)`
+
 Returns true if the current state can transition to the passed state and all
 applicable guards pass.
 
-#### `Machine#transition_to!(:state)`
+### `Machine#transition_to!(:state)`
+
 Transition to the passed state, returning `true` on success. Raises
 `Statesman::GuardFailedError` or `Statesman::TransitionFailedError` on failure.
 
-#### `Machine#transition_to(:state)`
+### `Machine#transition_to(:state)`
+
 Transition to the passed state, returning `true` on success. Swallows all
 Statesman exceptions and returns false on failure. (NB. if your guard or
 callback code throws an exception, it will not be caught.)
 
-
 ## Errors
 
 ### Initialization errors
+
 These errors are raised when the Machine and/or Model is initialized. A simple spec like
+
 ```ruby
 expect { OrderStateMachine.new(Order.new, transition_class: OrderTransition) }.to_not raise_error
 ```
+
 will expose these errors as part of your test suite
 
 #### InvalidStateError
+
 Raised if:
-  * Attempting to define a transition without a `to` state.
-  * Attempting to define a transition with a non-existent state.
-  * Attempting to define multiple states as `initial`.
+
+- Attempting to define a transition without a `to` state.
+- Attempting to define a transition with a non-existent state.
+- Attempting to define multiple states as `initial`.
 
 #### InvalidTransitionError
+
 Raised if:
-  * Attempting to define a callback `from` a state that has no valid transitions (A terminal state).
-  * Attempting to define a callback `to` the `initial` state if that state has no transitions to it.
-  * Attempting to define a callback with `from` and `to` where any of the pairs have no transition between them.
+
+- Attempting to define a callback `from` a state that has no valid transitions (A terminal state).
+- Attempting to define a callback `to` the `initial` state if that state has no transitions to it.
+- Attempting to define a callback with `from` and `to` where any of the pairs have no transition between them.
 
 #### InvalidCallbackError
+
 Raised if:
-  * Attempting to define a callback without a block.
+
+- Attempting to define a callback without a block.
 
 #### UnserializedMetadataError
+
 Raised if:
-  * ActiveRecord is configured to not serialize the `metadata` attribute into
-    to Database column backing it. See the `Using PostgreSQL JSON column` section.
+
+- ActiveRecord is configured to not serialize the `metadata` attribute into
+  to Database column backing it. See the `Using PostgreSQL JSON column` section.
 
 #### IncompatibleSerializationError
+
 Raised if:
-  * There is a mismatch between the column type of the `metadata` in the
-    Database and the model. See the `Using PostgreSQL JSON column` section.
+
+- There is a mismatch between the column type of the `metadata` in the
+  Database and the model. See the `Using PostgreSQL JSON column` section.
 
 #### MissingTransitionAssociation
+
 Raised if:
-  * The model that `Statesman::Adapters::ActiveRecordQueries` is included in
-    does not have a `has_many` association to the `transition_class`.
+
+- The model that `Statesman::Adapters::ActiveRecordQueries` is included in
+  does not have a `has_many` association to the `transition_class`.
 
 ### Runtime errors
+
 These errors are raised by `transition_to!`. Using `transition_to` will
 supress `GuardFailedError` and `TransitionFailedError` and return `false` instead.
 
 #### GuardFailedError
+
 Raised if:
-  * A guard callback between `from` and `to` state returned a falsey value.
+
+- A guard callback between `from` and `to` state returned a falsey value.
 
 #### TransitionFailedError
+
 Raised if:
-  * A transition is attempted but `current_state -> new_state` is not a valid pair.
+
+- A transition is attempted but `current_state -> new_state` is not a valid pair.
 
 #### TransitionConflictError
-Raised if:
-  * A database conflict affecting the `sort_key` or `most_recent` columns occurs
-    when attempting a transition.
-    Retried automatically if it occurs wrapped in `retry_conflicts`.
 
+Raised if:
+
+- A database conflict affecting the `sort_key` or `most_recent` columns occurs
+  when attempting a transition.
+  Retried automatically if it occurs wrapped in `retry_conflicts`.
 
 ## Model scopes
 
@@ -498,14 +551,16 @@ class Order < ActiveRecord::Base
 end
 ```
 
-#### `Model.in_state(:state_1, :state_2, etc)`
+### `Model.in_state(:state_1, :state_2, etc)`
+
 Returns all models currently in any of the supplied states.
 
-#### `Model.not_in_state(:state_1, :state_2, etc)`
+### `Model.not_in_state(:state_1, :state_2, etc)`
+
 Returns all models not currently in any of the supplied states.
 
+### `Model.most_recent_transition_join`
 
-#### `Model.most_recent_transition_join`
 This joins the model to its most recent transition whatever that may be.
 We expose this method to ease use of ActiveRecord's `or` e.g
 
@@ -517,7 +572,7 @@ Model.in_state(:state_1).or(
 
 ## Frequently Asked Questions
 
-#### Storing the state on the model object
+### Storing the state on the model object
 
 If you wish to store the model state on the model directly, you can keep it up
 to date using an `after_transition` hook.
@@ -533,7 +588,7 @@ end
 
 You could also use a calculated column or view in your database.
 
-#### Accessing metadata from the last transition
+### Accessing metadata from the last transition
 
 Given a field `foo` that was stored in the metadata, you can access it like so:
 
@@ -541,7 +596,7 @@ Given a field `foo` that was stored in the metadata, you can access it like so:
 model_instance.state_machine.last_transition.metadata["foo"]
 ```
 
-#### Events
+### Events
 
 Used to using a state machine with "events"? Support for events is provided by
 the [statesman-events](https://github.com/gocardless/statesman-events) gem. Once
@@ -557,31 +612,34 @@ class OrderStateMachine
 end
 ```
 
-#### Deleting records.
+### Deleting records
 
 If you need to delete the Parent model regularly you will need to change
 either the association deletion behaviour or add a `DELETE CASCADE` condition
 to foreign key in your database.
 
 E.g
-```
+
+```ruby
 has_many :order_transitions, autosave: false, dependent: :destroy
 ```
+
 or when migrating the transition model
-```
+
+```ruby
 add_foreign_key :order_transitions, :orders, on_delete: :cascade
 ```
-
 
 ## Testing Statesman Implementations
 
 This answer was abstracted from [this issue](https://github.com/gocardless/statesman/issues/77).
 
 At GoCardless we focus on testing that:
+
 - guards correctly prevent / allow transitions
 - callbacks execute when expected and perform the expected actions
 
-#### Testing Guards
+### Testing Guards
 
 Guards can be tested by asserting that `transition_to!` does or does not raise a `Statesman::GuardFailedError`:
 
@@ -597,7 +655,7 @@ describe "guards" do
 end
 ```
 
-#### Testing Callbacks
+### Testing Callbacks
 
 Callbacks are tested by asserting that the action they perform occurs:
 
@@ -607,6 +665,30 @@ describe "some callback" do
     expect { some_model.transition_to!(:some_state) }.
       to change { some_model.reload.count }.
       by(1)
+  end
+end
+```
+
+## Compatibility with type checkers
+
+Including ActiveRecordQueries to your model can cause issues with type checkers
+such as Sorbet, this is because this technically is using a dynamic include,
+which is not supported by Sorbet.
+
+To avoid these issues you can instead include the TypeSafeActiveRecordQueries
+module and pass in configuration.
+
+```ruby
+class Order < ActiveRecord::Base
+  has_many :order_transitions, autosave: false
+
+  include Statesman::Adapters::TypeSafeActiveRecordQueries
+
+  configure_state_machine transition_class: OrderTransition,
+                          initial_state: :pending
+
+  def state_machine
+    @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition)
   end
 end
 ```

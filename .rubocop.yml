@@ -5,6 +5,7 @@ inherit_gem:
 
 AllCops:
   TargetRubyVersion: 3.0
+  NewCops: enable
 
 Metrics/AbcSize:
   Max: 60
@@ -14,3 +15,6 @@ Metrics/CyclomaticComplexity:
 
 Metrics/PerceivedComplexity:
   Max: 11
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false

@@ -15,17 +15,10 @@ module Statesman
       @adapter_class = adapter_class
     end
 
-    def mysql_gaplock_protection?
-      return @mysql_gaplock_protection unless @mysql_gaplock_protection.nil?
-
+    def mysql_gaplock_protection?(connection)
       # If our adapter class suggests we're using mysql, enable gaplock protection by
       # default.
-      enable_mysql_gaplock_protection if mysql_adapter?(adapter_class)
-      @mysql_gaplock_protection
-    end
-
-    def enable_mysql_gaplock_protection
-      @mysql_gaplock_protection = true
+      mysql_adapter?(connection)
     end
 
     private
@@ -34,7 +27,7 @@ module Statesman
       adapter_name = adapter_name(adapter_class)
       return false unless adapter_name
 
-      adapter_name.start_with?("mysql")
+      adapter_name.downcase.start_with?("mysql", "trilogy")
     end
 
     def adapter_name(adapter_class)
