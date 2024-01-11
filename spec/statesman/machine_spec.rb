@@ -31,9 +31,10 @@ describe Statesman::Machine do
     context "when state name constant is already defined" do
       it "warns about name conflict" do
         machine.const_set(:SOME_CONST, "some const")
-        warning_message = "Name conflict: 'Class::SOME_CONST' is already defined\n"
 
-        expect { machine.state(:some_const) }.to output(warning_message).to_stderr
+        expect { machine.state(:some_const) }.to raise_error(
+          Statesman::StateConstantConflictError, "Name conflict: 'Class::SOME_CONST' is already defined"
+        )
       end
     end
   end

@@ -169,7 +169,7 @@ module Statesman
         constant_name = state_name.upcase
 
         if const_defined?(constant_name)
-          warn "Name conflict: '#{self.class.name}::#{constant_name}' is already defined"
+          raise StateConstantConflictError, "Name conflict: '#{self.class.name}::#{constant_name}' is already defined"
         else
           const_set(constant_name, state_name)
         end
