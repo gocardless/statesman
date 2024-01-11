@@ -23,8 +23,6 @@ module Statesman
       def from_state
         if has_attribute?(:from_state)
           self[:from_state]
-        else
-          nil
         end
       end
     end
