@@ -256,6 +256,23 @@ ActiveRecord adapter.
 
 Statesman will fallback to memory unless you specify a transition_class when instantiating your state machine. This allows you to only persist transitions on certain state machines in your app.
 
+### `initial_transition`
+
+```ruby
+def state_machine
+  @state_machine ||= OrderStateMachine.new(self, transition_class: OrderTransition,
+                                                 association_name: :transitions,
+                                                 initial_transition: true)
+end
+```
+
+By default Statesman does not record a transition to the initial state of the state machine.
+
+You can configure Statesman to record a transition to the initial state, this will allow you to:
+- Keep an accurate record of the intial state even if configuration changes
+- Keep a record of how long the state machine spent in the initial state
+- Utilise a transition hook for the transition to the initial state
+
 ## Class methods
 
 ### `Machine.state`
