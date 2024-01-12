@@ -408,13 +408,21 @@ Machine.successors
 ```
 
 ## Class constants
-Each machine's state will turn into a constant:
+Adding a state to a state machine will automatically create a constant for the value, for example:
 ```ruby
-Machine.state(:some_state, initial: true)
-Machine.state(:another_state)
+class OrderStateMachine
+  include Statesman::Machine
 
-Machine::SOME_STATE #=> "some_state"
-Machine::ANOTHER_STATE # => "another_state"
+  state :pending, initial: true
+  state :checking_out
+  state :cancelled
+
+  # Constants created as a side effect of adding state
+  transition from: PENDING, to: [CHECKING_OUT, CANCELLED]
+end
+
+OrderStateMachine::PENDING #=> "pending"
+OrderStateMachine::CHECKING_OUT # => "checking_out"
 ```
 
 ## Instance methods
