@@ -995,7 +995,7 @@ describe Statesman::Machine do
     let(:instance) { machine.new(my_model) }
     let(:metadata) { { some: :metadata } }
 
-    context "when it is succesful" do
+    context "when it is successful" do
       before do
         expect(instance).to receive(:transition_to!).once.
           with(:some_state, metadata).and_return(:some_state)

@@ -269,7 +269,7 @@ end
 By default Statesman does not record a transition to the initial state of the state machine.
 
 You can configure Statesman to record a transition to the initial state, this will allow you to:
-- Keep an accurate record of the intial state even if configuration changes
+- Keep an accurate record of the initial state even if configuration changes
 - Keep a record of how long the state machine spent in the initial state
 - Utilise a transition hook for the transition to the initial state
 
@@ -511,7 +511,7 @@ Raised if:
 ### Runtime errors
 
 These errors are raised by `transition_to!`. Using `transition_to` will
-supress `GuardFailedError` and `TransitionFailedError` and return `false` instead.
+suppress `GuardFailedError` and `TransitionFailedError` and return `false` instead.
 
 #### GuardFailedError
 
