@@ -11,6 +11,8 @@ module Statesman
 
   class MissingTransitionAssociation < StandardError; end
 
+  class StateConstantConflictError < StandardError; end
+
   class TransitionFailedError < StandardError
     def initialize(from, to)
       @from = from
