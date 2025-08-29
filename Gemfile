@@ -17,7 +17,7 @@ group :development, :test do
   gem "bundler", "~> 2"
   gem "gc_ruboconfig", "~> 5.0.0"
   gem "mysql2", ">= 0.4", "< 0.6"
-  gem "pg", ">= 0.18", "<= 1.6"
+  gem "pg", ">= 0.18", "<= 1.7"
   gem "pry"
   gem "rake", "~> 13.2.1"
   gem "rspec", "~> 3.1"
