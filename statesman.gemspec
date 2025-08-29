@@ -20,21 +20,7 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = ">= 3.0"
-
-  spec.add_development_dependency "ammeter", "~> 1.1"
-  spec.add_development_dependency "bundler", "~> 2"
-  spec.add_development_dependency "gc_ruboconfig", "~> 5.0.0"
-  spec.add_development_dependency "mysql2", ">= 0.4", "< 0.6"
-  spec.add_development_dependency "pg", ">= 0.18", "<= 1.6"
-  spec.add_development_dependency "rails", ">= 5.2"
-  spec.add_development_dependency "rake", "~> 13.2.1"
-  spec.add_development_dependency "rspec", "~> 3.1"
-  spec.add_development_dependency "rspec-github", "~> 2.4.0"
-  spec.add_development_dependency "rspec-its", "~> 1.1"
-  spec.add_development_dependency "rspec-rails", "~> 6.0"
-  spec.add_development_dependency "sqlite3", "~> 1.7.0"
-  spec.add_development_dependency "timecop", "~> 0.9.1"
+  spec.required_ruby_version = ">= 3.2"
 
   spec.metadata = {
     "bug_tracker_uri" => "#{GITHUB_URL}/issues",

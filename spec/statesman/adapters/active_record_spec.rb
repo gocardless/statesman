@@ -375,9 +375,10 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     let(:adapter) { described_class.new(transition_class, model, observer) }
 
     context "with a previously looked up transition" do
-      before { adapter.create(:x, :y) }
-
-      before { adapter.last }
+      before do
+        adapter.create(:x, :y)
+        adapter.last
+      end
 
       it "caches the transition" do
         expect_any_instance_of(MyActiveRecordModel).
@@ -444,9 +445,10 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     end
 
     context "with a pre-fetched transition history" do
-      before { adapter.create(:x, :y) }
-
-      before { model.my_active_record_model_transitions.load_target }
+      before do
+        adapter.create(:x, :y)
+        model.my_active_record_model_transitions.load_target
+      end
 
       it "doesn't query the database" do
         expect(MyActiveRecordModelTransition).to_not receive(:connection)
