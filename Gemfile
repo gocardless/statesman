@@ -8,6 +8,8 @@ if ENV['RAILS_VERSION'] == 'main'
   gem "rails", git: "https://github.com/rails/rails", branch: "main"
 elsif ENV['RAILS_VERSION']
   gem "rails", "~> #{ENV['RAILS_VERSION']}"
+else
+  gem "rails", "~> 8.0"
 end
 
 group :development, :test do

@@ -22,10 +22,6 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = ">= 3.1"
 
-  unless ENV["RAILS_VERSION"]
-    spec.add_dependency "rails", ">= 7.0"
-  end
-
   spec.metadata = {
     "bug_tracker_uri" => "#{GITHUB_URL}/issues",
     "changelog_uri" => "#{GITHUB_URL}/blob/master/CHANGELOG.md",
