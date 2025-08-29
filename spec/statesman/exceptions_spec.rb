@@ -51,6 +51,16 @@ describe "Exceptions" do
     end
   end
 
+  describe "StateConstantConflictError" do
+    subject(:error) { Statesman::StateConstantConflictError.new }
+
+    its(:message) { is_expected.to eq("Statesman::StateConstantConflictError") }
+
+    its "string matches its message" do
+      expect(error.to_s).to eq(error.message)
+    end
+  end
+
   describe "TransitionFailedError" do
     subject(:error) { Statesman::TransitionFailedError.new("from", "to") }
 
