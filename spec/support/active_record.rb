@@ -32,7 +32,7 @@ class MyActiveRecordModel < ActiveRecord::Base
 
   include Statesman::Adapters::ActiveRecordQueries[
     transition_class: MyActiveRecordModelTransition,
-    initial_state: :initial
+    initial_state: :initial,
   ]
 
   def state_machine
@@ -163,7 +163,7 @@ class SecondaryActiveRecordModel < SecondaryRecord
 
   include Statesman::Adapters::ActiveRecordQueries[
             transition_class: SecondaryActiveRecordModelTransition,
-            initial_state: :initial
+            initial_state: :initial,
           ]
 
   def state_machine

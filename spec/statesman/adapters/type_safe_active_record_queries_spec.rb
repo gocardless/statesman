@@ -201,6 +201,6 @@ describe Statesman::Adapters::TypeSafeActiveRecordQueries, :active_record do
   end
 
   context "using configuration method" do
-    include_examples "testing methods"
+    it_behaves_like "testing methods"
   end
 end

@@ -120,9 +120,10 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
   describe "#last" do
     subject { adapter.last }
 
-    before { adapter.create(:x, :y) }
-
-    before { adapter.create(:y, :z) }
+    before do
+      adapter.create(:x, :y)
+      adapter.create(:y, :z)
+    end
 
     it { is_expected.to be_a(transition_class) }
     specify { expect(adapter.last.to_state.to_sym).to eq(:z) }
