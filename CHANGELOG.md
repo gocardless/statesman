@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Calling `active_record.reload` resets the adapater's internal cache
+- Calling `active_record.reload` resets the adapter's internal cache
 
 ## v10.2.1 3rd April 2023
 
@@ -450,7 +450,7 @@ No changes from v1.0.0.beta2
 
 ### Fixed
 
-- `ActiveRecordModel.in_state` and `ActiveRecordModel.not_in_state` now handle inital states correctly (patch by [@isaacseymour](https://github.com/isaacseymour))
+- `ActiveRecordModel.in_state` and `ActiveRecordModel.not_in_state` now handle initial states correctly (patch by [@isaacseymour](https://github.com/isaacseymour))
 
 ### Added
 
