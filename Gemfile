@@ -19,7 +19,7 @@ group :development, :test do
   gem "mysql2", ">= 0.4", "< 0.6"
   gem "pg", ">= 0.18", "<= 1.7"
   gem "pry"
-  gem "rake", "~> 13.2.1"
+  gem "rake", "~> 13.3.0"
   gem "rspec", "~> 3.1"
   gem "rspec-github", "~> 3.0.0"
   gem "rspec-its", "~> 2.0"
