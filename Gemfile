@@ -24,7 +24,7 @@ group :development, :test do
   gem "rspec-github", "~> 3.0.0"
   gem "rspec-its", "~> 2.0"
   gem "rspec-rails", "~> 8.0"
-  gem "sqlite3", "~> 2.5.0"
+  gem "sqlite3", "~> 2.7.3"
   gem "test-unit", "~> 3.3"
   gem "timecop", "~> 0.9.1"
 end
