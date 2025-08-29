@@ -379,11 +379,9 @@ module Statesman
         true
       end
 
-      # rubocop: disable Naming/PredicateName
       def has_transactional_callbacks?
         true
       end
-      # rubocop: enable Naming/PredicateName
 
       def committed!(*)
         @callback.call

@@ -1,8 +1,17 @@
 # Changelog
+
 <!-- markdownlint-disable no-duplicate-heading -->
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## v13.0.0 29th August 2025
+
+### Changes
+
+- Remove support for Rails 6.1 and 7, add support for Rails 8
+- Remove support for PostgreSQL < 13, add support for PostgreSQL 17
+- Remove support for Ruby 3.0, 3.1, add support for Ruby 3.4 and 3.5
 
 ## v12.1.0 5th January 2024
 
@@ -154,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix `to_s` on `TransitionFailedError` & `GuardFailedError`. `.message` and
-    `.to_s` diverged when `from` and `to` accessors where added in v4.1.3
+  `.to_s` diverged when `from` and `to` accessors where added in v4.1.3
 
 ## v7.0.1, 8th Jan 2020
 
@@ -258,7 +267,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixes an issue with `after_commit` transition blocks that where being
-    executed even if the transaction rolled back. ([patch](https://github.com/gocardless/statesman/pull/338) by [@matid](https://github.com/matid))
+  executed even if the transaction rolled back. ([patch](https://github.com/gocardless/statesman/pull/338) by [@matid](https://github.com/matid))
 
 ### Changed
 
@@ -269,8 +278,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Expose `most_recent_transition_join` - ActiveRecords `or` requires that both
-    sides of the query match up. Exposing this methods makes things easier if
-    one side of the `or` uses `in_state` or `not_in_state`. (patch by [@adambutler](https://github.com/adambutler))
+  sides of the query match up. Exposing this methods makes things easier if
+  one side of the `or` uses `in_state` or `not_in_state`. (patch by [@adambutler](https://github.com/adambutler))
 - Various Readme and CI related changes.
 
 ## v3.4.1, 14 February 2018 ❤️
@@ -520,7 +529,7 @@ No changes from v1.0.0.beta2
 ### Added
 
 - Adds after_commit flag to after_transition for callbacks to be executed after the transaction has been
-committed on the ActiveRecord adapter. These callbacks will still be executed on non transactional adapters.
+  committed on the ActiveRecord adapter. These callbacks will still be executed on non transactional adapters.
 
 ## v0.3.0, 20 February 2014
 
