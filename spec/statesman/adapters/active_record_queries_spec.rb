@@ -214,13 +214,13 @@ describe Statesman::Adapters::ActiveRecordQueries, :active_record do
   context "using old configuration method" do
     let(:config_type) { :old }
 
-    include_examples "testing methods"
+    it_behaves_like "testing methods"
   end
 
   context "using new configuration method" do
     let(:config_type) { :new }
 
-    include_examples "testing methods"
+    it_behaves_like "testing methods"
   end
 
   context "with no association with the transition class" do
