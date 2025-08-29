@@ -5,9 +5,10 @@ describe Statesman::Machine do
   let(:my_model) { Class.new { attr_accessor :current_state }.new }
 
   describe ".state" do
-    before { machine.state(:x) }
-
-    before { machine.state(:y) }
+    before do
+      machine.state(:x)
+      machine.state(:y)
+    end
 
     specify { expect(machine.states).to eq(%w[x y]) }
 
@@ -624,9 +625,10 @@ describe Statesman::Machine do
     end
 
     context "with multiple transitions" do
-      before { instance.transition_to!(:y) }
-
-      before { instance.transition_to!(:z) }
+      before do
+        instance.transition_to!(:y)
+        instance.transition_to!(:z)
+      end
 
       it { is_expected.to eq("z") }
     end
@@ -641,11 +643,10 @@ describe Statesman::Machine do
         state :y
         transition from: :x, to: :y
       end
+      instance.transition_to!(:y)
     end
 
     let(:instance) { machine.new(my_model) }
-
-    before { instance.transition_to!(:y) }
 
     context "when machine is in given state" do
       let(:state) { "y" }
