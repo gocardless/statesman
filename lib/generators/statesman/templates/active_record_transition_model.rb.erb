@@ -9,7 +9,7 @@ class <%= klass %> < <%= Statesman::Utils.rails_5_or_higher? ? 'ApplicationRecor
   # self.updated_timestamp_column = nil
 
 <%- unless Statesman::Utils.rails_4_or_higher? -%>
-  attr_accessible :to_state, :metadata, :sort_key
+  attr_accessible :from_state, :to_state, :metadata, :sort_key
 
 <%- end -%>
   belongs_to :<%= parent_name %><%= class_name_option %>, inverse_of: :<%= table_name %>
