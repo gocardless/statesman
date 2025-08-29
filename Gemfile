@@ -22,7 +22,7 @@ group :development, :test do
   gem "rake", "~> 13.2.1"
   gem "rspec", "~> 3.1"
   gem "rspec-github", "~> 3.0.0"
-  gem "rspec-its", "~> 1.1"
+  gem "rspec-its", "~> 2.0"
   gem "rspec-rails", "~> 6.0"
   gem "sqlite3", "~> 2.5.0"
   gem "test-unit", "~> 3.3"
