@@ -39,6 +39,8 @@ module Statesman
           validate_initial_state(name)
           @initial_state = name
         end
+        define_state_constant(name)
+
         states << name
       end
 
@@ -162,6 +164,20 @@ module Statesman
       end
 
       private
+
+      def define_state_constant(state_name)
+        constant_name = state_name.upcase.gsub(/[^A-Z0-9]/, "_")
+
+        if const_defined?(constant_name)
+          return if const_get(constant_name) == state_name
+
+          raise StateConstantConflictError, "Name conflict: '#{name}::#{constant_name}' is already " \
+                                            "defined as '#{const_get(constant_name)}' attempting to redefine " \
+                                            "as '#{state_name}'"
+        else
+          const_set(constant_name, state_name)
+        end
+      end
 
       def add_callback(callback_type: nil, callback_class: nil,
                        from: nil, to: nil, &block)

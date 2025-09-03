@@ -407,6 +407,24 @@ Machine.successors
 }
 ```
 
+## Class constants
+Adding a state to a state machine will automatically create a constant for the value, for example:
+```ruby
+class OrderStateMachine
+  include Statesman::Machine
+
+  state :pending, initial: true
+  state :checking_out
+  state :cancelled
+
+  # Constants created as a side effect of adding state
+  transition from: PENDING, to: [CHECKING_OUT, CANCELLED]
+end
+
+OrderStateMachine::PENDING #=> "pending"
+OrderStateMachine::CHECKING_OUT # => "checking_out"
+```
+
 ## Instance methods
 
 ### `Machine#current_state`
