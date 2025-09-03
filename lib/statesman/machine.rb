@@ -166,10 +166,14 @@ module Statesman
       private
 
       def define_state_constant(state_name)
-        constant_name = state_name.upcase
+        constant_name = state_name.upcase.gsub(/[^A-Z0-9]/, "_")
 
         if const_defined?(constant_name)
-          raise StateConstantConflictError, "Name conflict: '#{self.class.name}::#{constant_name}' is already defined"
+          return if const_get(constant_name) == state_name
+
+          raise StateConstantConflictError, "Name conflict: '#{name}::#{constant_name}' is already " \
+                                            "defined as '#{const_get(constant_name)}' attempting to redefine " \
+                                            "as '#{state_name}'"
         else
           const_set(constant_name, state_name)
         end

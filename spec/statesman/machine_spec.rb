@@ -1,7 +1,15 @@
 # frozen_string_literal: true
 
 describe Statesman::Machine do
-  let(:machine) { Class.new { include Statesman::Machine } }
+  let(:machine) do
+    Class.new do
+      include Statesman::Machine
+
+      def self.name
+        "MyStateMachine"
+      end
+    end
+  end
   let(:my_model) { Class.new { attr_accessor :current_state }.new }
 
   describe ".state" do
@@ -30,12 +38,23 @@ describe Statesman::Machine do
     end
 
     context "when state name constant is already defined" do
-      it "warns about name conflict" do
-        machine.const_set(:SOME_CONST, "some const")
+      context "with the same value" do
+        it "does not raise an error" do
+          machine.const_set(:SOME_CONST, "some_const")
+          expect { machine.state(:some_const) }.to_not raise_error
+        end
+      end
 
-        expect { machine.state(:some_const) }.to raise_error(
-          Statesman::StateConstantConflictError, "Name conflict: 'Class::SOME_CONST' is already defined"
-        )
+      context "with a different value" do
+        it "raises an error about state constant conflict" do
+          machine.const_set(:SOME_CONST, "some_const_different")
+
+          expect { machine.state(:some_const) }.to raise_error(
+            Statesman::StateConstantConflictError, "Name conflict: 'MyStateMachine::SOME_CONST' is " \
+                                                   "already defined as 'some_const_different' " \
+                                                   "attempting to redefine as 'some_const'"
+          )
+        end
       end
     end
   end
