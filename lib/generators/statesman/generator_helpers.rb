@@ -64,7 +64,13 @@ module Statesman
     end
 
     def metadata_default_value
-      Utils.rails_5_or_higher? ? "{}" : "{}".inspect
+      Utils.rails_5_or_higher? ? "{}" : "'{}'"
+    end
+
+    def metadata_column_config
+      return if mysql?
+
+      ", default: #{metadata_default_value}"
     end
   end
 end
