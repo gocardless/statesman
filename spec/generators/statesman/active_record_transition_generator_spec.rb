@@ -11,23 +11,33 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     stub_const("Yummy::BaconTransition", Class.new(ActiveRecord::Base))
   end
 
+  around { |e| Timecop.freeze(Time.parse("2025-01-01 00:00:00"), &e) }
+
   it_behaves_like "a generator" do
-    let(:migration_name) { "db/migrate/create_bacon_transitions.rb" }
+    let(:migration_name) { "db/migrate/create_yummy_bacon_transitions.rb" }
   end
 
   describe "creates a migration" do
-    subject(:migration) { file("db/migrate/#{time}_create_bacon_transitions.rb") }
+    subject(:migration) { file("db/migrate/20250101000000_create_yummy_bacon_transitions.rb") }
 
     before do
-      allow(Time).to receive(:now).and_return(mock_time)
       run_generator %w[Yummy::Bacon Yummy::BaconTransition]
     end
 
-    let(:mock_time) { double("Time", utc: double("UTCTime", strftime: time)) }
-    let(:time) { "5678309" }
-
     it "includes a foreign key" do
-      expect(migration).to contain("add_foreign_key :bacon_transitions, :bacons")
+      expect(migration).to contain("add_foreign_key :yummy_bacon_transitions, :yummy_bacons")
+    end
+
+    it "uses the right column type for Postgres", if: postgres? do
+      expect(migration).to contain("t.jsonb :metadata, default: {}")
+    end
+
+    it "uses the right column type for MySQL", if: mysql? do
+      expect(migration).to contain("t.json :metadata")
+    end
+
+    it "uses the right column type for SQLite", if: sqlite? do
+      expect(migration).to contain("t.json :metadata, default: {}")
     end
   end
 
@@ -36,8 +46,7 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
 
     before { run_generator %w[Yummy::Bacon Yummy::BaconTransition] }
 
-    it { is_expected.to contain(/:bacon_transition/) }
-    it { is_expected.to_not contain(%r{:yummy/bacon}) }
+    it { is_expected.to contain(/:bacon_transitions/) }
     it { is_expected.to contain(/class_name: 'Yummy::Bacon'/) }
   end
 

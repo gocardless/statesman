@@ -10,36 +10,44 @@ module Statesman
       "app/models/#{klass.underscore}.rb"
     end
 
-    def migration_class_name
-      klass.gsub("::", "").pluralize
-    end
-
-    def next_migration_number
-      Time.now.utc.strftime("%Y%m%d%H%M%S")
-    end
-
     def parent_name
-      parent.demodulize.underscore
+      parent.underscore.split("/").join("_")
     end
 
     def parent_table_name
-      parent.demodulize.underscore.pluralize
+      parent.underscore.split("/").join("_").tableize
     end
 
     def parent_id
       parent_name + "_id"
     end
 
-    def table_name
+    def association_name
       klass.demodulize.underscore.pluralize
+    end
+
+    def table_name
+      klass.underscore.split("/").join("_").tableize
+    end
+
+    def metadata_column_type
+      if ActiveRecord::Base.connection.supports_json?
+        postgres? ? :jsonb : :json
+      else
+        :text
+      end
     end
 
     def index_name(index_id)
       "index_#{table_name}_#{index_id}"
     end
 
+    def postgres?
+      configuration.adapter.try(:match, /postgres/)
+    end
+
     def mysql?
-      configuration.try(:[], "adapter").try(:match, /mysql/)
+      configuration.adapter.try(:match, /mysql/)
     end
 
     # [] is deprecated and will be removed in 6.2
@@ -52,11 +60,17 @@ module Statesman
     end
 
     def database_supports_partial_indexes?
-      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(klass.constantize)
+      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(parent.constantize)
     end
 
     def metadata_default_value
-      Utils.rails_5_or_higher? ? "{}" : "{}".inspect
+      Utils.rails_5_or_higher? ? "{}" : "'{}'"
+    end
+
+    def metadata_column_config
+      return if mysql?
+
+      ", default: #{metadata_default_value}"
     end
   end
 end

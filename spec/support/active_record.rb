@@ -414,3 +414,16 @@ class CreateStiActiveRecordModelTransitionMigration < MIGRATION_CLASS
     end
   end
 end
+
+def postgres?
+  ActiveRecord::Base.connection.adapter_name.match?(/postgres/i)
+end
+
+def mysql?
+  ActiveRecord::Base.connection.adapter_name.match?(/mysql/i) ||
+    ActiveRecord::Base.connection.adapter_name.match?(/trilogy/i)
+end
+
+def sqlite?
+  ActiveRecord::Base.connection.adapter_name.match?(/sqlite/i)
+end
