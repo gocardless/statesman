@@ -33,7 +33,7 @@ protection.
 To get started, just add Statesman to your `Gemfile`, and then run `bundle`:
 
 ```ruby
-gem 'statesman', '~> 12.0.0'
+gem 'statesman', '~> 13.0.0'
 ```
 
 ## Usage
@@ -233,12 +233,14 @@ or 5. To do that
   t.json :metadata, default: {}
   ```
 
-- Remove the `include Statesman::Adapters::ActiveRecordTransition` statement from
-  your transition model. (If you want to customise your transition class's "updated
-  timestamp column", as described above, you should define a
-  `.updated_timestamp_column` method on your class and return the name of the column
-  as a symbol, or `nil` if you don't want to record an updated timestamp on
-  transitions.)
+* Remove the `include Statesman::Adapters::ActiveRecordTransition` statement from
+  your transition model, which would've instructed ActiveRecord to serialize the
+  metadata.
+* The module that you just removed enables customizing the updatated timestamp column
+  as described above. Having removed it, if you want to customise your transition class's
+  "updated timestamp column", you should define a `.updated_timestamp_column` method on
+  your class and return the name of the column as a symbol, or `nil` if you don't want
+  to record an updated timestamp on transitions.
 
 ## Configuration
 
@@ -559,8 +561,8 @@ model and passing in `transition_class` and `initial_state` as options.
 
 In 4.1.2 and below, these two options had to be defined as methods on the model,
 but 5.0.0 and above allow this style of configuration as well.
-The old method pollutes the model with extra class methods, and is deprecated,
-to be removed in 6.0.0.
+The old way pollutes the model with extra class methods, and is deprecated,
+to be removed in the future.
 
 ```ruby
 class Order < ActiveRecord::Base
