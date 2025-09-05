@@ -20,7 +20,7 @@ module Statesman
       def create(from, to, metadata = {})
         from = from.to_s
         to = to.to_s
-        transition = transition_class.new(to, next_sort_key, metadata)
+        transition = transition_class.new(from, to, next_sort_key, metadata)
 
         @observer.execute(:before, from, to, transition)
         @history << transition
@@ -44,7 +44,7 @@ module Statesman
       private
 
       def next_sort_key
-        (last && last.sort_key + 10) || 10
+        (last && (last.sort_key + 10)) || 10
       end
     end
   end

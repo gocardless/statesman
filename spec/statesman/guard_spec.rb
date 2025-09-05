@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Statesman::Guard do
   let(:callback) { -> {} }
   let(:guard) { described_class.new(from: nil, to: nil, callback: callback) }

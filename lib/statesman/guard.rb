@@ -6,7 +6,7 @@ require_relative "exceptions"
 module Statesman
   class Guard < Callback
     def call(*args)
-      raise GuardFailedError.new(from, to) unless super(*args)
+      raise GuardFailedError.new(from, to, callback) unless super
     end
   end
 end

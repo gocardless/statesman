@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 namespace :statesman do
-  desc "Set most_recent to false for old transitions and to true for the "\
+  desc "Set most_recent to false for old transitions and to true for the " \
        "latest one. Safe to re-run"
   task :backfill_most_recent, [:parent_model_name] => :environment do |_, args|
     parent_model_name = args.parent_model_name
@@ -21,8 +21,8 @@ namespace :statesman do
     batch_size = 500
 
     parent_class.find_in_batches(batch_size: batch_size) do |models|
-      ActiveRecord::Base.transaction(requires_new: true) do
-        if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?
+      transition_class.transaction(requires_new: true) do
+        if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(transition_class)
           # Set all transitions' most_recent to FALSE
           transition_class.where(parent_fk => models.map(&:id)).
             update_all(most_recent: false, updated_at: updated_at)
@@ -56,8 +56,8 @@ namespace :statesman do
       end
 
       done_models += batch_size
-      puts "Updated #{transition_class.name.pluralize} for "\
-           "#{[done_models, total_models].min}/#{total_models} "\
+      puts "Updated #{transition_class.name.pluralize} for " \
+           "#{[done_models, total_models].min}/#{total_models} " \
            "#{parent_model_name.pluralize}"
     end
   end

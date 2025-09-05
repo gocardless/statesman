@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
-describe Statesman do
+describe "Exceptions" do
   describe "InvalidStateError" do
     subject(:error) { Statesman::InvalidStateError.new }
 
@@ -53,6 +51,16 @@ describe Statesman do
     end
   end
 
+  describe "StateConstantConflictError" do
+    subject(:error) { Statesman::StateConstantConflictError.new }
+
+    its(:message) { is_expected.to eq("Statesman::StateConstantConflictError") }
+
+    its "string matches its message" do
+      expect(error.to_s).to eq(error.message)
+    end
+  end
+
   describe "TransitionFailedError" do
     subject(:error) { Statesman::TransitionFailedError.new("from", "to") }
 
@@ -64,10 +72,16 @@ describe Statesman do
   end
 
   describe "GuardFailedError" do
-    subject(:error) { Statesman::GuardFailedError.new("from", "to") }
+    subject(:error) { Statesman::GuardFailedError.new("from", "to", callback) }
+
+    let(:callback) { -> { "hello" } }
 
     its(:message) do
       is_expected.to eq("Guard on transition from: 'from' to 'to' returned false")
+    end
+
+    its(:backtrace) do
+      is_expected.to eq([callback.source_location.join(":")])
     end
 
     its "string matches its message" do

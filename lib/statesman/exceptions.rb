@@ -11,6 +11,8 @@ module Statesman
 
   class MissingTransitionAssociation < StandardError; end
 
+  class StateConstantConflictError < StandardError; end
+
   class TransitionFailedError < StandardError
     def initialize(from, to)
       @from = from
@@ -28,13 +30,15 @@ module Statesman
   end
 
   class GuardFailedError < StandardError
-    def initialize(from, to)
+    def initialize(from, to, callback)
       @from = from
       @to = to
+      @callback = callback
       super(_message)
+      set_backtrace(callback.source_location.join(":")) if callback&.source_location
     end
 
-    attr_reader :from, :to
+    attr_reader :from, :to, :callback
 
     private
 
@@ -52,8 +56,8 @@ module Statesman
 
     def _message(transition_class_name)
       "#{transition_class_name}#metadata is not serialized. If you " \
-      "are using a non-json column type, you should `include " \
-      "Statesman::Adapters::ActiveRecordTransition`"
+        "are using a non-json column type, you should `include " \
+        "Statesman::Adapters::ActiveRecordTransition`"
     end
   end
 
@@ -66,9 +70,9 @@ module Statesman
 
     def _message(transition_class_name)
       "#{transition_class_name}#metadata column type cannot be json " \
-      "and serialized simultaneously. If you are using a json " \
-      "column type, it is not necessary to `include " \
-      "Statesman::Adapters::ActiveRecordTransition`"
+        "and serialized simultaneously. If you are using a json " \
+        "column type, it is not necessary to `include " \
+        "Statesman::Adapters::ActiveRecordTransition`"
     end
   end
 end

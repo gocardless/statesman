@@ -1,0 +1,130 @@
+name: tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rubocop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - run: bundle exec rubocop --extra-details --display-style-guide --parallel --force-exclusion
+
+  sqlite:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ["3.2", "3.3", "3.4", "3.5"]
+        rails-version:
+          - "7.1"
+          - "7.2"
+          - "8.0"
+          - "main"
+    runs-on: ubuntu-latest
+    env:
+      RAILS_VERSION: ${{ matrix.rails-version }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: "${{ matrix.ruby-version }}"
+      - name: Run specs
+        run: |
+          bundle exec rspec --profile --format progress --format RSpec::Github::Formatter
+
+  postgres:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ["3.2", "3.3", "3.4", "3.5"]
+        rails-version:
+          - "7.1"
+          - "7.2"
+          - "8.0"
+          - "main"
+        postgres-version: ["14", "15", "16", "17"]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: statesman_test
+          POSTGRES_PASSWORD: statesman
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:statesman@localhost/statesman_test
+      DATABASE_DEPENDENCY_PORT: "5432"
+      RAILS_VERSION: ${{ matrix.rails-version }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: "${{ matrix.ruby-version }}"
+      - name: Run specs
+        run: |
+          bundle exec rspec --profile --format progress --format RSpec::Github::Formatter
+
+  mysql:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ["3.2", "3.3", "3.4", "3.5"]
+        rails-version:
+          - "7.1"
+          - "7.2"
+          - "8.0"
+          - "main"
+        mysql-version: ["8.0", "8.4", "9.4"]
+
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql-version }}
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_USER: foobar
+          MYSQL_PASSWORD: password
+          MYSQL_DATABASE: statesman_test
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
+      DATABASE_DEPENDENCY_PORT: "3306"
+      RAILS_VERSION: ${{ matrix.rails-version }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: "${{ matrix.ruby-version }}"
+      - name: Run specs
+        run: |
+          bundle exec rspec --profile --format progress --format RSpec::Github::Formatter

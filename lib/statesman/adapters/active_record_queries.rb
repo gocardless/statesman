@@ -39,7 +39,7 @@ module Statesman
         end
 
         def included(base)
-          ensure_inheritance(base)
+          ensure_inheritance(base) if base.respond_to?(:subclasses) && base.subclasses.any?
 
           query_builder = QueryBuilder.new(base, **@args)
 
@@ -49,6 +49,14 @@ module Statesman
 
           define_in_state(base, query_builder)
           define_not_in_state(base, query_builder)
+
+          define_method(:reload) do |*a|
+            instance = super(*a)
+            if instance.respond_to?(:state_machine, true)
+              instance.send(:state_machine).reset
+            end
+            instance
+          end
         end
 
         private
@@ -95,18 +103,18 @@ module Statesman
         def states_where(states)
           if initial_state.to_s.in?(states.map(&:to_s))
             "#{most_recent_transition_alias}.to_state IN (?) OR " \
-            "#{most_recent_transition_alias}.to_state IS NULL"
+              "#{most_recent_transition_alias}.to_state IS NULL"
           else
             "#{most_recent_transition_alias}.to_state IN (?) AND " \
-            "#{most_recent_transition_alias}.to_state IS NOT NULL"
+              "#{most_recent_transition_alias}.to_state IS NOT NULL"
           end
         end
 
         def most_recent_transition_join
           "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias} " \
-             "ON #{model.table_name}.#{model_primary_key} = " \
-                  "#{most_recent_transition_alias}.#{model_foreign_key} " \
-             "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
+            "ON #{model.table_name}.#{model_primary_key} = " \
+            "#{most_recent_transition_alias}.#{model_foreign_key} " \
+            "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
         private
@@ -145,7 +153,7 @@ module Statesman
         end
 
         def db_true
-          ::ActiveRecord::Base.connection.quote(true)
+          model.connection.quote(true)
         end
       end
     end

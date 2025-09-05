@@ -1,28 +1,166 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Statesman::Machine do
-  let(:machine) { Class.new { include Statesman::Machine } }
+  let(:machine) do
+    Class.new do
+      include Statesman::Machine
+
+      def self.name
+        "MyStateMachine"
+      end
+    end
+  end
   let(:my_model) { Class.new { attr_accessor :current_state }.new }
 
   describe ".state" do
-    before { machine.state(:x) }
-
-    before { machine.state(:y) }
+    before do
+      machine.state(:x)
+      machine.state(:y)
+    end
 
     specify { expect(machine.states).to eq(%w[x y]) }
 
-    context "initial" do
-      before { machine.state(:x, initial: true) }
+    specify { expect(machine::X).to eq "x" }
 
-      specify { expect(machine.initial_state).to eq("x") }
+    specify { expect(machine::Y).to eq "y" }
+
+    context "initial" do
+      before { machine.state(:z, initial: true) }
+
+      specify { expect(machine.initial_state).to eq("z") }
 
       context "when an initial state is already defined" do
         it "raises an error" do
           expect { machine.state(:y, initial: true) }.
             to raise_error(Statesman::InvalidStateError)
         end
+      end
+    end
+
+    context "when state name constant is already defined" do
+      context "with the same value" do
+        it "does not raise an error" do
+          machine.const_set(:SOME_CONST, "some_const")
+          expect { machine.state(:some_const) }.to_not raise_error
+        end
+      end
+
+      context "with a different value" do
+        it "raises an error about state constant conflict" do
+          machine.const_set(:SOME_CONST, "some_const_different")
+
+          expect { machine.state(:some_const) }.to raise_error(
+            Statesman::StateConstantConflictError, "Name conflict: 'MyStateMachine::SOME_CONST' is " \
+                                                   "already defined as 'some_const_different' " \
+                                                   "attempting to redefine as 'some_const'"
+          )
+        end
+      end
+    end
+  end
+
+  describe ".remove_state" do
+    subject(:remove_state) { machine.remove_state(:x) }
+
+    before do
+      machine.class_eval do
+        state :x
+        state :y
+        state :z
+      end
+    end
+
+    it "removes the state" do
+      expect { remove_state }.
+        to change(machine, :states).
+        from(match_array(%w[x y z])).
+        to(%w[y z])
+    end
+
+    context "with a transition from the removed state" do
+      before { machine.transition from: :x, to: :y }
+
+      it "removes the transition" do
+        expect { remove_state }.
+          to change(machine, :successors).
+          from({ "x" => ["y"] }).
+          to({})
+      end
+
+      context "with multiple transitions" do
+        before { machine.transition from: :x, to: :z }
+
+        it "removes all transitions" do
+          expect { remove_state }.
+            to change(machine, :successors).
+            from({ "x" => %w[y z] }).
+            to({})
+        end
+      end
+    end
+
+    context "with a transition to the removed state" do
+      before { machine.transition from: :y, to: :x }
+
+      it "removes the transition" do
+        expect { remove_state }.
+          to change(machine, :successors).
+          from({ "y" => ["x"] }).
+          to({})
+      end
+
+      context "with multiple transitions" do
+        before { machine.transition from: :z, to: :x }
+
+        it "removes all transitions" do
+          expect { remove_state }.
+            to change(machine, :successors).
+            from({ "y" => ["x"], "z" => ["x"] }).
+            to({})
+        end
+      end
+    end
+
+    context "with a callback from the removed state" do
+      before do
+        machine.class_eval do
+          transition from: :x, to: :y
+          transition from: :x, to: :z
+          guard_transition(from: :x) { return false }
+          guard_transition(from: :x, to: :z) { return true }
+        end
+      end
+
+      let(:guards) do
+        [having_attributes(from: "x", to: []), having_attributes(from: "x", to: ["z"])]
+      end
+
+      it "removes the guard" do
+        expect { remove_state }.
+          to change(machine, :callbacks).
+          from(a_hash_including(guards: match_array(guards))).
+          to(a_hash_including(guards: []))
+      end
+    end
+
+    context "with a callback to the removed state" do
+      before do
+        machine.class_eval do
+          transition from: :y, to: :x
+          guard_transition(to: :x) { return false }
+          guard_transition(from: :y, to: :x) { return true }
+        end
+      end
+
+      let(:guards) do
+        [having_attributes(from: nil, to: ["x"]), having_attributes(from: "y", to: ["x"])]
+      end
+
+      it "removes the guard" do
+        expect { remove_state }.
+          to change(machine, :callbacks).
+          from(a_hash_including(guards: match_array(guards))).
+          to(a_hash_including(guards: []))
       end
     end
   end
@@ -167,6 +305,42 @@ describe Statesman::Machine do
         machine.transition(from: :x, to: :z)
         expect(machine.successors).to eq("x" => %w[y z])
       end
+    end
+  end
+
+  describe ".remove_transitions" do
+    before do
+      machine.class_eval do
+        state :x
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :x, to: :z
+        transition from: :y, to: :z
+      end
+    end
+
+    let(:initial_successors) { { "x" => %w[y z], "y" => ["z"] } }
+
+    it "removes the correct transitions when given a from state" do
+      expect { machine.remove_transitions(from: :x) }.
+        to change(machine, :successors).
+        from(initial_successors).
+        to({ "y" => ["z"] })
+    end
+
+    it "removes the correct transitions when given a to state" do
+      expect { machine.remove_transitions(to: :z) }.
+        to change(machine, :successors).
+        from(initial_successors).
+        to({ "x" => ["y"] })
+    end
+
+    it "removes the correct transitions when given a from and to state" do
+      expect { machine.remove_transitions(from: :x, to: :z) }.
+        to change(machine, :successors).
+        from(initial_successors).
+        to({ "x" => ["y"], "y" => ["z"] })
     end
   end
 
@@ -338,10 +512,81 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :after_guard_failure, :after_guard_failure
   end
 
+  shared_examples "initial transition is not created" do
+    it "doesn't call .create on storage adapter" do
+      expect_any_instance_of(Statesman.storage_adapter).to_not receive(:create)
+      machine.new(my_model, options)
+    end
+  end
+
+  shared_examples "initial transition is created" do
+    it "calls .create on storage adapter" do
+      expect_any_instance_of(Statesman.storage_adapter).to receive(:create).with(nil, "x")
+      machine.new(my_model, options)
+    end
+
+    it "creates a new transition object" do
+      instance = machine.new(my_model, options)
+
+      expect(instance.history.count).to eq(1)
+      expect(instance.history.first.to_state).to eq("x")
+    end
+  end
+
   describe "#initialize" do
     it "accepts an object to manipulate" do
       machine_instance = machine.new(my_model)
       expect(machine_instance.object).to be(my_model)
+    end
+
+    context "initial_transition is not provided" do
+      let(:options) { {} }
+
+      it_behaves_like "initial transition is not created"
+    end
+
+    context "initial_transition is provided" do
+      context "initial_transition is true" do
+        let(:options) do
+          { initial_transition: true,
+            transition_class: Statesman::Adapters::MemoryTransition }
+        end
+
+        context "history is empty" do
+          context "initial state is defined" do
+            before { machine.state(:x, initial: true) }
+
+            it_behaves_like "initial transition is created"
+          end
+
+          context "initial state is not defined" do
+            it_behaves_like "initial transition is not created"
+          end
+        end
+
+        context "history is not empty" do
+          before do
+            allow_any_instance_of(Statesman.storage_adapter).to receive(:history).
+              and_return([{}])
+          end
+
+          context "initial state is defined" do
+            before { machine.state(:x, initial: true) }
+
+            it_behaves_like "initial transition is not created"
+          end
+
+          context "initial state is not defined" do
+            it_behaves_like "initial transition is not created"
+          end
+        end
+      end
+
+      context "initial_transition is false" do
+        let(:options) { { initial_transition: false } }
+
+        it_behaves_like "initial transition is not created"
+      end
     end
 
     context "transition class" do
@@ -399,9 +644,10 @@ describe Statesman::Machine do
     end
 
     context "with multiple transitions" do
-      before { instance.transition_to!(:y) }
-
-      before { instance.transition_to!(:z) }
+      before do
+        instance.transition_to!(:y)
+        instance.transition_to!(:z)
+      end
 
       it { is_expected.to eq("z") }
     end
@@ -416,11 +662,10 @@ describe Statesman::Machine do
         state :y
         transition from: :x, to: :y
       end
+      instance.transition_to!(:y)
     end
 
     let(:instance) { machine.new(my_model) }
-
-    before { instance.transition_to!(:y) }
 
     context "when machine is in given state" do
       let(:state) { "y" }
@@ -784,7 +1029,7 @@ describe Statesman::Machine do
     let(:instance) { machine.new(my_model) }
     let(:metadata) { { some: :metadata } }
 
-    context "when it is succesful" do
+    context "when it is successful" do
       before do
         expect(instance).to receive(:transition_to!).once.
           with(:some_state, metadata).and_return(:some_state)
@@ -793,10 +1038,10 @@ describe Statesman::Machine do
       it { is_expected.to be(:some_state) }
     end
 
-    context "when it is unsuccesful" do
+    context "when it is unsuccessful" do
       before do
         allow(instance).to receive(:transition_to!).
-          and_raise(Statesman::GuardFailedError.new(:x, :some_state))
+          and_raise(Statesman::GuardFailedError.new(:x, :some_state, nil))
       end
 
       it { is_expected.to be_falsey }
@@ -834,20 +1079,20 @@ describe Statesman::Machine do
     end
 
     context "with defined callbacks" do
-      let(:callback_1) { -> { "Hi" } }
-      let(:callback_2) { -> { "Bye" } }
+      let(:callback_one) { -> { "Hi" } }
+      let(:callback_two) { -> { "Bye" } }
 
       before do
-        machine.send(definer, from: :x, to: :y, &callback_1)
-        machine.send(definer, from: :y, to: :z, &callback_2)
+        machine.send(definer, from: :x, to: :y, &callback_one)
+        machine.send(definer, from: :y, to: :z, &callback_two)
       end
 
       it "contains the relevant callback" do
-        expect(callbacks.map(&:callback)).to include(callback_1)
+        expect(callbacks.map(&:callback)).to include(callback_one)
       end
 
       it "does not contain the irrelevant callback" do
-        expect(callbacks.map(&:callback)).to_not include(callback_2)
+        expect(callbacks.map(&:callback)).to_not include(callback_two)
       end
     end
   end

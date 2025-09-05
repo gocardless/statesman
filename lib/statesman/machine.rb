@@ -39,7 +39,20 @@ module Statesman
           validate_initial_state(name)
           @initial_state = name
         end
+        define_state_constant(name)
+
         states << name
+      end
+
+      def remove_state(state_name)
+        state_name = state_name.to_s
+
+        remove_transitions(from: state_name)
+        remove_transitions(to: state_name)
+        remove_callbacks(from: state_name)
+        remove_callbacks(to: state_name)
+
+        @states.delete(state_name.to_s)
       end
 
       def successors
@@ -68,6 +81,20 @@ module Statesman
         ([from] + to).each { |state| validate_state(state) }
 
         successors[from] += to
+      end
+
+      def remove_transitions(from: nil, to: nil)
+        raise ArgumentError, "Both from and to can't be nil!" if from.nil? && to.nil?
+        return if successors.nil?
+
+        if from.present?
+          @successors[from.to_s].delete(to.to_s) if to.present?
+          @successors.delete(from.to_s) if to.nil? || successors[from.to_s].empty?
+        elsif to.present?
+          @successors.
+            transform_values! { |to_states| to_states - [to.to_s] }.
+            filter! { |_from_state, to_states| to_states.any? }
+        end
       end
 
       def before_transition(options = {}, &block)
@@ -138,6 +165,20 @@ module Statesman
 
       private
 
+      def define_state_constant(state_name)
+        constant_name = state_name.upcase.gsub(/[^A-Z0-9]/, "_")
+
+        if const_defined?(constant_name)
+          return if const_get(constant_name) == state_name
+
+          raise StateConstantConflictError, "Name conflict: '#{name}::#{constant_name}' is already " \
+                                            "defined as '#{const_get(constant_name)}' attempting to redefine " \
+                                            "as '#{state_name}'"
+        else
+          const_set(constant_name, state_name)
+        end
+      end
+
       def add_callback(callback_type: nil, callback_class: nil,
                        from: nil, to: nil, &block)
         validate_callback_type_and_class(callback_type, callback_class)
@@ -149,6 +190,33 @@ module Statesman
 
         callbacks[callback_type] <<
           callback_class.new(from: from, to: to, callback: block)
+      end
+
+      def remove_callbacks(from: nil, to: nil)
+        raise ArgumentError, "Both from and to can't be nil!" if from.nil? && to.nil?
+        return if callbacks.nil?
+
+        @callbacks.transform_values! do |callbacks|
+          filter_callbacks(callbacks, from: from, to: to)
+        end
+      end
+
+      def filter_callbacks(callbacks, from: nil, to: nil)
+        callbacks.filter_map do |callback|
+          next if callback.from == from && to.nil?
+
+          if callback.to.include?(to) && (from.nil? || callback.from == from)
+            next if callback.to == [to]
+
+            callback = Statesman::Callback.new({
+              from: callback.from,
+              to: callback.to - [to],
+              callback: callback.callback,
+            })
+          end
+
+          callback
+        end
       end
 
       def validate_callback_type_and_class(callback_type, callback_class)
@@ -181,12 +249,20 @@ module Statesman
     def initialize(object,
                    options = {
                      transition_class: Statesman::Adapters::MemoryTransition,
+                     initial_transition: false,
                    })
       @object = object
       @transition_class = options[:transition_class]
       @storage_adapter = adapter_class(@transition_class).new(
         @transition_class, object, self, options
       )
+
+      if options[:initial_transition]
+        if history.empty? && self.class.initial_state
+          @storage_adapter.create(nil, self.class.initial_state)
+        end
+      end
+
       send(:after_initialize) if respond_to? :after_initialize
     end
 

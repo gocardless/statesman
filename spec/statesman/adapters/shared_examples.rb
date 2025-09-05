@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 # All adpators must define seven methods:
 #   initialize:       Accepts a transition class, parent model and state_attr.
 #   transition_class: Returns the transition class object passed to initialize.
@@ -30,14 +28,14 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
   end
 
   describe "#create" do
-    subject { -> { create } }
+    subject(:transition) { create }
 
     let(:from) { :x }
     let(:to) { :y }
     let(:there) { :z }
     let(:create) { adapter.create(from, to) }
 
-    it { is_expected.to change(adapter.history, :count).by(1) }
+    it { expect { transition }.to change(adapter.history, :count).by(1) }
 
     context "the new transition" do
       subject(:instance) { create }
@@ -122,9 +120,10 @@ shared_examples_for "an adapter" do |adapter_class, transition_class, options = 
   describe "#last" do
     subject { adapter.last }
 
-    before { adapter.create(:x, :y) }
-
-    before { adapter.create(:y, :z) }
+    before do
+      adapter.create(:x, :y)
+      adapter.create(:y, :z)
+    end
 
     it { is_expected.to be_a(transition_class) }
     specify { expect(adapter.last.to_state.to_sym).to eq(:z) }

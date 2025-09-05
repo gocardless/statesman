@@ -18,25 +18,9 @@ Gem::Specification.new do |spec|
 
   spec.files         = `git ls-files`.split($INPUT_RECORD_SEPARATOR)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
-  spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = ">= 2.5"
-
-  spec.add_development_dependency "ammeter", "~> 1.1"
-  spec.add_development_dependency "bundler", "~> 2"
-  spec.add_development_dependency "gc_ruboconfig", "~> 2.26.0"
-  spec.add_development_dependency "mysql2", ">= 0.4", "< 0.6"
-  spec.add_development_dependency "pg", ">= 0.18", "<= 1.3"
-  spec.add_development_dependency "pry"
-  spec.add_development_dependency "rails", ">= 5.2"
-  spec.add_development_dependency "rake", "~> 13.0.0"
-  spec.add_development_dependency "rspec", "~> 3.1"
-  spec.add_development_dependency "rspec-its", "~> 1.1"
-  spec.add_development_dependency "rspec_junit_formatter", "~> 0.4.0"
-  spec.add_development_dependency "rspec-rails", "~> 3.1"
-  spec.add_development_dependency "sqlite3", "~> 1.4.2"
-  spec.add_development_dependency "timecop", "~> 0.9.1"
+  spec.required_ruby_version = ">= 3.2"
 
   spec.metadata = {
     "bug_tracker_uri" => "#{GITHUB_URL}/issues",
@@ -44,5 +28,6 @@ Gem::Specification.new do |spec|
     "documentation_uri" => "#{GITHUB_URL}/blob/master/README.md",
     "homepage_uri" => GITHUB_URL,
     "source_code_uri" => GITHUB_URL,
+    "rubygems_mfa_required" => "true",
   }
 end
