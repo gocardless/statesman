@@ -625,6 +625,20 @@ end
 
 You could also use a calculated column or view in your database.
 
+Also if you wish to prevent the state column from going into an asynchronous values with the state machine you can force it to sync with rails validates. In your model file:
+
+```ruby
+enum state: OrderStateMachine.states.collect { |s| [s,s]}.to_h # It is recommended to use string enum.
+validates :state, inclusion: { in: states.values }, allow_nil: true
+define_method(:set_initial_state) { self.state = self.current_state if self.state.nil? }
+after_initialize :set_initial_state, if: :new_record?
+validate :state_in_sync?
+private
+def state_in_sync?
+  errors.add(:state, :invalid, message: 'is not equal current_state', strict: false) unless state == current_state
+end
+```
+
 ### Accessing metadata from the last transition
 
 Given a field `foo` that was stored in the metadata, you can access it like so:
