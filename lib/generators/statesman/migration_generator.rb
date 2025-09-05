@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
 require "rails/generators"
+require "rails/generators/active_record"
 require "generators/statesman/generator_helpers"
 
 # Add statesman attributes to a pre-existing transition class
 module Statesman
   class MigrationGenerator < Rails::Generators::Base
     include Statesman::GeneratorHelpers
+    include ActiveRecord::Generators::Migration
 
     desc "Add the required Statesman attributes to your transition model"
 
@@ -15,14 +17,8 @@ module Statesman
 
     source_root File.expand_path("templates", __dir__)
 
-    def create_model_file
-      template("update_migration.rb.erb", file_name)
-    end
-
-    private
-
-    def file_name
-      "db/migrate/#{next_migration_number}_add_statesman_to_#{table_name}.rb"
+    def create_migration_file
+      migration_template("update_migration.rb.erb", File.join(db_migrate_path, "add_statesman_to_#{table_name}.rb"))
     end
   end
 end

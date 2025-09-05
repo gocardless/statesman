@@ -12,8 +12,8 @@ shared_examples "a generator" do
 
   let(:gen) { generator %w[Yummy::Bacon Yummy::BaconTransition] }
 
-  it "invokes create_model_file method" do
-    expect(gen).to receive(:create_model_file)
+  it "invokes create_migration_file method" do
+    expect(gen).to receive(:create_migration_file)
     gen.invoke_all
   end
 

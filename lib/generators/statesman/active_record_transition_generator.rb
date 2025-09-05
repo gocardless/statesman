@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require "rails/generators"
+require "rails/generators/active_record"
 require "generators/statesman/generator_helpers"
 
 module Statesman
   class ActiveRecordTransitionGenerator < Rails::Generators::Base
     include Statesman::GeneratorHelpers
+    include ActiveRecord::Generators::Migration
 
     desc "Create an ActiveRecord-based transition model" \
          "with the required attributes"
@@ -16,14 +18,11 @@ module Statesman
     source_root File.expand_path("templates", __dir__)
 
     def create_model_file
-      template("create_migration.rb.erb", migration_file_name)
       template("active_record_transition_model.rb.erb", model_file_name)
     end
 
-    private
-
-    def migration_file_name
-      "db/migrate/#{next_migration_number}_create_#{table_name}.rb"
+    def create_migration_file
+      migration_template("create_migration.rb.erb", File.join(db_migrate_path, "create_#{table_name}.rb"))
     end
   end
 end

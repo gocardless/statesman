@@ -66,3 +66,4 @@ Gemfile.lock
 
 # JetBrains
 .idea
+spec/support/generator-tmp/

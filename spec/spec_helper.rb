@@ -15,6 +15,7 @@ require "rspec/rails"
 require "support/exactly_query_databases"
 require "rspec/its"
 require "pry"
+require "timecop"
 
 RSpec.configure do |config|
   config.raise_errors_for_deprecations!
