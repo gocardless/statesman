@@ -5,6 +5,21 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v13.1.0 9th October 2025
+
+### Added
+
+- State constants for defining available states [#515](https://github.com/gocardless/statesman/pull/515)
+- from_state method to transition history for easier access to previous states [#493](https://github.com/gocardless/statesman/pull/493)
+
+### Fixed
+
+- Fixed transition model generator for namespaced models [#555](https://github.com/gocardless/statesman/pull/555)
+
+### Changed
+
+- Updated README and clarified wording [#444](https://github.com/gocardless/statesman/pull/444)
+
 ## v13.0.0 29th August 2025
 
 ### Changes
