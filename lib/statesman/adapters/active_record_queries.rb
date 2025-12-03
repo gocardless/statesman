@@ -118,14 +118,14 @@ module Statesman
           transition_table = transition_class.arel_table
           aliased_table = transition_table.alias(most_recent_transition_alias)
 
-          join_condition = model.arel_table[model_primary_key]
-            .eq(aliased_table[model_foreign_key])
-            .and(aliased_table[:most_recent].eq(true))
+          join_condition = model.arel_table[model_primary_key].
+            eq(aliased_table[model_foreign_key]).
+            and(aliased_table[:most_recent].eq(true))
 
-          model.arel_table
-            .join(aliased_table, Arel::Nodes::OuterJoin)
-            .on(join_condition)
-            .join_sources
+          model.arel_table.
+            join(aliased_table, Arel::Nodes::OuterJoin).
+            on(join_condition).
+            join_sources
         end
 
         private
