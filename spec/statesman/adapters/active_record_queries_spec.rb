@@ -130,6 +130,62 @@ describe Statesman::Adapters::ActiveRecordQueries, :active_record do
       end
     end
 
+    describe "update_all with most_recent join (Rails 8.1 compatibility)" do
+      let(:future_time) { Time.current + 1.day }
+
+      context "updating records in a specific state" do
+        it "successfully executes update_all with in_state join" do
+          affected = MyActiveRecordModel.in_state(:succeeded).update_all(updated_at: future_time)
+          expect(affected).to eq(1)
+          expect(model.reload.updated_at).to be_within(1.second).of(future_time)
+        end
+
+        it "correctly filters records by state" do
+          affected = MyActiveRecordModel.in_state(:succeeded).update_all(updated_at: future_time)
+          expect(affected).to eq(1)
+          expect(other_model.reload.updated_at).to be < future_time
+        end
+
+        it "handles initial state correctly" do
+          affected = MyActiveRecordModel.in_state(:initial).update_all(updated_at: future_time)
+          expect(affected).to eq(2) # initial_state_model and returned_to_initial_model
+        end
+      end
+
+      context "updating records not in a specific state" do
+        it "successfully executes update_all with not_in_state join" do
+          affected = MyActiveRecordModel.not_in_state(:succeeded).update_all(updated_at: future_time)
+          expect(affected).to be >= 1
+          expect(other_model.reload.updated_at).to be_within(1.second).of(future_time)
+        end
+
+        it "does not update records in the excluded state" do
+          before_time = model.updated_at
+          MyActiveRecordModel.not_in_state(:succeeded).update_all(updated_at: future_time)
+          expect(model.reload.updated_at).to be_within(1.second).of(before_time)
+        end
+      end
+
+      context "with additional where clauses" do
+        let!(:another_succeeded_model) do
+          m = MyActiveRecordModel.create
+          m.state_machine.transition_to(:succeeded)
+          m
+        end
+
+        it "respects additional where conditions with update_all" do
+          affected = MyActiveRecordModel.
+            in_state(:succeeded).
+            where(id: model.id).
+            update_all(updated_at: future_time)
+
+          expect(affected).to eq(1)
+          expect(model.reload.updated_at).to be_within(1.second).of(future_time)
+          expect(another_succeeded_model.reload.updated_at).to be < future_time
+        end
+      end
+    end
+
     context "with a custom name for the transition association" do
       before do
         # Switch to using OtherActiveRecordModelTransition, so the existing

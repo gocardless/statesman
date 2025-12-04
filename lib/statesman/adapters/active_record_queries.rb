@@ -75,7 +75,7 @@ module Statesman
             states = states.flatten
 
             joins(most_recent_transition_join).
-              where(query_builder.states_where(states), states)
+              where(query_builder.states_where(states))
           end
         end
 
@@ -84,7 +84,7 @@ module Statesman
             states = states.flatten
 
             joins(most_recent_transition_join).
-              where("NOT (#{query_builder.states_where(states)})", states)
+              where(query_builder.states_where(states).not)
           end
         end
       end
@@ -101,20 +101,31 @@ module Statesman
         end
 
         def states_where(states)
+          transition_table = transition_class.arel_table
+          aliased_table = transition_table.alias(most_recent_transition_alias)
+          to_state_column = aliased_table[:to_state]
+
+          in_states = to_state_column.in(states)
+
           if initial_state.to_s.in?(states.map(&:to_s))
-            "#{most_recent_transition_alias}.to_state IN (?) OR " \
-              "#{most_recent_transition_alias}.to_state IS NULL"
+            in_states.or(to_state_column.eq(nil))
           else
-            "#{most_recent_transition_alias}.to_state IN (?) AND " \
-              "#{most_recent_transition_alias}.to_state IS NOT NULL"
+            in_states.and(to_state_column.not_eq(nil))
           end
         end
 
         def most_recent_transition_join
-          "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias} " \
-            "ON #{model.table_name}.#{model_primary_key} = " \
-            "#{most_recent_transition_alias}.#{model_foreign_key} " \
-            "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
+          transition_table = transition_class.arel_table
+          aliased_table = transition_table.alias(most_recent_transition_alias)
+
+          join_condition = model.arel_table[model_primary_key].
+            eq(aliased_table[model_foreign_key]).
+            and(aliased_table[:most_recent].eq(true))
+
+          model.arel_table.
+            join(aliased_table, Arel::Nodes::OuterJoin).
+            on(join_condition).
+            join_sources
         end
 
         private
@@ -150,10 +161,6 @@ module Statesman
         def most_recent_transition_alias
           @most_recent_transition_alias ||
             "most_recent_#{transition_name.to_s.singularize}"
-        end
-
-        def db_true
-          model.connection.quote(true)
         end
       end
     end
