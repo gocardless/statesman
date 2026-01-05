@@ -14,7 +14,6 @@ end
 
 group :development, :test do
   gem "ammeter", "~> 1.1"
-  gem "bundler", "~> 2"
   gem "gc_ruboconfig", "~> 5.0.0"
   gem "mysql2", ">= 0.4", "< 0.6"
   gem "pg", ">= 0.18", "<= 1.7"
