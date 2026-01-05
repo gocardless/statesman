@@ -31,6 +31,9 @@ jobs:
           - "7.2"
           - "8.0"
           - "main"
+        exclude:
+          - ruby-version: "3.2"
+            rails-version: "main"
     runs-on: ubuntu-latest
     env:
       RAILS_VERSION: ${{ matrix.rails-version }}
@@ -56,6 +59,9 @@ jobs:
           - "8.0"
           - "main"
         postgres-version: ["14", "15", "16", "17"]
+        exclude:
+          - ruby-version: "3.2"
+            rails-version: "main"
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -97,6 +103,9 @@ jobs:
           - "8.0"
           - "main"
         mysql-version: ["8.0", "8.4", "9.4"]
+        exclude:
+          - ruby-version: "3.2"
+            rails-version: "main"
 
     runs-on: ubuntu-latest
     services:
