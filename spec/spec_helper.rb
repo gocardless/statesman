@@ -28,7 +28,7 @@ RSpec.configure do |config|
   end
 
   if config.exclusion_filter[:active_record]
-    puts "Skipping ActiveRecord tests"
+    warn "Skipping ActiveRecord tests"
   else
     current_env = ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
 
@@ -57,7 +57,7 @@ RSpec.configure do |config|
     ActiveRecord::Base.establish_connection(:primary)
 
     db_adapter = ActiveRecord::Base.connection.adapter_name
-    puts "Running with database adapter '#{db_adapter}'"
+    warn "Running with database adapter '#{db_adapter}'"
 
     # Silence migration output
     ActiveRecord::Migration.verbose = false
