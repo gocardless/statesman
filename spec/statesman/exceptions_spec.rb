@@ -92,7 +92,7 @@ describe "Exceptions" do
   describe "UnserializedMetadataError" do
     subject(:error) { Statesman::UnserializedMetadataError.new("foo") }
 
-    its(:message) { is_expected.to match(/foo#metadata is not serialized/) }
+    its(:message) { is_expected.to include("foo#metadata is not serialized") }
 
     its "string matches its message" do
       expect(error.to_s).to eq(error.message)
@@ -102,7 +102,7 @@ describe "Exceptions" do
   describe "IncompatibleSerializationError" do
     subject(:error) { Statesman::IncompatibleSerializationError.new("foo") }
 
-    its(:message) { is_expected.to match(/foo#metadata column type cannot be json/) }
+    its(:message) { is_expected.to include("foo#metadata column type cannot be json") }
 
     its "string matches its message" do
       expect(error.to_s).to eq(error.message)
