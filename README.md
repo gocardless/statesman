@@ -539,6 +539,16 @@ Raised if:
 
 - A guard callback between `from` and `to` state returned a falsey value.
 
+The model object that failed to transition is available via `object`:
+
+```ruby
+begin
+  my_model.transition_to!(:some_state)
+rescue Statesman::GuardFailedError => e
+  logger.error("Guard failed for #{e.object.class}##{e.object.id}: #{e.message}")
+end
+```
+
 #### TransitionFailedError
 
 Raised if:

@@ -966,7 +966,7 @@ describe Statesman::Machine do
             expect { instance.transition_to!(:y) }.
               to raise_error(
                 an_instance_of(Statesman::GuardFailedError).
-                and(having_attributes(from: "x", to: ["y"])),
+                and(having_attributes(from: "x", to: ["y"], object: my_model)),
               )
           end
         end

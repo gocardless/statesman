@@ -10,15 +10,27 @@ describe Statesman::Guard do
     subject(:call) { guard.call }
 
     context "success" do
-      let(:callback) { -> { true } }
+      let(:callback) { ->(*) { true } }
 
       specify { expect { call }.to_not raise_error }
     end
 
     context "error" do
-      let(:callback) { -> { false } }
+      let(:callback) { ->(*) { false } }
 
       specify { expect { call }.to raise_error(Statesman::GuardFailedError) }
+
+      context "when called with an object" do
+        subject(:call) { guard.call(object) }
+
+        let(:object) { Object.new }
+
+        specify do
+          expect { call }.to raise_error(
+            an_instance_of(Statesman::GuardFailedError).and(having_attributes(object: object)),
+          )
+        end
+      end
     end
   end
 end

@@ -84,8 +84,18 @@ describe "Exceptions" do
       is_expected.to eq([callback.source_location.join(":")])
     end
 
+    its(:object) { is_expected.to be_nil }
+
     its "string matches its message" do
       expect(error.to_s).to eq(error.message)
+    end
+
+    context "when an object is passed" do
+      subject(:error) { Statesman::GuardFailedError.new("from", "to", callback, object) }
+
+      let(:object) { Object.new }
+
+      its(:object) { is_expected.to eq(object) }
     end
   end
 

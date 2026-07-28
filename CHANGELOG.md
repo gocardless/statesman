@@ -5,6 +5,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v13.2.0 29th July 2026
+
+### Added
+
+- Expose the transitioning object on `GuardFailedError` via `#object` [#566](https://github.com/gocardless/statesman/pull/566)
+
 ## v13.1.0 9th October 2025
 
 ### Added
