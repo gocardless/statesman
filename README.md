@@ -617,6 +617,63 @@ Model.in_state(:state_1).or(
 )
 ```
 
+### Caching the current state
+
+If you find yourself frequently needing the current state without wanting to
+join or query the transitions table,
+`Statesman::Adapters::ConfigureCachedCurrentState` can maintain a
+denormalised column on the parent model for you:
+
+```ruby
+class MyModel < ActiveRecord::Base
+  extend Statesman::Adapters::TypeSafeActiveRecordQueries
+  include Statesman::Adapters::ConfigureCachedCurrentState
+
+  configure_state_machine transition_class: MyModelTransition,
+                          initial_state: :initial
+  configure_cached_current_state
+end
+```
+
+This sets the column (`cached_current_state` by default) to the initial state
+when a record is created — unless it's already been explicitly set (e.g. a
+test factory building a record straight into a given state), in which case
+that value is left alone — and updates it via `update_columns` whenever
+`transition_to!` successfully persists a new `most_recent` transition.
+Including the module by itself does nothing — the write is only wired up once
+`configure_cached_current_state` is called.
+
+The write happens inside the `ActiveRecord` storage adapter itself, right
+after a transition is persisted as the new `most_recent` row, rather than via
+an ActiveRecord callback on `transition_class`. That single code path is
+shared by every `Machine` subclass and by every adapter instance for a model,
+so it fires reliably even under Statesman's `mysql_gaplock_protection` config
+— where the `most_recent` flip happens via a raw SQL `UPDATE` that bypasses
+ActiveRecord callbacks entirely.
+
+One consequence: a transition row created directly on `transition_class`,
+bypassing the machine (e.g. `parent.transitions.create!(...)` in a test or
+backfill), does not update the cache — only real transitions performed
+through `transition_to!` do.
+
+Two further options are available:
+
+- `column:` — use a column name other than `cached_current_state`.
+- `touch_updated_at:` — also bump `updated_at` on the parent when the cached
+  column changes (defaults to `false`).
+
+Because the write happens in the shared adapter code rather than against a
+specific `Machine` subclass, this also works for models driven by several
+different machine classes chosen dynamically (e.g. per scheme). It always
+runs before any of a machine's own `after_transition` callbacks, since it
+happens as part of persisting the transition, before Statesman invokes its
+own callbacks.
+
+`configure_cached_current_state` also defines `Model.cached_state_column_name`,
+returning the configured column, for generic tooling that needs to introspect
+or repair the cached column (e.g. a cache-repair rake task working across
+several models).
+
 ## Frequently Asked Questions
 
 ### Storing the state on the model object

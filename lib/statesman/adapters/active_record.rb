@@ -108,12 +108,38 @@ module Statesman
             transition.save!
           end
 
+          maintain_cached_current_state(transition)
+
           @last_transition = transition
           @observer.execute(:after, from, to, transition)
           add_after_commit_callback(from, to, transition)
         end
 
         transition
+      end
+
+      # Writes the cached current state column configured via
+      # Statesman::Adapters::ConfigureCachedCurrentState#configure_cached_current_state,
+      # if the parent model opted in. Done here, rather than via an ActiveRecord
+      # callback on transition_class, so it fires reliably even under
+      # mysql_gaplock_protection - where most_recent is flipped to true via a raw SQL
+      # UPDATE that bypasses ActiveRecord callbacks entirely (see above). This method
+      # always runs after most_recent has been set on `transition` (in both branches
+      # above), and before the machine's own after_transition callbacks are invoked.
+      def maintain_cached_current_state(transition)
+        model_class = parent_model.class
+        return unless model_class.respond_to?(:cached_state_column_name)
+
+        column = model_class.cached_state_column_name
+        unless model_class.column_names.include?(column.to_s)
+          raise ArgumentError,
+                "cache_current_state_column: #{column.inspect} is not a column " \
+                "on #{model_class.name}"
+        end
+
+        attributes = { column => transition.to_state }
+        attributes[:updated_at] = Time.current if model_class.cached_current_state_touch_updated_at?
+        parent_model.update_columns(attributes)
       end
 
       def default_transition_attributes(from, to, metadata)

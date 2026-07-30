@@ -16,6 +16,8 @@ module Statesman
              "statesman/adapters/active_record_queries"
     autoload :TypeSafeActiveRecordQueries,
              "statesman/adapters/type_safe_active_record_queries"
+    autoload :ConfigureCachedCurrentState,
+             "statesman/adapters/configure_cached_current_state"
   end
   require "statesman/railtie" if defined?(::Rails::Railtie)
 

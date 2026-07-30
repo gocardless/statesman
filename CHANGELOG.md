@@ -5,6 +5,13 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- `Statesman::Adapters::ConfigureCachedCurrentState`, a model mixin to maintain a denormalised current-state column on the parent model without a separate join or query, via `configure_cached_current_state`. The write happens inside the `ActiveRecord` storage adapter itself (shared by every `Machine` subclass and every adapter instance for a model), so it also works for models driven by several different machine classes chosen dynamically (e.g. per scheme), and fires reliably under `mysql_gaplock_protection`. Exposes the configured column via `Model.cached_state_column_name` for generic tooling. Only updates via real `transition_to!` calls - a transition row created directly, bypassing the machine, does not update the cache. The initial-state seed on create only applies if the column is nil, so a record explicitly created into a given state (e.g. a test factory) keeps that value.
+- `configure_state_machine` now exposes `transition_class` and `initial_state` as class readers.
+
 ## v13.2.0 29th July 2026
 
 ### Added

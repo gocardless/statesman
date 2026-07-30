@@ -61,6 +61,7 @@ class CreateMyActiveRecordModelMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_models do |t|
       t.string :current_state
+      t.string :cached_current_state
       t.timestamps null: false
     end
   end
