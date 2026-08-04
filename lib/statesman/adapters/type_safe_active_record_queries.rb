@@ -15,6 +15,9 @@ module Statesman
             transition_name: try(:transition_name),
           ),
         )
+
+        define_singleton_method(:initial_state) { initial_state }
+        define_singleton_method(:transition_class) { transition_class }
       end
     end
   end

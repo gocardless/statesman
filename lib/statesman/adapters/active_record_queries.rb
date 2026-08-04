@@ -33,6 +33,18 @@ module Statesman
         ClassMethods.new(**args)
       end
 
+      # Finds the has_many association on model that targets transition_class -
+      # matching by klass rather than by name, since callers (e.g.
+      # ConfigureCachedCurrentState) may not know what the association was named.
+      def self.transition_reflection_for(model, transition_class)
+        model.reflect_on_all_associations(:has_many).find do |reflection|
+          reflection.klass == transition_class
+        end || raise(
+          MissingTransitionAssociation,
+          "Could not find has_many association between #{model} and #{transition_class}.",
+        )
+      end
+
       class ClassMethods < Module
         def initialize(**args)
           @args = args
@@ -41,7 +53,13 @@ module Statesman
         def included(base)
           ensure_inheritance(base) if base.respond_to?(:subclasses) && base.subclasses.any?
 
-          query_builder = QueryBuilder.new(base, **@args)
+          query_builder = QueryBuilder.new(
+            base,
+            transition_class: @args[:transition_class],
+            initial_state: @args[:initial_state],
+            most_recent_transition_alias: @args[:most_recent_transition_alias],
+            transition_name: @args[:transition_name],
+          )
 
           base.define_singleton_method(:most_recent_transition_join) do
             query_builder.most_recent_transition_join
@@ -126,13 +144,7 @@ module Statesman
         end
 
         def transition_reflection
-          model.reflect_on_all_associations(:has_many).each do |value|
-            return value if value.klass == transition_class
-          end
-
-          raise MissingTransitionAssociation,
-                "Could not find has_many association between #{self.class} " \
-                "and #{transition_class}."
+          ActiveRecordQueries.transition_reflection_for(model, transition_class)
         end
 
         def model_primary_key

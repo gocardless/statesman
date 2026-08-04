@@ -203,4 +203,16 @@ describe Statesman::Adapters::TypeSafeActiveRecordQueries, :active_record do
   context "using configuration method" do
     it_behaves_like "testing methods"
   end
+
+  context "transition_class" do
+    it "is exposed as a class method" do
+      MyActiveRecordModel.send(:extend, described_class)
+      MyActiveRecordModel.configure_state_machine(
+        transition_class: MyActiveRecordModelTransition,
+        initial_state: :initial,
+      )
+
+      expect(MyActiveRecordModel.transition_class).to eq(MyActiveRecordModelTransition)
+    end
+  end
 end
