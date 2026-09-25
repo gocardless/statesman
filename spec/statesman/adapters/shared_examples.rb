@@ -11,6 +11,18 @@
 #   history:          Returns the full transition history
 #   last:             Returns the latest transition history item
 #
+# Bulk transitions add an eighth, class-level method, `bulk_create`, not
+# covered by the shared example below. Every adapter instance above is bound
+# to a single parent_model (see #initialize), so writing many parents'
+# transitions in one call can't be an instance method — each adapter defines
+# its own `self.bulk_create(...)` instead, returning a
+# Statesman::BulkTransition::Result. Its parameters are deliberately NOT
+# required to match across adapters: Adapters::Memory#bulk_create loops
+# calling each object's own already-instantiated adapter's #create (there's no
+# shared store to write against directly), while Adapters::ActiveRecord's
+# batched write bypasses per-object adapters entirely and writes straight
+# against the transition table.
+#
 # NOTE This line cannot reasonably be shortened.
 shared_examples_for "an adapter" do |adapter_class, transition_class, options = {}|
   let(:observer) { double(Statesman::Machine, execute: nil) }
