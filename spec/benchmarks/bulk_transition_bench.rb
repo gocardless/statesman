@@ -49,7 +49,7 @@ require "sqlite3" if DATABASE_URL.start_with?("sqlite")
 # configure primary + secondary pointing at the same DB, exactly like spec_helper.
 require "active_record/database_configurations"
 url_config = ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.
-             new(DATABASE_URL).to_hash.merge(sslmode: "disable")
+  new(DATABASE_URL).to_hash.merge(sslmode: "disable")
 env = ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
 ActiveRecord::Base.configurations = { env => { primary: url_config, secondary: url_config } }
 ActiveRecord::Base.establish_connection(:primary)
@@ -80,28 +80,26 @@ FK         = "my_active_record_model_id"
 # One subscriber does both jobs. It fires once per executed statement, so the
 # count is exact; sleeping here adds latency to the enclosing operation's
 # wall-clock. We only bill "real" statements — skip schema introspection and the
-# ActiveRecord query cache — and we only bill while $measuring is true, so setup
-# and teardown stay fast.
-$measuring = false
-$queries = 0
-$latency = 0.0
+# ActiveRecord query cache — and we only bill while State.measuring is true, so
+# setup and teardown stay fast.
+State = Struct.new(:measuring, :queries, :latency).new(false, 0, 0.0)
 
 ActiveSupport::Notifications.subscribe("sql.active_record") do |*args|
-  next unless $measuring
+  next unless State.measuring
 
   payload = args.last
   next if payload[:name] == "SCHEMA" || payload[:cached]
 
-  $queries += 1
-  sleep($latency) if $latency.positive?
+  State.queries += 1
+  sleep(State.latency) if State.latency.positive?
 end
 
-def measure
-  $queries = 0
-  $measuring = true
-  wall = Benchmark.realtime { yield }
-  $measuring = false
-  [wall, $queries]
+def measure(&block)
+  State.queries = 0
+  State.measuring = true
+  wall = Benchmark.realtime(&block)
+  State.measuring = false
+  [wall, State.queries]
 end
 
 # --- Schema + fixture setup (not measured) --------------------------------------
@@ -145,8 +143,8 @@ end
 def insert_all_chunk(chunk, now)
   # Phase A: read current most_recent per parent (the from_state + sort-key basis).
   existing = TRANSITION.where(FK => chunk, most_recent: true).
-             pluck(FK, :to_state, :sort_key).
-             to_h { |fk, to_state, sort_key| [fk, [to_state, sort_key]] }
+    pluck(FK, :to_state, :sort_key).
+    to_h { |fk, to_state, sort_key| [fk, [to_state, sort_key]] }
 
   rows = chunk.map do |parent_id|
     from_state, prev_sort_key = existing[parent_id] || ["initial", 0]
@@ -195,18 +193,16 @@ ARMS = {
 ONLY_ARMS = ENV["ONLY_ARMS"]&.split(",")&.map(&:strip)
 
 # --- Run the sweep --------------------------------------------------------------
-puts "adapter=#{ActiveRecord::Base.connection.adapter_name} " \
-     "sizes=#{SIZES.inspect} latencies_ms=#{LATENCIES.inspect} batch_size=#{BATCH_SIZE}"
-puts
-printf("%-8s %-10s %-26s %10s %10s %9s\n",
-       "N", "lat(ms)", "arm", "wall(s)", "queries", "vs loop")
+
+printf("%<n>-8s %<lat>-10s %<arm>-26s %<wall>10s %<queries>10s %<speedup>9s\n",
+       n: "N", lat: "lat(ms)", arm: "arm", wall: "wall(s)", queries: "queries", speedup: "vs loop")
 
 reset_schema
 
 unless ENV.key?("SKIP_MAIN")
   SIZES.each do |n|
     LATENCIES.each do |latency_ms|
-      $latency = latency_ms / 1000.0
+      State.latency = latency_ms / 1000.0
       baseline = nil
 
       ARMS.each do |name, arm|
@@ -219,31 +215,29 @@ unless ENV.key?("SKIP_MAIN")
         baseline ||= wall
         speedup = baseline / wall
 
-        printf("%-8d %-10s %-26s %10.3f %10d %8.1fx\n",
-               n, latency_ms, name, wall, queries, speedup)
+        printf("%<n>-8d %<lat>-10s %<arm>-26s %<wall>10.3f %<queries>10d %<speedup>8.1fx\n",
+               n: n, lat: latency_ms, arm: name, wall: wall, queries: queries, speedup: speedup)
       end
-      puts
     end
   end
 end
 
 # --- Batch-size sweep -----------------------------------------------------------
 if ENV.key?("BATCH_SWEEP")
-  puts "batch-size sweep — insert_all only, N=#{BATCH_SWEEP_N}, batch_sizes=#{BATCH_SIZES.inspect}"
-  puts
-  printf("%-8s %-10s %-12s %10s %10s\n", "N", "lat(ms)", "batch", "wall(s)", "queries")
+
+  printf("%<n>-8s %<lat>-10s %<batch>-12s %<wall>10s %<queries>10s\n",
+         n: "N", lat: "lat(ms)", batch: "batch", wall: "wall(s)", queries: "queries")
 
   LATENCIES.each do |latency_ms|
-    $latency = latency_ms / 1000.0
+    State.latency = latency_ms / 1000.0
     BATCH_SIZES.each do |bs|
       clear_data
       ids = seed_parents(BATCH_SWEEP_N)
 
       wall, queries = measure { arm_insert_all(ids, bs) }
 
-      printf("%-8d %-10s %-12d %10.3f %10d\n",
-             BATCH_SWEEP_N, latency_ms, bs, wall, queries)
+      printf("%<n>-8d %<lat>-10s %<batch>-12d %<wall>10.3f %<queries>10d\n",
+             n: BATCH_SWEEP_N, lat: latency_ms, batch: bs, wall: wall, queries: queries)
     end
-    puts
   end
 end
