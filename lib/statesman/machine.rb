@@ -4,6 +4,7 @@ require_relative "version"
 require_relative "exceptions"
 require_relative "guard"
 require_relative "callback"
+require_relative "bulk_transition"
 require_relative "adapters/memory_transition"
 
 module Statesman
@@ -163,6 +164,15 @@ module Statesman
         end
       end
 
+      # Transition many objects to the same state in one call. See
+      # Statesman::BulkTransition for the orchestration; this is a thin entry point.
+      def bulk_transition_to!(objects, new_state, metadata: {}, on_failure: :collect,
+                              batch_size: 100, skip_guards: false, skip_callbacks: false)
+        BulkTransition.new(self, objects, new_state, metadata: metadata, on_failure: on_failure,
+                                                     batch_size: batch_size, skip_guards: skip_guards,
+                                                     skip_callbacks: skip_callbacks).call
+      end
+
       private
 
       def define_state_constant(state_name)
@@ -245,6 +255,8 @@ module Statesman
         Array(input).map { |item| to_s_or_nil(item) }
       end
     end
+
+    attr_reader :storage_adapter
 
     def initialize(object,
                    options = {
