@@ -21,7 +21,52 @@ jobs:
           bundler-cache: true
       - run: bundle exec rubocop --extra-details --display-style-guide --parallel --force-exclusion
 
+  bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ["3.3", "3.4", "4.0"]
+        rails-version:
+          - "7.2"
+          - "8.0"
+          - "8.1"
+          - "main"
+    runs-on: ubuntu-latest
+    env:
+      RAILS_VERSION: ${{ matrix.rails-version }}
+      BUNDLE_PATH: vendor/bundle
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "${{ matrix.ruby-version }}"
+      - name: Resolve gems
+        run: bundle lock
+      - name: Restore gems
+        id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ matrix.ruby-version }}-${{ matrix.rails-version }}-${{ hashFiles('Gemfile.lock') }}
+          restore-keys: bundle-${{ runner.os }}-${{ matrix.ruby-version }}-${{ matrix.rails-version }}-
+      - name: Install gems
+        if: steps.cache.outputs.cache-hit != 'true'
+        # The lockfile is stored inside the cached path so downstream jobs, which can't
+        # compute this key, can restore the most recent entry and use the same gems.
+        run: |
+          bundle install --jobs 4
+          bundle clean
+          cp Gemfile.lock vendor/bundle/Gemfile.lock
+      - name: Save gems
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: vendor/bundle
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
   sqlite:
+    needs: bundle
     strategy:
       fail-fast: false
       matrix:
@@ -37,18 +82,33 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RAILS_VERSION: ${{ matrix.rails-version }}
+      BUNDLE_PATH: vendor/bundle
     steps:
       - uses: actions/checkout@v5
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
           ruby-version: "${{ matrix.ruby-version }}"
+      # Restore-only: the bundle job owns saving, so matrix jobs never race to write
+      # the same cache entry. The most recent entry for this prefix is the one the
+      # bundle job just resolved.
+      - name: Restore gems
+        uses: actions/cache/restore@v6
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ matrix.ruby-version }}-${{ matrix.rails-version }}-
+          restore-keys: bundle-${{ runner.os }}-${{ matrix.ruby-version }}-${{ matrix.rails-version }}-
+          fail-on-cache-miss: true
+      - name: Install gems
+        run: |
+          cp vendor/bundle/Gemfile.lock Gemfile.lock
+          bundle install --local
       - name: Run specs
         run: |
           bundle exec rspec --profile --format progress --format RSpec::Github::Formatter
 
   postgres:
+    needs: bundle
     strategy:
       fail-fast: false
       matrix:
@@ -63,36 +123,37 @@ jobs:
           - ruby-version: "3.2"
             rails-version: "main"
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:${{ matrix.postgres-version }}
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: statesman_test
-          POSTGRES_PASSWORD: statesman
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:statesman@localhost/statesman_test
-      DATABASE_DEPENDENCY_PORT: "5432"
+      DB: postgres
+      DB_IMAGE: postgres:${{ matrix.postgres-version }}
       RAILS_VERSION: ${{ matrix.rails-version }}
+      BUNDLE_PATH: vendor/bundle
     steps:
       - uses: actions/checkout@v5
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
           ruby-version: "${{ matrix.ruby-version }}"
+      # Restore-only: the bundle job owns saving, so matrix jobs never race to write
+      # the same cache entry. The most recent entry for this prefix is the one the
+      # bundle job just resolved.
+      - name: Restore gems
+        uses: actions/cache/restore@v6
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ matrix.ruby-version }}-${{ matrix.rails-version }}-
+          restore-keys: bundle-${{ runner.os }}-${{ matrix.ruby-version }}-${{ matrix.rails-version }}-
+          fail-on-cache-miss: true
+      - name: Install gems
+        run: |
+          cp vendor/bundle/Gemfile.lock Gemfile.lock
+          bundle install --local
       - name: Run specs
         run: |
           bundle exec rspec --profile --format progress --format RSpec::Github::Formatter
 
   mysql:
+    needs: bundle
     strategy:
       fail-fast: false
       matrix:
@@ -108,32 +169,31 @@ jobs:
             rails-version: "main"
 
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:${{ matrix.mysql-version }}
-        env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_USER: foobar
-          MYSQL_PASSWORD: password
-          MYSQL_DATABASE: statesman_test
-        ports:
-          - "3306:3306"
-        options: >-
-          --health-cmd "mysqladmin ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
-      DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
-      DATABASE_DEPENDENCY_PORT: "3306"
+      DB: mysql
+      DB_IMAGE: mysql:${{ matrix.mysql-version }}
       RAILS_VERSION: ${{ matrix.rails-version }}
+      BUNDLE_PATH: vendor/bundle
     steps:
       - uses: actions/checkout@v5
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
           ruby-version: "${{ matrix.ruby-version }}"
+      # Restore-only: the bundle job owns saving, so matrix jobs never race to write
+      # the same cache entry. The most recent entry for this prefix is the one the
+      # bundle job just resolved.
+      - name: Restore gems
+        uses: actions/cache/restore@v6
+        with:
+          path: vendor/bundle
+          key: bundle-${{ runner.os }}-${{ matrix.ruby-version }}-${{ matrix.rails-version }}-
+          restore-keys: bundle-${{ runner.os }}-${{ matrix.ruby-version }}-${{ matrix.rails-version }}-
+          fail-on-cache-miss: true
+      - name: Install gems
+        run: |
+          cp vendor/bundle/Gemfile.lock Gemfile.lock
+          bundle install --local
       - name: Run specs
         run: |
           bundle exec rspec --profile --format progress --format RSpec::Github::Formatter

@@ -32,11 +32,18 @@ RSpec.configure do |config|
   else
     current_env = ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
 
+    database_url = ENV.fetch("DATABASE_URL") do
+      if (db = ENV["DB"].presence)
+        require "support/database_container"
+        DatabaseContainer.start(db, image: ENV["DB_IMAGE"].presence)
+      end
+    end
+
     # We have to parse this to a hash since ActiveRecord::Base.configurations
     # will only consider a single URL config.
-    url_config = if ENV["DATABASE_URL"]
+    url_config = if database_url
                    ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.
-                     new(ENV["DATABASE_URL"]).to_hash.merge({ sslmode: "disable" })
+                     new(database_url).to_hash.merge({ sslmode: "disable" })
                  end
 
     db_config = {
