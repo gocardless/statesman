@@ -44,6 +44,12 @@ class MyActiveRecordModel < ActiveRecord::Base
   def metadata
     super || {}
   end
+
+  # Needed by the backfill_most_recent rake task, which looks the transition class up
+  # from the parent model.
+  def self.transition_class
+    MyActiveRecordModelTransition
+  end
 end
 
 class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base

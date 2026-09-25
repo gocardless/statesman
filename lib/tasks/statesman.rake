@@ -10,7 +10,7 @@ namespace :statesman do
     parent_class = parent_model_name.constantize
     transition_class = parent_class.transition_class
     parent_fk = "#{parent_model_name.demodulize.underscore}_id"
-    updated_at = if ActiveRecord::Base.default_timezone == :utc
+    updated_at = if ActiveRecord.default_timezone == :utc
                    Time.now.utc
                  else
                    Time.now
