@@ -15,9 +15,7 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     Statesman.configure do
       # Rubocop requires described_class to be used, but this block
       # is instance_eval'd and described_class won't be defined
-      # rubocop:disable RSpec/DescribedClass
-      storage_adapter(Statesman::Adapters::ActiveRecord)
-      # rubocop:enable RSpec/DescribedClass
+      storage_adapter(Statesman::Adapters::ActiveRecord) # rubocop:disable RSpec/DescribedClass
     end
   end
 
