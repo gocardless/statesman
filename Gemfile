@@ -12,6 +12,9 @@ else
   gem "rails", "~> 8.0"
 end
 
+# ActiveSupport 7.2 passes `quirks_mode:` to JSON, which json 3 no longer accepts.
+gem "json", "< 3" if ENV['RAILS_VERSION'] == '7.2'
+
 group :development, :test do
   gem "ammeter", "~> 1.1"
   gem "gc_ruboconfig", "~> 6.0.0"
