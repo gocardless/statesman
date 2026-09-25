@@ -2,9 +2,10 @@
 
 # WU0 spike — validate the batched-write win before building anything.
 #
-# See docs/design/bulk-transitions-plan.md (WU0). This is a throwaway benchmark,
-# not production code: it compares four ways of transitioning N parents from
-# :initial to :succeeded and reports wall-clock + DB round trips for each.
+# This is a throwaway benchmark, not production code: it compares four ways of
+# transitioning N parents from :initial to :succeeded and reports wall-clock + DB
+# round trips for each, to check whether the batched-write approach is actually
+# worth the added complexity before any of it gets built.
 #
 #   (a) loop of transition_to!            — one transaction per object (today's default)
 #   (b) loop of transition_to! in one txn — same writes, a single surrounding transaction
