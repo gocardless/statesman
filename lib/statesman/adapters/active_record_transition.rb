@@ -7,13 +7,23 @@ module Statesman
     module ActiveRecordTransition
       DEFAULT_UPDATED_TIMESTAMP_COLUMN = :updated_at
 
+      class MetadataSerializer
+        def self.dump(metadata)
+          JSON.generate(metadata)
+        end
+
+        def self.load(metadata)
+          JSON.parse(metadata) unless metadata.nil? || metadata.empty?
+        end
+      end
+
       extend ActiveSupport::Concern
 
       included do
         if ::ActiveRecord.gem_version >= Gem::Version.new("7.1")
-          serialize :metadata, coder: JSON
+          serialize :metadata, coder: MetadataSerializer
         else
-          serialize :metadata, JSON
+          serialize :metadata, MetadataSerializer
         end
 
         class_attribute :updated_timestamp_column

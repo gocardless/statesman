@@ -8,9 +8,13 @@ describe Statesman::Adapters::ActiveRecordTransition do
   describe "including behaviour" do
     it "calls Class.serialize" do
       if Gem::Version.new(ActiveRecord::VERSION::STRING) >= Gem::Version.new("7.1")
-        expect(transition_class).to receive(:serialize).with(:metadata, coder: JSON).once
+        expect(transition_class).to receive(:serialize).with(
+          :metadata, coder: described_class::MetadataSerializer
+        ).once
       else
-        expect(transition_class).to receive(:serialize).with(:metadata, JSON).once
+        expect(transition_class).to receive(:serialize).with(
+          :metadata, described_class::MetadataSerializer
+        ).once
       end
       transition_class.send(:include, described_class)
     end
