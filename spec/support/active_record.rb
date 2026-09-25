@@ -51,9 +51,11 @@ class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base
 
   belongs_to :my_active_record_model
   if ::ActiveRecord.gem_version >= Gem::Version.new("7.1")
-    serialize :metadata, coder: JSON
+    serialize :metadata,
+              coder: Statesman::Adapters::ActiveRecordTransition::MetadataSerializer
   else
-    serialize :metadata, JSON
+    serialize :metadata,
+              Statesman::Adapters::ActiveRecordTransition::MetadataSerializer
   end
 end
 
