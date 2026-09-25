@@ -123,23 +123,9 @@ jobs:
           - ruby-version: "3.2"
             rails-version: "main"
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:${{ matrix.postgres-version }}
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: statesman_test
-          POSTGRES_PASSWORD: statesman
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:statesman@localhost/statesman_test
-      DATABASE_DEPENDENCY_PORT: "5432"
+      DB: postgres
+      DB_IMAGE: postgres:${{ matrix.postgres-version }}
       RAILS_VERSION: ${{ matrix.rails-version }}
       BUNDLE_PATH: vendor/bundle
     steps:
@@ -183,24 +169,9 @@ jobs:
             rails-version: "main"
 
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:${{ matrix.mysql-version }}
-        env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_USER: foobar
-          MYSQL_PASSWORD: password
-          MYSQL_DATABASE: statesman_test
-        ports:
-          - "3306:3306"
-        options: >-
-          --health-cmd "mysqladmin ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
-      DATABASE_URL: mysql2://foobar:password@127.0.0.1/statesman_test
-      DATABASE_DEPENDENCY_PORT: "3306"
+      DB: mysql
+      DB_IMAGE: mysql:${{ matrix.mysql-version }}
       RAILS_VERSION: ${{ matrix.rails-version }}
       BUNDLE_PATH: vendor/bundle
     steps:
