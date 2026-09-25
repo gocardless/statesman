@@ -54,6 +54,17 @@ class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base
   serialize :metadata, coder: JSON
 end
 
+# The test table's metadata column is text, not json/jsonb, so it must still be
+# serialized manually here (ActiveRecordTransition does this as part of including it).
+class MyActiveRecordModelTransitionWithAttributes < ActiveRecord::Base
+  self.table_name = "my_active_record_model_transitions"
+
+  include Statesman::Adapters::ActiveRecordTransitionAttributes
+
+  belongs_to :my_active_record_model
+  serialize :metadata, coder: JSON
+end
+
 class CreateMyActiveRecordModelMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_models do |t|

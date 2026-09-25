@@ -38,6 +38,15 @@ module Statesman
       end
     end
 
+    # json/jsonb columns handle their own encoding, and Rails refuses to serialize them.
+    def transition_module_name
+      if metadata_column_type == :text
+        "Statesman::Adapters::ActiveRecordTransition"
+      else
+        "Statesman::Adapters::ActiveRecordTransitionAttributes"
+      end
+    end
+
     def index_name(index_id)
       "index_#{table_name}_#{index_id}"
     end

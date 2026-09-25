@@ -14,5 +14,18 @@ describe Statesman::Adapters::ActiveRecordTransition do
       end
       transition_class.send(:include, described_class)
     end
+
+    it "includes Statesman::Adapters::ActiveRecordTransitionAttributes" do
+      transition_class.send(:include, described_class)
+
+      expect(transition_class.ancestors).
+        to include(Statesman::Adapters::ActiveRecordTransitionAttributes)
+    end
+
+    it "defaults updated_timestamp_column to :updated_at" do
+      transition_class.send(:include, described_class)
+
+      expect(transition_class.updated_timestamp_column).to eq(:updated_at)
+    end
   end
 end

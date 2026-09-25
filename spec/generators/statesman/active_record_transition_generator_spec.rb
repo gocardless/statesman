@@ -59,6 +59,25 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     it { is_expected.to contain(/class BaconTransition/) }
   end
 
+  describe "includes the transition module matching the metadata column" do
+    subject { file("app/models/bacon_transition.rb") }
+
+    context "with a json metadata column" do
+      before { run_generator %w[Bacon BaconTransition] }
+
+      it { is_expected.to contain("include Statesman::Adapters::ActiveRecordTransitionAttributes") }
+    end
+
+    context "with a text metadata column" do
+      before do
+        allow(ActiveRecord::Base.connection).to receive(:supports_json?).and_return(false)
+        run_generator %w[Bacon BaconTransition]
+      end
+
+      it { is_expected.to contain(/include Statesman::Adapters::ActiveRecordTransition$/) }
+    end
+  end
+
   describe "it doesn't create any double-spacing" do
     subject { file("app/models/yummy/bacon_transition.rb") }
 

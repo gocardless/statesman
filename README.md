@@ -185,9 +185,11 @@ Generate the transition model:
 rails g statesman:active_record_transition Order OrderTransition
 ```
 
-Your transition class should
-`include Statesman::Adapters::ActiveRecordTransition` if you're using the
-ActiveRecord adapter.
+If you're using the ActiveRecord adapter, your transition class must include
+either `Statesman::Adapters::ActiveRecordTransition` (for a text `metadata`
+column) or `Statesman::Adapters::ActiveRecordTransitionAttributes` (for a `json`
+or `jsonb` column). The generator picks the right one for your database. See
+[Using a JSON column](#using-a-json-column).
 
 If you're using the ActiveRecord adapter and decide not to include the default
 `updated_at` column in your transition table, you'll need to configure the
@@ -216,31 +218,28 @@ class Order < ActiveRecord::Base
 end
 ```
 
-### Using PostgreSQL JSON column
+### Using a JSON column
 
-By default, Statesman uses `serialize` to store the metadata in JSON format.
-It is also possible to use the PostgreSQL JSON column if you are using Rails 4
-or 5. To do that
+`Statesman::Adapters::ActiveRecordTransition` uses `serialize` to store the
+metadata as JSON in a text column. If your database supports it, you can use a
+native `json` or `jsonb` column instead:
 
-- Change `metadata` column type in the transition model migration to `json` or `jsonb`
+- Use `json` or `jsonb` for the `metadata` column in the transition model migration
 
   ```ruby
-  # Before
-  t.text :metadata, default: "{}"
-  # After (Rails 4)
-  t.json :metadata, default: "{}"
-  # After (Rails 5)
-  t.json :metadata, default: {}
+  t.jsonb :metadata, default: {}
   ```
 
-* Remove the `include Statesman::Adapters::ActiveRecordTransition` statement from
-  your transition model, which would've instructed ActiveRecord to serialize the
-  metadata.
-* The module that you just removed enables customizing the updatated timestamp column
-  as described above. Having removed it, if you want to customise your transition class's
-  "updated timestamp column", you should define a `.updated_timestamp_column` method on
-  your class and return the name of the column as a symbol, or `nil` if you don't want
-  to record an updated timestamp on transitions.
+- Include `Statesman::Adapters::ActiveRecordTransitionAttributes` in your
+  transition model instead of `Statesman::Adapters::ActiveRecordTransition`.
+  It provides the same `updated_timestamp_column` setting and `#from_state`,
+  without serializing `metadata` (Rails refuses to serialize `json` columns).
+
+  ```ruby
+  class OrderTransition < ApplicationRecord
+    include Statesman::Adapters::ActiveRecordTransitionAttributes
+  end
+  ```
 
 ## Configuration
 
@@ -512,14 +511,23 @@ Raised if:
 Raised if:
 
 - ActiveRecord is configured to not serialize the `metadata` attribute into
-  to Database column backing it. See the `Using PostgreSQL JSON column` section.
+  to Database column backing it. See the `Using a JSON column` section.
 
 #### IncompatibleSerializationError
 
 Raised if:
 
 - There is a mismatch between the column type of the `metadata` in the
-  Database and the model. See the `Using PostgreSQL JSON column` section.
+  Database and the model. See the `Using a JSON column` section.
+
+#### MissingTransitionAttributesError
+
+Raised if:
+
+- The transition class includes neither
+  `Statesman::Adapters::ActiveRecordTransition` nor
+  `Statesman::Adapters::ActiveRecordTransitionAttributes`, so it doesn't
+  define `.updated_timestamp_column`.
 
 #### MissingTransitionAssociation
 

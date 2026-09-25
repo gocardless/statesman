@@ -91,6 +91,15 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         end.to raise_exception(Statesman::IncompatibleSerializationError)
       end
     end
+
+    context "for a transition class that doesn't respond to .updated_timestamp_column" do
+      it "raises an exception" do
+        expect do
+          described_class.new(MyActiveRecordModelTransitionWithoutInclude,
+                              MyActiveRecordModel, observer)
+        end.to raise_exception(Statesman::MissingTransitionAttributesError)
+      end
+    end
   end
 
   describe "#create" do
@@ -182,9 +191,9 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
             to(change { previous_transition.reload.updated_at })
         end
 
-        context "for a transition class without an updated timestamp column attribute" do
+        context "for a transition class that only includes ActiveRecordTransitionAttributes" do
           let!(:adapter) do
-            described_class.new(MyActiveRecordModelTransitionWithoutInclude,
+            described_class.new(MyActiveRecordModelTransitionWithAttributes,
                                 model,
                                 observer)
           end

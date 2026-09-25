@@ -11,6 +11,8 @@ module Statesman
     autoload :ActiveRecord, "statesman/adapters/active_record"
     autoload :ActiveRecordTransition,
              "statesman/adapters/active_record_transition"
+    autoload :ActiveRecordTransitionAttributes,
+             "statesman/adapters/active_record_transition_attributes"
     autoload :ActiveRecordQueries,
              "statesman/adapters/active_record_queries"
     autoload :TypeSafeActiveRecordQueries,

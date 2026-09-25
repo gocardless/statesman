@@ -20,6 +20,10 @@ module Statesman
           raise IncompatibleSerializationError, transition_class.name
         end
 
+        unless transition_class.respond_to?(:updated_timestamp_column)
+          raise MissingTransitionAttributesError, transition_class.name
+        end
+
         @transition_class = transition_class
         @transition_table = transition_class.arel_table
         @parent_model = parent_model
@@ -311,18 +315,7 @@ module Statesman
 
       # updated_column_and_timestamp should return [column_name, value]
       def updated_column_and_timestamp
-        # TODO: Once we've set expectations that transition classes should conform to
-        # the interface of Adapters::ActiveRecordTransition as a breaking change in the
-        # next major version, we can stop calling `#respond_to?` first and instead
-        # assume that there is a `.updated_timestamp_column` method we can call.
-        #
-        # At the moment, most transition classes will include the module, but not all,
-        # not least because it doesn't work with PostgreSQL JSON columns for metadata.
-        column = if transition_class.respond_to?(:updated_timestamp_column)
-                   transition_class.updated_timestamp_column
-                 else
-                   ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
-                 end
+        column = transition_class.updated_timestamp_column
 
         # No updated timestamp column, don't return anything
         return nil if column.nil?
