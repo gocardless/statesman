@@ -5,6 +5,28 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v14.0.0 25th September 2026
+
+### Breaking changes
+
+- Remove support for Rails 7.2, which is no longer supported upstream
+- ActiveRecord transition classes must now include `Statesman::Adapters::ActiveRecordTransition` or the new `Statesman::Adapters::ActiveRecordTransitionAttributes`. The adapter previously fell back to `updated_at` for classes that included neither; it now raises `Statesman::MissingTransitionAttributesError`. Classes using a `json`/`jsonb` metadata column should include `ActiveRecordTransitionAttributes`, which provides `updated_timestamp_column` and `#from_state` without serializing `metadata`
+- Remove `Statesman::Utils`, which only held Rails 4/5 version checks
+
+### Added
+
+- `Statesman::Adapters::ActiveRecordTransitionAttributes` for transition classes with a `json`/`jsonb` metadata column
+
+### Fixed
+
+- `Machine.remove_transitions` raised `NoMethodError` when ActiveSupport wasn't loaded
+- `rake statesman:backfill_most_recent` raised `NoMethodError` on all supported Rails versions (`ActiveRecord::Base.default_timezone` was removed in Rails 7.1)
+- The transition model generator included `ActiveRecordTransition` alongside a `json`/`jsonb` metadata column, which Rails refuses to serialize. It now includes `ActiveRecordTransitionAttributes` for those columns
+
+### Changed
+
+- Remove compatibility code for Rails versions older than 8.0
+
 ## v13.3.0 4th August 2026
 
 ### Added
