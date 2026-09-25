@@ -54,18 +54,12 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         allow(metadata_column).to receive_messages(sql_type: "json")
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { "metadata" => metadata_column })
-        if ActiveRecord.respond_to?(:gem_version) &&
-            ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
-          serialized_type = ActiveRecord::Type::Serialized.new(
-            "", ActiveRecord::Coders::JSON
-          )
-          expect(MyActiveRecordModelTransition).
-            to receive(:type_for_attribute).with("metadata").
-            and_return(serialized_type)
-        else
-          expect(MyActiveRecordModelTransition).
-            to receive_messages(serialized_attributes: { "metadata" => "" })
-        end
+        serialized_type = ActiveRecord::Type::Serialized.new(
+          "", ActiveRecord::Coders::JSON
+        )
+        expect(MyActiveRecordModelTransition).
+          to receive(:type_for_attribute).with("metadata").
+          and_return(serialized_type)
       end
 
       it "raises an exception" do
@@ -155,14 +149,7 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       end
 
       context "ActiveRecord::RecordNotUnique unrelated to this transition" do
-        let(:error) do
-          if ActiveRecord.respond_to?(:gem_version) &&
-              ActiveRecord.gem_version >= Gem::Version.new("4.0.0")
-            ActiveRecord::RecordNotUnique.new("unrelated")
-          else
-            ActiveRecord::RecordNotUnique.new("unrelated", nil)
-          end
-        end
+        let(:error) { ActiveRecord::RecordNotUnique.new("unrelated") }
 
         it { expect { transition }.to raise_exception(ActiveRecord::RecordNotUnique) }
       end

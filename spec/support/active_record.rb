@@ -2,12 +2,7 @@
 
 require "json"
 
-MIGRATION_CLASS = if Rails.version.split(".").map(&:to_i).first >= 5
-                    migration_version = ActiveRecord::Migration.current_version
-                    ActiveRecord::Migration[migration_version]
-                  else
-                    ActiveRecord::Migration
-                  end
+MIGRATION_CLASS = ActiveRecord::Migration[ActiveRecord::Migration.current_version]
 
 class MyStateMachine
   include Statesman::Machine
@@ -56,11 +51,7 @@ class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base
   self.table_name = "my_active_record_model_transitions"
 
   belongs_to :my_active_record_model
-  if ::ActiveRecord.gem_version >= Gem::Version.new("7.1")
-    serialize :metadata, coder: JSON
-  else
-    serialize :metadata, JSON
-  end
+  serialize :metadata, coder: JSON
 end
 
 class CreateMyActiveRecordModelMigration < MIGRATION_CLASS

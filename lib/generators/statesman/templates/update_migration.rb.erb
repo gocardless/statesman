@@ -1,4 +1,4 @@
-class <%= migration_class_name %> < ActiveRecord::Migration<%= "[#{ActiveRecord::Migration.current_version}]" if Statesman::Utils.rails_5_or_higher? %>
+class <%= migration_class_name %> < ActiveRecord::Migration[<%= ActiveRecord::Migration.current_version %>]
   def change
     add_column :<%= table_name %>, :from_state, :string, null: false
     add_column :<%= table_name %>, :to_state, :string, null: false

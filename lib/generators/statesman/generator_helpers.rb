@@ -50,27 +50,18 @@ module Statesman
       configuration.adapter.try(:match, /mysql/)
     end
 
-    # [] is deprecated and will be removed in 6.2
     def configuration
-      if ActiveRecord::Base.configurations.respond_to?(:configs_for)
-        ActiveRecord::Base.configurations.configs_for(env_name: Rails.env).first
-      else
-        ActiveRecord::Base.configurations[Rails.env]
-      end
+      ActiveRecord::Base.configurations.configs_for(env_name: Rails.env).first
     end
 
     def database_supports_partial_indexes?
       Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(parent.constantize)
     end
 
-    def metadata_default_value
-      Utils.rails_5_or_higher? ? "{}" : "'{}'"
-    end
-
     def metadata_column_config
       return if mysql?
 
-      ", default: #{metadata_default_value}"
+      ", default: {}"
     end
   end
 end

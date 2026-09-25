@@ -8,12 +8,7 @@ module Statesman
       JSON_COLUMN_TYPES = %w[json jsonb].freeze
 
       def self.database_supports_partial_indexes?(model)
-        # Rails 3 doesn't implement `supports_partial_index?`
-        if model.connection.respond_to?(:supports_partial_index?)
-          model.connection.supports_partial_index?
-        else
-          model.connection.adapter_name.casecmp("postgresql").zero?
-        end
+        model.connection.supports_partial_index?
       end
 
       def initialize(transition_class, parent_model, observer, options = {})
@@ -311,19 +306,7 @@ module Statesman
       end
 
       def parent_join_foreign_key
-        association_join_primary_key(parent_association)
-      end
-
-      def association_join_primary_key(association)
-        if association.respond_to?(:join_primary_key)
-          association.join_primary_key
-        elsif association.method(:join_keys).arity.zero?
-          # Support for Rails 5.1
-          association.join_keys.key
-        else
-          # Support for Rails < 5.1
-          association.join_keys(transition_class).key
-        end
+        parent_association.join_primary_key
       end
 
       # updated_column_and_timestamp should return [column_name, value]
@@ -345,18 +328,8 @@ module Statesman
         return nil if column.nil?
 
         [
-          column, default_timezone == :utc ? Time.now.utc : Time.now
+          column, ::ActiveRecord.default_timezone == :utc ? Time.now.utc : Time.now
         ]
-      end
-
-      def default_timezone
-        # Rails 7 deprecates ActiveRecord::Base.default_timezone
-        # in favour of ActiveRecord.default_timezone
-        if ::ActiveRecord.respond_to?(:default_timezone)
-          return ::ActiveRecord.default_timezone
-        end
-
-        ::ActiveRecord::Base.default_timezone
       end
 
       def mysql_gaplock_protection?(connection)
