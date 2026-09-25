@@ -11,6 +11,26 @@ ways you can help make this project better!
 - No need to add to the changelog, we will take care of updating it as we make
   releases.
 
+## Running tests
+
+`bundle exec rake` runs the suite against SQLite, PostgreSQL and MySQL in
+parallel. PostgreSQL and MySQL are started as throwaway containers in Docker via
+[Testcontainers](https://github.com/testcontainers/testcontainers-ruby).
+
+```sh
+bundle exec rake                           # all databases, in parallel
+bundle exec rake spec:postgres             # a single database
+```
+
+`bundle exec rspec` runs against SQLite by default. Set `DB` to use a container,
+or point `DATABASE_URL` at an existing database:
+
+```sh
+DB=postgres bundle exec rspec              # postgres:17
+DB=mysql bundle exec rspec                 # mysql:8.4
+DB=mysql DB_IMAGE=mysql:9.4 bundle exec rspec spec/statesman/machine_spec.rb
+```
+
 ## Style
 
 We use [Rubocop](https://github.com/bbatsov/rubocop) to help maintain a
