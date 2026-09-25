@@ -9,6 +9,8 @@ module Statesman
 
   class TransitionConflictError < StandardError; end
 
+  class BulkTransitionConflictError < StandardError; end
+
   class MissingTransitionAssociation < StandardError; end
 
   class StateConstantConflictError < StandardError; end
