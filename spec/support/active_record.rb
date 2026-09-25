@@ -2,12 +2,7 @@
 
 require "json"
 
-MIGRATION_CLASS = if Rails.version.split(".").map(&:to_i).first >= 5
-                    migration_version = ActiveRecord::Migration.current_version
-                    ActiveRecord::Migration[migration_version]
-                  else
-                    ActiveRecord::Migration
-                  end
+MIGRATION_CLASS = ActiveRecord::Migration[ActiveRecord::Migration.current_version]
 
 class MyStateMachine
   include Statesman::Machine
@@ -44,17 +39,30 @@ class MyActiveRecordModel < ActiveRecord::Base
   def metadata
     super || {}
   end
+
+  # Needed by the backfill_most_recent rake task, which looks the transition class up
+  # from the parent model.
+  def self.transition_class
+    MyActiveRecordModelTransition
+  end
 end
 
 class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base
   self.table_name = "my_active_record_model_transitions"
 
   belongs_to :my_active_record_model
-  if ::ActiveRecord.gem_version >= Gem::Version.new("7.1")
-    serialize :metadata, coder: JSON
-  else
-    serialize :metadata, JSON
-  end
+  serialize :metadata, coder: JSON
+end
+
+# The test table's metadata column is text, not json/jsonb, so it must still be
+# serialized manually here (ActiveRecordTransition does this as part of including it).
+class MyActiveRecordModelTransitionWithAttributes < ActiveRecord::Base
+  self.table_name = "my_active_record_model_transitions"
+
+  include Statesman::Adapters::ActiveRecordTransitionAttributes
+
+  belongs_to :my_active_record_model
+  serialize :metadata, coder: JSON
 end
 
 class CreateMyActiveRecordModelMigration < MIGRATION_CLASS

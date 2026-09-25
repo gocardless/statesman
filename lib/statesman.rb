@@ -5,13 +5,14 @@ module Statesman
   autoload :Machine,    "statesman/machine"
   autoload :Callback,   "statesman/callback"
   autoload :Guard,      "statesman/guard"
-  autoload :Utils,      "statesman/utils"
   autoload :VERSION,    "statesman/version"
   module Adapters
     autoload :Memory,       "statesman/adapters/memory"
     autoload :ActiveRecord, "statesman/adapters/active_record"
     autoload :ActiveRecordTransition,
              "statesman/adapters/active_record_transition"
+    autoload :ActiveRecordTransitionAttributes,
+             "statesman/adapters/active_record_transition_attributes"
     autoload :ActiveRecordQueries,
              "statesman/adapters/active_record_queries"
     autoload :TypeSafeActiveRecordQueries,

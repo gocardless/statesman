@@ -114,6 +114,22 @@ describe "Exceptions" do
 
     its(:message) { is_expected.to include("foo#metadata column type cannot be json") }
 
+    its(:message) do
+      is_expected.to include(
+        "include Statesman::Adapters::ActiveRecordTransitionAttributes",
+      )
+    end
+
+    its "string matches its message" do
+      expect(error.to_s).to eq(error.message)
+    end
+  end
+
+  describe "MissingTransitionAttributesError" do
+    subject(:error) { Statesman::MissingTransitionAttributesError.new("foo") }
+
+    its(:message) { is_expected.to include("foo does not define `.updated_timestamp_column`") }
+
     its "string matches its message" do
       expect(error.to_s).to eq(error.message)
     end

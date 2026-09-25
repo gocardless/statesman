@@ -87,10 +87,10 @@ module Statesman
         raise ArgumentError, "Both from and to can't be nil!" if from.nil? && to.nil?
         return if successors.nil?
 
-        if from.present?
-          @successors[from.to_s].delete(to.to_s) if to.present?
+        if from
+          @successors[from.to_s].delete(to.to_s) if to
           @successors.delete(from.to_s) if to.nil? || successors[from.to_s].empty?
-        elsif to.present?
+        elsif to
           @successors.
             transform_values! { |to_states| to_states - [to.to_s] }.
             filter! { |_from_state, to_states| to_states.any? }

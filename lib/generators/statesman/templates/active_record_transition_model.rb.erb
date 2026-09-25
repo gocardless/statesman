@@ -1,5 +1,5 @@
-class <%= klass %> < <%= Statesman::Utils.rails_5_or_higher? ? 'ApplicationRecord' : 'ActiveRecord::Base' %>
-  include Statesman::Adapters::ActiveRecordTransition
+class <%= klass %> < ApplicationRecord
+  include <%= transition_module_name %>
 
   # If your transition table doesn't have the default `updated_at` timestamp column,
   # you'll need to configure the `updated_timestamp_column` option, setting it to
@@ -8,10 +8,6 @@ class <%= klass %> < <%= Statesman::Utils.rails_5_or_higher? ? 'ApplicationRecor
   # self.updated_timestamp_column = :updated_on
   # self.updated_timestamp_column = nil
 
-<%- unless Statesman::Utils.rails_4_or_higher? -%>
-  attr_accessible :from_state, :to_state, :metadata, :sort_key
-
-<%- end -%>
   belongs_to :<%= parent_name %><%= class_name_option %>, inverse_of: :<%= association_name %>
 
   after_destroy :update_most_recent, if: :most_recent?

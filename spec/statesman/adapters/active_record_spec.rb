@@ -54,18 +54,12 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         allow(metadata_column).to receive_messages(sql_type: "json")
         allow(MyActiveRecordModelTransition).to receive_messages(columns_hash:
                                            { "metadata" => metadata_column })
-        if ActiveRecord.respond_to?(:gem_version) &&
-            ActiveRecord.gem_version >= Gem::Version.new("4.2.0.a")
-          serialized_type = ActiveRecord::Type::Serialized.new(
-            "", ActiveRecord::Coders::JSON
-          )
-          expect(MyActiveRecordModelTransition).
-            to receive(:type_for_attribute).with("metadata").
-            and_return(serialized_type)
-        else
-          expect(MyActiveRecordModelTransition).
-            to receive_messages(serialized_attributes: { "metadata" => "" })
-        end
+        serialized_type = ActiveRecord::Type::Serialized.new(
+          "", ActiveRecord::Coders::JSON
+        )
+        expect(MyActiveRecordModelTransition).
+          to receive(:type_for_attribute).with("metadata").
+          and_return(serialized_type)
       end
 
       it "raises an exception" do
@@ -95,6 +89,15 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
           described_class.new(MyActiveRecordModelTransition,
                               MyActiveRecordModel, observer)
         end.to raise_exception(Statesman::IncompatibleSerializationError)
+      end
+    end
+
+    context "for a transition class that doesn't respond to .updated_timestamp_column" do
+      it "raises an exception" do
+        expect do
+          described_class.new(MyActiveRecordModelTransitionWithoutInclude,
+                              MyActiveRecordModel, observer)
+        end.to raise_exception(Statesman::MissingTransitionAttributesError)
       end
     end
   end
@@ -155,14 +158,7 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       end
 
       context "ActiveRecord::RecordNotUnique unrelated to this transition" do
-        let(:error) do
-          if ActiveRecord.respond_to?(:gem_version) &&
-              ActiveRecord.gem_version >= Gem::Version.new("4.0.0")
-            ActiveRecord::RecordNotUnique.new("unrelated")
-          else
-            ActiveRecord::RecordNotUnique.new("unrelated", nil)
-          end
-        end
+        let(:error) { ActiveRecord::RecordNotUnique.new("unrelated") }
 
         it { expect { transition }.to raise_exception(ActiveRecord::RecordNotUnique) }
       end
@@ -195,9 +191,9 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
             to(change { previous_transition.reload.updated_at })
         end
 
-        context "for a transition class without an updated timestamp column attribute" do
+        context "for a transition class that only includes ActiveRecordTransitionAttributes" do
           let!(:adapter) do
-            described_class.new(MyActiveRecordModelTransitionWithoutInclude,
+            described_class.new(MyActiveRecordModelTransitionWithAttributes,
                                 model,
                                 observer)
           end
