@@ -3,6 +3,7 @@
 module Statesman
   autoload :Config,     "statesman/config"
   autoload :Machine,    "statesman/machine"
+  autoload :BulkTransition, "statesman/bulk_transition"
   autoload :Callback,   "statesman/callback"
   autoload :Guard,      "statesman/guard"
   autoload :Utils,      "statesman/utils"
