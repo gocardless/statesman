@@ -37,4 +37,27 @@ describe Statesman::BulkTransition::Result do
       its(:success?) { is_expected.to be(false) }
     end
   end
+
+  describe "#status" do
+    context "when everything transitioned" do
+      let(:transitioned) { [double] }
+      let(:failed) { [] }
+
+      its(:status) { is_expected.to eq(:all) }
+    end
+
+    context "when some transitioned and some failed" do
+      let(:transitioned) { [double] }
+      let(:failed) { [double] }
+
+      its(:status) { is_expected.to eq(:partial) }
+    end
+
+    context "when nothing transitioned" do
+      let(:transitioned) { [] }
+      let(:failed) { [double] }
+
+      its(:status) { is_expected.to eq(:none) }
+    end
+  end
 end

@@ -49,7 +49,7 @@ describe Statesman::Adapters::Memory do
   end
 
   describe ".bulk_create" do
-    subject(:result) { described_class.bulk_create(items, after_persist: after_persist, after_commit: after_commit) }
+    subject(:result) { described_class.bulk_create(items) }
 
     let(:observer) { instance_double(Statesman::Machine, execute: nil) }
     let(:object_a) { Object.new }
@@ -68,8 +68,6 @@ describe Statesman::Adapters::Memory do
         { object: object_b, adapter: adapter_b, transition: transition_b },
       ]
     end
-    let(:after_persist) { nil }
-    let(:after_commit) { nil }
 
     it "reports every object as transitioned, with no failures" do
       expect(result.transitioned).to eq([object_a, object_b])
@@ -83,27 +81,37 @@ describe Statesman::Adapters::Memory do
       expect(adapter_b.history).to eq([transition_b])
     end
 
-    context "with after_persist and after_commit callbacks" do
-      let(:calls) { [] }
-      let(:after_persist) { ->(object, transition) { calls << [:after_persist, object, transition] } }
-      let(:after_commit) { ->(object, transition) { calls << [:after_commit, object, transition] } }
-
-      it "invokes both callbacks once per item, after persisting it" do
-        result
-        expect(calls).to eq(
-          [
-            [:after_persist, object_a, transition_a],
-            [:after_commit, object_a, transition_a],
-            [:after_persist, object_b, transition_b],
-            [:after_commit, object_b, transition_b],
-          ],
-        )
-      end
+    it "fires no callbacks" do
+      expect(observer).to_not receive(:execute)
+      result
     end
 
-    context "without callbacks" do
-      it "does not require after_persist/after_commit to be passed" do
-        expect { described_class.bulk_create(items) }.to_not raise_error
+    context "when persisting an item raises" do
+      let(:error) { StandardError.new("boom") }
+
+      before { allow(adapter_a).to receive(:persist).and_raise(error) }
+
+      it "reports the other items as transitioned" do
+        expect(result.transitioned).to eq([object_b])
+      end
+
+      it "reports the failing item's object in failed" do
+        expect(result.failed.map(&:object)).to eq([object_a])
+      end
+
+      it "tags the failure as a conflict, with the original error" do
+        expect(result.failed.first.reason).to eq(:conflict)
+        expect(result.failed.first.error).to eq(error)
+      end
+
+      it "still persists the other items" do
+        result
+        expect(adapter_b.history).to eq([transition_b])
+      end
+
+      it "reports a partial status" do
+        expect(result.status).to eq(:partial)
+        expect(result.success?).to be(false)
       end
     end
   end

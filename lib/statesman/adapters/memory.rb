@@ -28,21 +28,30 @@ module Statesman
       # successor failures never reach here — that validation always happens upstream,
       # in Statesman::BulkTransition, before an item is built at all.
       #
-      # after_persist/after_commit are invoked once per item, immediately after that
-      # item is persisted — the caller supplies *what* to run (its own `after`/
-      # `after_commit` dispatch); the adapter only owns *when* it's safe to call it. For
-      # Memory that's trivially "right away", since there's no transaction to protect.
-      def self.bulk_create(items, after_persist: nil, after_commit: nil)
+      # Callback dispatch (before/after/after_commit) is deliberately left out at
+      # this stage — this method only persists. Statesman::BulkTransition is the
+      # future orchestrator that will invoke those per item once it knows that
+      # item is durably written; wiring that up is follow-up work, not this PR.
+      #
+      # Persisting can still fail even once an item has passed upstream guard/
+      # successor validation (e.g. a write conflict on the real ActiveRecord
+      # adapter) — that kind of failure can only be observed at write time, not
+      # predicted in advance. Each item's persist is rescued individually so one
+      # item's failure doesn't stop or lose track of the rest: the failing item
+      # is recorded in Result#failed and every other item still gets persisted
+      # and recorded in Result#transitioned, keeping Result accurate either way.
+      def self.bulk_create(items)
         transitioned = []
+        failed = []
 
         items.each do |item|
           item[:adapter].persist(item[:transition])
-          after_persist&.call(item[:object], item[:transition])
-          after_commit&.call(item[:object], item[:transition])
           transitioned << item[:object]
+        rescue StandardError => e
+          failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: e)
         end
 
-        BulkTransition::Result.new(transitioned: transitioned)
+        BulkTransition::Result.new(transitioned: transitioned, failed: failed)
       end
 
       def create(from, to, metadata = {})

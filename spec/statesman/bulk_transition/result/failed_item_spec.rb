@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-describe Statesman::BulkTransition::Failure do
-  subject(:failure) { described_class.new(object: object, reason: reason, error: error) }
+describe Statesman::BulkTransition::Result::FailedItem do
+  subject(:failed_item) { described_class.new(object: object, reason: reason, error: error) }
 
   let(:object) { double }
   let(:reason) { :guard }
@@ -12,7 +12,7 @@ describe Statesman::BulkTransition::Failure do
   its(:error) { is_expected.to eq(error) }
 
   context "without an error" do
-    subject(:failure) { described_class.new(object: object, reason: reason) }
+    subject(:failed_item) { described_class.new(object: object, reason: reason) }
 
     its(:error) { is_expected.to be_nil }
   end
@@ -30,7 +30,7 @@ describe Statesman::BulkTransition::Failure do
       let(:reason) { :something_else }
 
       it "raises an ArgumentError" do
-        expect { failure }.to raise_error(ArgumentError, /invalid reason/)
+        expect { failed_item }.to raise_error(ArgumentError, /invalid reason/)
       end
     end
   end

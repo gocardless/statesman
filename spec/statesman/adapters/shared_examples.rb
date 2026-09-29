@@ -17,11 +17,12 @@
 # transitions in one call can't be an instance method — each adapter defines
 # its own `self.bulk_create(...)` instead, returning a
 # Statesman::BulkTransition::Result. Its parameters are deliberately NOT
-# required to match across adapters: Adapters::Memory#bulk_create loops
-# calling each object's own already-instantiated adapter's #create (there's no
-# shared store to write against directly), while Adapters::ActiveRecord's
-# batched write bypasses per-object adapters entirely and writes straight
-# against the transition table.
+# required to match across adapters: Adapters::Memory#bulk_create loops calling
+# each object's own already-instantiated adapter's #persist against an
+# already-built, already-validated transition (there's no shared store to
+# write against directly), while Adapters::ActiveRecord's batched write
+# bypasses per-object adapters entirely and writes straight against the
+# transition table.
 #
 # NOTE This line cannot reasonably be shortened.
 shared_examples_for "an adapter" do |adapter_class, transition_class, options = {}|
