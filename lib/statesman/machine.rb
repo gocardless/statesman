@@ -164,21 +164,21 @@ module Statesman
         end
       end
 
-      # Transition many objects to the same state in one call. Mirrors #transition_to!'s
-      # shape: validates directly (see .validate_bulk_transition below), same as
-      # #transition_to! calls #validate_transition directly, before anything is built or
-      # written. Only surviving machines are handed to Statesman::BulkTransition, which
-      # owns just the write side: building each transition, running `before` (unless
-      # skip_before_callbacks), persisting via the adapter's own bulk_create, and
-      # dispatching `after` (unless skip_after_callbacks) / `after_commit` (unless
-      # skip_after_commit_callbacks) — independently skippable since they serve different
-      # purposes; see Machine.after_transition's `after_commit:` option.
+      # Transition many objects to the same state in one call. Validates directly (see
+      # .validate_bulk_transition), the same way #transition_to! calls #validate_transition
+      # directly; only survivors are handed to Statesman::BulkTransition for the write
+      # side (build transition, `before`, adapter's bulk_create, `after`/`after_commit`).
       #
-      # Deliberately does not chunk `objects` itself — how large a single write can
-      # safely be depends on the caller's own DB (max params per statement, statement
-      # timeout, connection pool pressure), none of which this gem knows about. Callers
-      # who need to bound that should slice their own objects and call this once per
-      # slice, e.g. `objects.each_slice(500) { |batch| Model.bulk_transition_to!(batch, :y) }`.
+      # Doesn't chunk `objects` itself — safe batch size depends on the caller's own DB,
+      # which this gem can't know. Callers should slice their own objects and call this
+      # once per slice instead.
+      #
+      # Each entry may be a plain object (wrapped via `new`) or an already-built machine
+      # of this class, used as-is — not required to be machines outright, so the common
+      # case (`bulk_transition_to!(orders, :approved)`) stays ceremony-free. Passing an
+      # already-warm machine matters for adapters that memoize per-instance (e.g.
+      # Adapters::ActiveRecord#last caches @last_transition): that cache would otherwise
+      # be lost to a cold `new(object)`.
       def bulk_transition_to!(objects, new_state, metadata: {}, on_failure: :collect, skip_guards: false,
                               skip_before_callbacks: false, skip_after_callbacks: false,
                               skip_after_commit_callbacks: false)
@@ -189,8 +189,9 @@ module Statesman
         successful = []
         failed = []
 
-        machines = objects.map { |object| new(object) }
+        machines = objects.map { |object| object.is_a?(self) ? object : new(object) }
 
+        # TODO: Verify DB usage against different machine conditions once develop the AR adapter
         machines.group_by(&:current_state).each do |from, bucket|
           survivors, failures = validate_bulk_transition(bucket, from: from, to: new_state, metadata: metadata,
                                                                  skip_guards: skip_guards, on_failure: on_failure)
@@ -205,19 +206,16 @@ module Statesman
         BulkTransition::Result.new(successful: successful, failed: failed)
       end
 
-      # Validates a from -> to edge and runs applicable guards for every machine in
-      # `machines`, which the caller guarantees are all currently in `from` — this is the
-      # shared validation core behind both #validate_transition (a single machine) and
-      # .bulk_transition_to! (many). The edge check and the guard list are each computed
-      # once per call rather than once per machine, since both depend only on (from, to),
-      # not on any individual machine — the only per-machine work left is actually
-      # invoking each guard, which needs that machine's own last_transition.
+      # Shared validation core behind #validate_transition (one machine) and
+      # .bulk_transition_to! (many) — caller guarantees every machine in `machines` is
+      # currently in `from`. Computes the edge check and guard list once per call rather
+      # than once per machine, since both depend only on (from, to); only the guard calls
+      # themselves are per-machine.
       #
-      # on_failure: :raise re-raises the first failure immediately (matching single-
-      # transition semantics); :collect gathers every failure instead and keeps checking
-      # the rest, returning [survivors, failures] where failures are
-      # { machine:, reason:, error: } hashes — deliberately not a BulkTransition::Result
-      # type, since Machine shouldn't need to know that shape.
+      # on_failure: :raise re-raises the first failure immediately, matching single-
+      # transition semantics; :collect gathers every failure and keeps going, returning
+      # [survivors, failures] as plain {machine:, reason:, error:} hashes — not a
+      # BulkTransition::Result, since Machine shouldn't need to know that shape.
       def validate_bulk_transition(machines, from:, to:, metadata: {}, skip_guards: false, on_failure: :raise)
         from = from.to_s
         to = to.to_s

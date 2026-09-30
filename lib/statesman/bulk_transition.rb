@@ -3,18 +3,13 @@
 require_relative "bulk_transition/result"
 
 module Statesman
-  # The write side of Machine.bulk_transition_to!, for one from-state bucket of already-
-  # validated survivors — see Machine.bulk_transition_to! for the validation that happens
-  # upstream of this, and Machine.validate_bulk_transition for why that lives on Machine
-  # rather than here. Builds each transition and runs `before` (unless
-  # skip_before_callbacks), then persists the bucket via the adapter's own bulk_create,
-  # which only persists. Once that reports back which items failed, dispatches `after`
-  # (unless skip_after_callbacks) and `after_commit` (unless skip_after_commit_callbacks)
-  # for every other item — each item already carries its own machine and transition
-  # forward, so there's no need to work backward from the objects bulk_create hands back
-  # to find them. The three skips are independent since each phase has its own use case
-  # for being suppressed on its own — see Machine.after_transition's `:after` vs
-  # `:after_commit` distinction.
+  # The write side of Machine.bulk_transition_to!, for one already-validated bucket of
+  # survivors (validation lives on Machine — see Machine.validate_bulk_transition).
+  # Builds each transition, runs `before`, persists via the adapter's own bulk_create,
+  # then dispatches `after`/`after_commit` for whatever didn't fail — each item already
+  # carries its own machine and transition, so there's no need to work backward from the
+  # objects bulk_create hands back. The three skip_* options are independent since
+  # `after` vs `after_commit` serve different purposes (see Machine.after_transition).
   class BulkTransition
     def initialize(new_state, metadata: {}, skip_before_callbacks: false, skip_after_callbacks: false,
                    skip_after_commit_callbacks: false)
@@ -43,12 +38,10 @@ module Statesman
 
     private
 
-    # adapter_class.bulk_create(items) is called once for the whole bucket, so every
-    # item in it must actually be backed by the same adapter — otherwise we'd silently
-    # hand some items to a bulk_create implementation that doesn't know how to persist
-    # them (e.g. built for a different transition table). This can't happen via
-    # Machine.bulk_transition_to! today, since it builds every machine the same way, but
-    # it's cheap to guard against a Machine subclass that varies its adapter per object.
+    # bulk_create is called once per bucket, so every item must share one adapter class —
+    # otherwise some would silently hit a bulk_create that doesn't know how to persist
+    # them. Can't happen via bulk_transition_to! today, but cheap to guard against a
+    # Machine subclass that varies its adapter per object.
     def uniform_adapter_class(items)
       adapter_classes = items.map { |item| item[:adapter].class }.uniq
       return adapter_classes.first if adapter_classes.one?

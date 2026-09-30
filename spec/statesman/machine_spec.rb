@@ -694,6 +694,20 @@ describe Statesman::Machine do
       end
     end
 
+    describe "accepting pre-built machines instead of objects" do
+      let(:object) { model_class.new }
+      let(:pre_built_machine) { machine_class.new(object) }
+
+      it "uses the given machine instance directly, without building a new one" do
+        pre_built_machine
+        expect(machine_class).to_not receive(:new)
+
+        result = machine_class.bulk_transition_to!([pre_built_machine], :y)
+
+        expect(result.successful).to eq([object])
+      end
+    end
+
     describe "equivalence with a loop of #transition_to!" do
       before { capture_transitions! }
 
