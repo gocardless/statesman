@@ -243,6 +243,12 @@ module Statesman
         run_bulk_guards(machines, applicable_guards, metadata, on_failure)
       end
 
+      # Public so #guards_for can call it directly instead of duplicating this filter —
+      # it exposes nothing callbacks[:guards] (already public) didn't already.
+      def applicable_guards_for(from, to)
+        callbacks[:guards].select { |guard| guard.applies_to?(from: from, to: to) }
+      end
+
       private
 
       def bulk_failed_items(failures)
@@ -256,10 +262,6 @@ module Statesman
         return if (successors[from] || []).include?(to)
 
         TransitionFailedError.new(from, to)
-      end
-
-      def applicable_guards_for(from, to)
-        callbacks[:guards].select { |guard| guard.applies_to?(from: from, to: to) }
       end
 
       def run_bulk_guards(machines, applicable_guards, metadata, on_failure)
@@ -470,10 +472,10 @@ module Statesman
       self.class.successors[from] || []
     end
 
-    # Delegates to the class-level .applicable_guards_for (private — reached via send)
-    # rather than duplicating its callbacks[:guards].select { ... } filter here.
+    # Delegates to the class-level .applicable_guards_for rather than duplicating its
+    # callbacks[:guards].select { ... } filter here.
     def guards_for(options = { from: nil, to: nil })
-      self.class.send(:applicable_guards_for, to_s_or_nil(options[:from]), to_s_or_nil(options[:to]))
+      self.class.applicable_guards_for(to_s_or_nil(options[:from]), to_s_or_nil(options[:to]))
     end
 
     def callbacks_for(phase, options = { from: nil, to: nil })
