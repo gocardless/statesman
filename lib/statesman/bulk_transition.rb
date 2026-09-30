@@ -21,6 +21,8 @@ module Statesman
     end
 
     def persist(from, machines)
+      return Result.new if machines.empty?
+
       items = machines.map do |machine|
         transition = machine.storage_adapter.build_transition(from, @new_state, @metadata)
         machine.execute(:before, from, @new_state, transition) unless @skip_before_callbacks
@@ -41,7 +43,9 @@ module Statesman
     # bulk_create is called once per bucket, so every item must share one adapter class —
     # otherwise some would silently hit a bulk_create that doesn't know how to persist
     # them. Can't happen via bulk_transition_to! today, but cheap to guard against a
-    # Machine subclass that varies its adapter per object.
+    # Machine subclass that varies its adapter per object. Always raises, regardless of
+    # on_failure: this is a Machine-subclass configuration bug, not a per-item outcome a
+    # caller would want collected into Result#failed.
     def uniform_adapter_class(items)
       adapter_classes = items.map { |item| item[:adapter].class }.uniq
       return adapter_classes.first if adapter_classes.one?

@@ -191,10 +191,21 @@ module Statesman
 
         machines = objects.map { |object| object.is_a?(self) ? object : new(object) }
 
+        duplicate_objects = machines.map(&:object).tally.select { |_, count| count > 1 }.keys
+        if duplicate_objects.any?
+          raise ArgumentError, "bulk_transition_to! does not support duplicate objects: #{duplicate_objects.inspect}"
+        end
+
         # TODO: Verify DB usage against different machine conditions once develop the AR adapter
-        machines.group_by(&:current_state).each do |from, bucket|
-          survivors, failures = validate_bulk_transition(bucket, from: from, to: new_state, metadata: metadata,
-                                                                 skip_guards: skip_guards, on_failure: on_failure)
+        # Buckets by machine class too, not just current_state: a pre-built machine passed in
+        # (see the is_a?(self) check above) may be a subclass of `self`, with its own guards/
+        # successors — validating it against `self`'s rules instead of its own would silently
+        # skip whatever that subclass adds.
+        machines.group_by { |machine| [machine.class, machine.current_state] }.each do |(machine_class, from), bucket|
+          survivors, failures = machine_class.validate_bulk_transition(bucket, from: from, to: new_state,
+                                                                               metadata: metadata,
+                                                                               skip_guards: skip_guards,
+                                                                               on_failure: on_failure)
           failed.concat(bulk_failed_items(failures))
           next if survivors.empty?
 
@@ -459,8 +470,10 @@ module Statesman
       self.class.successors[from] || []
     end
 
+    # Delegates to the class-level .applicable_guards_for (private — reached via send)
+    # rather than duplicating its callbacks[:guards].select { ... } filter here.
     def guards_for(options = { from: nil, to: nil })
-      select_callbacks_for(self.class.callbacks[:guards], options)
+      self.class.send(:applicable_guards_for, to_s_or_nil(options[:from]), to_s_or_nil(options[:to]))
     end
 
     def callbacks_for(phase, options = { from: nil, to: nil })

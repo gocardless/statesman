@@ -708,6 +708,40 @@ describe Statesman::Machine do
       end
     end
 
+    describe "a pre-built machine that's a subclass of the receiver" do
+      let(:sub_class) do
+        Class.new(machine_class) do
+          def self.name
+            "MyBulkSubStateMachine"
+          end
+
+          state :x, initial: true
+          state :y
+          transition from: :x, to: :y
+          guard_transition(from: :x, to: :y) { false }
+        end
+      end
+
+      let(:object) { model_class.new }
+      let(:sub_machine) { sub_class.new(object) }
+
+      it "validates against the subclass's own guards, not the receiver's" do
+        result = machine_class.bulk_transition_to!([sub_machine], :y)
+
+        expect(result.successful).to eq([])
+        expect(result.failed.first.reason).to eq(:guard)
+      end
+    end
+
+    describe "duplicate objects" do
+      let(:object) { model_class.new }
+
+      it "raises instead of persisting the same object twice" do
+        expect { machine_class.bulk_transition_to!([object, object], :y) }.
+          to raise_error(ArgumentError, /duplicate objects/)
+      end
+    end
+
     describe "equivalence with a loop of #transition_to!" do
       before { capture_transitions! }
 

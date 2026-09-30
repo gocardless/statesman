@@ -46,6 +46,16 @@ describe Statesman::BulkTransition do
   describe "#persist" do
     subject(:result) { writer.persist("x", machines) }
 
+    context "with no machines" do
+      let(:machines) { [] }
+
+      it "returns an empty Result instead of raising" do
+        expect(result.successful).to eq([])
+        expect(result.failed).to eq([])
+        expect(result.success?).to be(true)
+      end
+    end
+
     it "persists a transition for every machine, via each one's own storage_adapter" do
       result
       expect(machine_a.storage_adapter.history.map(&:to_state)).to eq(["y"])
