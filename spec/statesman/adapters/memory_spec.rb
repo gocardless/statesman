@@ -69,8 +69,8 @@ describe Statesman::Adapters::Memory do
       ]
     end
 
-    it "reports every object as transitioned, with no failures" do
-      expect(result.transitioned).to eq([object_a, object_b])
+    it "reports every object as successful, with no failures" do
+      expect(result.successful).to eq([object_a, object_b])
       expect(result.failed).to eq([])
       expect(result.success?).to be(true)
     end
@@ -91,8 +91,8 @@ describe Statesman::Adapters::Memory do
 
       before { allow(adapter_a).to receive(:persist).and_raise(error) }
 
-      it "reports the other items as transitioned" do
-        expect(result.transitioned).to eq([object_b])
+      it "reports the other items as successful" do
+        expect(result.successful).to eq([object_b])
       end
 
       it "reports the failing item's object in failed" do

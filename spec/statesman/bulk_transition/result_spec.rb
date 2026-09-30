@@ -1,23 +1,23 @@
 # frozen_string_literal: true
 
 describe Statesman::BulkTransition::Result do
-  subject(:result) { described_class.new(transitioned: transitioned, failed: failed) }
+  subject(:result) { described_class.new(successful: successful, failed: failed) }
 
-  let(:transitioned) { [] }
+  let(:successful) { [] }
   let(:failed) { [] }
 
   describe "defaults" do
     subject(:result) { described_class.new }
 
-    its(:transitioned) { is_expected.to eq([]) }
+    its(:successful) { is_expected.to eq([]) }
     its(:failed) { is_expected.to eq([]) }
     its(:success?) { is_expected.to be(true) }
   end
 
-  describe "#transitioned" do
-    let(:transitioned) { [double, double] }
+  describe "#successful" do
+    let(:successful) { [double, double] }
 
-    its(:transitioned) { is_expected.to eq(transitioned) }
+    its(:successful) { is_expected.to eq(successful) }
   end
 
   describe "#failed" do
@@ -39,22 +39,22 @@ describe Statesman::BulkTransition::Result do
   end
 
   describe "#status" do
-    context "when everything transitioned" do
-      let(:transitioned) { [double] }
+    context "when everything succeeded" do
+      let(:successful) { [double] }
       let(:failed) { [] }
 
       its(:status) { is_expected.to eq(:all) }
     end
 
-    context "when some transitioned and some failed" do
-      let(:transitioned) { [double] }
+    context "when some succeeded and some failed" do
+      let(:successful) { [double] }
       let(:failed) { [double] }
 
       its(:status) { is_expected.to eq(:partial) }
     end
 
-    context "when nothing transitioned" do
-      let(:transitioned) { [] }
+    context "when nothing succeeded" do
+      let(:successful) { [] }
       let(:failed) { [double] }
 
       its(:status) { is_expected.to eq(:none) }

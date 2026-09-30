@@ -2,7 +2,7 @@
 
 module Statesman
   class BulkTransition
-    class Result < Struct.new(:transitioned, :failed, keyword_init: true)
+    class Result < Struct.new(:successful, :failed, keyword_init: true)
       FailedItem = Struct.new(:object, :reason, :error, keyword_init: true) do
         REASONS = %i[guard conflict invalid_current_state].freeze
 
@@ -15,7 +15,7 @@ module Statesman
         end
       end
 
-      def initialize(transitioned: [], failed: [])
+      def initialize(successful: [], failed: [])
         super
       end
 
@@ -23,12 +23,12 @@ module Statesman
         failed.empty?
       end
 
-      # :all    - every item transitioned, nothing failed
-      # :partial - some items transitioned, some failed
-      # :none   - nothing transitioned, everything failed
+      # :all    - every item succeeded, nothing failed
+      # :partial - some items succeeded, some failed
+      # :none   - nothing succeeded, everything failed
       def status
         return :all if failed.empty?
-        return :none if transitioned.empty?
+        return :none if successful.empty?
 
         :partial
       end

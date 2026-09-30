@@ -39,19 +39,19 @@ module Statesman
       # predicted in advance. Each item's persist is rescued individually so one
       # item's failure doesn't stop or lose track of the rest: the failing item
       # is recorded in Result#failed and every other item still gets persisted
-      # and recorded in Result#transitioned, keeping Result accurate either way.
+      # and recorded in Result#successful, keeping Result accurate either way.
       def self.bulk_create(items)
-        transitioned = []
+        successful = []
         failed = []
 
         items.each do |item|
           item[:adapter].persist(item[:transition])
-          transitioned << item[:object]
+          successful << item[:object]
         rescue StandardError => e
           failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: e)
         end
 
-        BulkTransition::Result.new(transitioned: transitioned, failed: failed)
+        BulkTransition::Result.new(successful: successful, failed: failed)
       end
 
       def create(from, to, metadata = {})
