@@ -876,7 +876,7 @@ describe Statesman::Machine do
       end
     end
 
-    describe "chunking is the caller's responsibility" do
+    describe "chunking" do
       let(:objects) { build_objects(5) }
 
       it "supports calling bulk_transition_to! once per caller-defined slice" do
@@ -884,6 +884,67 @@ describe Statesman::Machine do
 
         expect(results.flat_map(&:successful)).to match_array(objects)
         expect(results).to all(have_attributes(success?: true))
+      end
+
+      describe "in_batches_of" do
+        before { capture_transitions! }
+
+        it "runs one validate+persist cycle per batch and merges the results" do
+          result = machine_class.bulk_transition_to!(objects, :y, in_batches_of: 2)
+
+          expect(result.successful).to match_array(objects)
+          expect(result.success?).to be(true)
+          objects.each { |object| expect(captured[object].to_state).to eq("y") }
+        end
+
+        it "produces the same result as not batching at all" do
+          unbatched = machine_class.bulk_transition_to!(objects, :y)
+          batched = machine_class.bulk_transition_to!(build_objects(5), :y, in_batches_of: 2)
+
+          expect(batched.successful.size).to eq(unbatched.successful.size)
+          expect(batched.success?).to eq(unbatched.success?)
+        end
+
+        it "catches a duplicate object even when it would land in different batches" do
+          object = model_class.new
+
+          expect { machine_class.bulk_transition_to!([object, *build_objects(3), object], :y, in_batches_of: 2) }.
+            to raise_error(ArgumentError, /duplicate objects/)
+        end
+
+        context "with a guard failure partway through" do
+          before { machine_class.guard_transition(from: :x, to: :y) { |object, *| object != objects[2] } }
+
+          it "reports the guarded object as failed but still persists the other batches" do
+            result = machine_class.bulk_transition_to!(objects, :y, in_batches_of: 2)
+
+            expect(result.successful).to match_array(objects - [objects[2]])
+            expect(result.failed.map(&:object)).to eq([objects[2]])
+          end
+        end
+
+        context "with on_failure: :raise" do
+          before { machine_class.guard_transition(from: :x, to: :y) { |object, *| object != objects[2] } }
+
+          it "raises on the failing batch, leaving earlier batches already persisted" do
+            expect { machine_class.bulk_transition_to!(objects, :y, in_batches_of: 2, on_failure: :raise) }.
+              to raise_error(Statesman::GuardFailedError)
+
+            expect(captured.keys).to match_array(objects.first(2))
+          end
+        end
+
+        context "with an invalid batch size" do
+          it "raises for a zero batch size" do
+            expect { machine_class.bulk_transition_to!(objects, :y, in_batches_of: 0) }.
+              to raise_error(ArgumentError, /in_batches_of must be a positive integer/)
+          end
+
+          it "raises for a negative batch size" do
+            expect { machine_class.bulk_transition_to!(objects, :y, in_batches_of: -1) }.
+              to raise_error(ArgumentError, /in_batches_of must be a positive integer/)
+          end
+        end
       end
     end
   end
