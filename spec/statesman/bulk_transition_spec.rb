@@ -52,8 +52,8 @@ describe Statesman::BulkTransition do
       expect(machine_b.storage_adapter.history.map(&:to_state)).to eq(["y"])
     end
 
-    it "returns every object as transitioned, with no failures" do
-      expect(result.transitioned).to eq([object_a, object_b])
+    it "returns every object as successful, with no failures" do
+      expect(result.successful).to eq([object_a, object_b])
       expect(result.failed).to eq([])
     end
 
@@ -92,7 +92,7 @@ describe Statesman::BulkTransition do
       before { allow(machine_a.storage_adapter).to receive(:persist).and_raise(StandardError.new("boom")) }
 
       it "still persists the other item" do
-        expect(result.transitioned).to eq([object_b])
+        expect(result.successful).to eq([object_b])
       end
 
       it "reports the failing item as a conflict" do
@@ -139,7 +139,7 @@ describe Statesman::BulkTransition do
       let(:skip_after_commit_callbacks) { true }
 
       it "fires no before/after/after_commit callbacks, but still persists" do
-        expect(result.transitioned).to eq([object_a, object_b])
+        expect(result.successful).to eq([object_a, object_b])
         expect(calls).to eq([])
       end
     end

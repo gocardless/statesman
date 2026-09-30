@@ -606,7 +606,7 @@ describe Statesman::Machine do
   # only ever builds one machine per object per call and uses it consistently for that call,
   # so this doesn't affect correctness — but it does mean these specs can't verify
   # results by re-instantiating a fresh machine afterward. Instead they rely on
-  # `result.transitioned`/`result.failed` (built during the call itself), a real
+  # `result.successful`/`result.failed` (built during the call itself), a real
   # `after_transition` callback to capture written transitions where deeper properties
   # matter, and `allow_any_instance_of` (already used elsewhere in this file) on the rare
   # occasion a test needs objects starting from different states within one call.
@@ -650,7 +650,7 @@ describe Statesman::Machine do
       before { capture_transitions! }
 
       it "transitions every object and reports no failures" do
-        expect(result.transitioned).to match_array(objects)
+        expect(result.successful).to match_array(objects)
         expect(result.failed).to eq([])
         expect(result.success?).to be(true)
       end
@@ -682,10 +682,10 @@ describe Statesman::Machine do
           end
         end
 
-        it "partitions transitioned vs failed correctly" do
+        it "partitions successful vs failed correctly" do
           result = machine_class.bulk_transition_to!(objects, :y)
 
-          expect(result.transitioned).to eq([good_object])
+          expect(result.successful).to eq([good_object])
           expect(result.failed).to contain_exactly(
             having_attributes(object: guarded_object, reason: :guard),
             having_attributes(object: invalid_object, reason: :invalid_current_state),
@@ -730,7 +730,7 @@ describe Statesman::Machine do
       it "is enforced even with every skip option set" do
         # x has no self-edge declared, so this must fail structurally regardless of the
         # skips.
-        expect(result.transitioned).to eq([])
+        expect(result.successful).to eq([])
         expect(result.failed.first.reason).to eq(:invalid_current_state)
       end
     end
@@ -759,7 +759,7 @@ describe Statesman::Machine do
       it "suppresses guard evaluation, so the transition succeeds" do
         result = machine_class.bulk_transition_to!(objects, :y, skip_guards: true)
 
-        expect(result.transitioned).to match_array(objects)
+        expect(result.successful).to match_array(objects)
         expect(result.success?).to be(true)
       end
     end
@@ -779,21 +779,21 @@ describe Statesman::Machine do
         result = machine_class.bulk_transition_to!(objects, :y, skip_before_callbacks: true)
 
         expect(calls.map(&:first)).to eq(%i[after after_commit after after_commit])
-        expect(result.transitioned).to match_array(objects)
+        expect(result.successful).to match_array(objects)
       end
 
       it "skips only after when skip_after_callbacks is set" do
         result = machine_class.bulk_transition_to!(objects, :y, skip_after_callbacks: true)
 
         expect(calls.map(&:first)).to eq(%i[before before after_commit after_commit])
-        expect(result.transitioned).to match_array(objects)
+        expect(result.successful).to match_array(objects)
       end
 
       it "skips only after_commit when skip_after_commit_callbacks is set" do
         result = machine_class.bulk_transition_to!(objects, :y, skip_after_commit_callbacks: true)
 
         expect(calls.map(&:first)).to eq(%i[before before after after])
-        expect(result.transitioned).to match_array(objects)
+        expect(result.successful).to match_array(objects)
       end
 
       it "fires no callbacks at all when all three are set, but still persists the transition" do
@@ -802,7 +802,7 @@ describe Statesman::Machine do
                                                                 skip_after_commit_callbacks: true)
 
         expect(calls).to eq([])
-        expect(result.transitioned).to match_array(objects)
+        expect(result.successful).to match_array(objects)
       end
     end
 
@@ -822,7 +822,7 @@ describe Statesman::Machine do
       it "buckets by from state and validates/guards each bucket independently" do
         result = machine_class.bulk_transition_to!([x_object, y_object], :z)
 
-        expect(result.transitioned).to eq([x_object])
+        expect(result.successful).to eq([x_object])
         expect(result.failed.map(&:object)).to eq([y_object])
         expect(result.failed.first.reason).to eq(:guard)
       end
@@ -834,7 +834,7 @@ describe Statesman::Machine do
       it "supports calling bulk_transition_to! once per caller-defined slice" do
         results = objects.each_slice(2).map { |slice| machine_class.bulk_transition_to!(slice, :y) }
 
-        expect(results.flat_map(&:transitioned)).to match_array(objects)
+        expect(results.flat_map(&:successful)).to match_array(objects)
         expect(results).to all(have_attributes(success?: true))
       end
     end

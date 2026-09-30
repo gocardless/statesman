@@ -186,7 +186,7 @@ module Statesman
         writer = BulkTransition.new(new_state, metadata: metadata, skip_before_callbacks: skip_before_callbacks,
                                                skip_after_callbacks: skip_after_callbacks,
                                                skip_after_commit_callbacks: skip_after_commit_callbacks)
-        transitioned = []
+        successful = []
         failed = []
 
         machines = objects.map { |object| new(object) }
@@ -198,11 +198,11 @@ module Statesman
           next if survivors.empty?
 
           result = writer.persist(from, survivors)
-          transitioned.concat(result.transitioned)
+          successful.concat(result.successful)
           failed.concat(result.failed)
         end
 
-        BulkTransition::Result.new(transitioned: transitioned, failed: failed)
+        BulkTransition::Result.new(successful: successful, failed: failed)
       end
 
       # Validates a from -> to edge and runs applicable guards for every machine in
