@@ -164,16 +164,110 @@ module Statesman
         end
       end
 
-      # Transition many objects to the same state in one call. See
-      # Statesman::BulkTransition for the orchestration; this is a thin entry point.
-      def bulk_transition_to!(objects, new_state, metadata: {}, on_failure: :collect,
-                              batch_size: 100, skip_guards: false, skip_callbacks: false)
-        BulkTransition.new(self, objects, new_state, metadata: metadata, on_failure: on_failure,
-                                                     batch_size: batch_size, skip_guards: skip_guards,
-                                                     skip_callbacks: skip_callbacks).call
+      # Transition many objects to the same state in one call. Mirrors #transition_to!'s
+      # shape: validates directly (see .validate_bulk_transition below), same as
+      # #transition_to! calls #validate_transition directly, before anything is built or
+      # written. Only surviving machines are handed to Statesman::BulkTransition, which
+      # owns just the write side: building each transition, running `before` (unless
+      # skip_before_callbacks), persisting via the adapter's own bulk_create, and
+      # dispatching `after` (unless skip_after_callbacks) / `after_commit` (unless
+      # skip_after_commit_callbacks) — independently skippable since they serve different
+      # purposes; see Machine.after_transition's `after_commit:` option.
+      #
+      # Deliberately does not chunk `objects` itself — how large a single write can
+      # safely be depends on the caller's own DB (max params per statement, statement
+      # timeout, connection pool pressure), none of which this gem knows about. Callers
+      # who need to bound that should slice their own objects and call this once per
+      # slice, e.g. `objects.each_slice(500) { |batch| Model.bulk_transition_to!(batch, :y) }`.
+      def bulk_transition_to!(objects, new_state, metadata: {}, on_failure: :collect, skip_guards: false,
+                              skip_before_callbacks: false, skip_after_callbacks: false,
+                              skip_after_commit_callbacks: false)
+        new_state = new_state.to_s
+        writer = BulkTransition.new(new_state, metadata: metadata, skip_before_callbacks: skip_before_callbacks,
+                                               skip_after_callbacks: skip_after_callbacks,
+                                               skip_after_commit_callbacks: skip_after_commit_callbacks)
+        transitioned = []
+        failed = []
+
+        machines = objects.map { |object| new(object) }
+
+        machines.group_by(&:current_state).each do |from, bucket|
+          survivors, failures = validate_bulk_transition(bucket, from: from, to: new_state, metadata: metadata,
+                                                                 skip_guards: skip_guards, on_failure: on_failure)
+          failed.concat(bulk_failed_items(failures))
+          next if survivors.empty?
+
+          result = writer.persist(from, survivors)
+          transitioned.concat(result.transitioned)
+          failed.concat(result.failed)
+        end
+
+        BulkTransition::Result.new(transitioned: transitioned, failed: failed)
+      end
+
+      # Validates a from -> to edge and runs applicable guards for every machine in
+      # `machines`, which the caller guarantees are all currently in `from` — this is the
+      # shared validation core behind both #validate_transition (a single machine) and
+      # .bulk_transition_to! (many). The edge check and the guard list are each computed
+      # once per call rather than once per machine, since both depend only on (from, to),
+      # not on any individual machine — the only per-machine work left is actually
+      # invoking each guard, which needs that machine's own last_transition.
+      #
+      # on_failure: :raise re-raises the first failure immediately (matching single-
+      # transition semantics); :collect gathers every failure instead and keeps checking
+      # the rest, returning [survivors, failures] where failures are
+      # { machine:, reason:, error: } hashes — deliberately not a BulkTransition::Result
+      # type, since Machine shouldn't need to know that shape.
+      def validate_bulk_transition(machines, from:, to:, metadata: {}, skip_guards: false, on_failure: :raise)
+        from = from.to_s
+        to = to.to_s
+
+        edge_error = validate_bulk_edge(from, to)
+        if edge_error
+          raise edge_error if on_failure == :raise
+
+          failed = machines.map { |machine| { machine: machine, reason: :invalid_current_state, error: edge_error } }
+          return [[], failed]
+        end
+
+        applicable_guards = skip_guards ? [] : applicable_guards_for(from, to)
+        run_bulk_guards(machines, applicable_guards, metadata, on_failure)
       end
 
       private
+
+      def bulk_failed_items(failures)
+        failures.map do |failure|
+          BulkTransition::Result::FailedItem.new(object: failure[:machine].object, reason: failure[:reason],
+                                                 error: failure[:error])
+        end
+      end
+
+      def validate_bulk_edge(from, to)
+        return if (successors[from] || []).include?(to)
+
+        TransitionFailedError.new(from, to)
+      end
+
+      def applicable_guards_for(from, to)
+        callbacks[:guards].select { |guard| guard.applies_to?(from: from, to: to) }
+      end
+
+      def run_bulk_guards(machines, applicable_guards, metadata, on_failure)
+        survivors = []
+        failed = []
+
+        machines.each do |machine|
+          applicable_guards.each { |guard| guard.call(machine.object, machine.last_transition, metadata) }
+          survivors << machine
+        rescue GuardFailedError => e
+          raise if on_failure == :raise
+
+          failed << { machine: machine, reason: :guard, error: e }
+        end
+
+        [survivors, failed]
+      end
 
       def define_state_constant(state_name)
         constant_name = state_name.upcase.gsub(/[^A-Z0-9]/, "_")
@@ -382,16 +476,9 @@ module Statesman
     end
 
     def validate_transition(options = { from: nil, to: nil, metadata: nil })
-      from = to_s_or_nil(options[:from])
-      to   = to_s_or_nil(options[:to])
-
-      successors = self.class.successors[from] || []
-      raise TransitionFailedError.new(from, to) unless successors.include?(to)
-
-      # Call all guards, they raise exceptions if they fail
-      guards_for(from: from, to: to).each do |guard|
-        guard.call(@object, last_transition, options[:metadata])
-      end
+      self.class.validate_bulk_transition(
+        [self], from: options[:from], to: options[:to], metadata: options[:metadata], on_failure: :raise
+      )
     end
 
     def to_s_or_nil(input)

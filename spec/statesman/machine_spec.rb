@@ -512,6 +512,334 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :after_guard_failure, :after_guard_failure
   end
 
+  describe ".validate_bulk_transition" do
+    subject(:call) do
+      machine.validate_bulk_transition(machines, from: "pending", to: "approved", on_failure: on_failure)
+    end
+
+    let(:order_a) { Class.new { attr_accessor :current_state }.new }
+    let(:order_b) { Class.new { attr_accessor :current_state }.new }
+    let(:machine_a) { machine.new(order_a) }
+    let(:machine_b) { machine.new(order_b) }
+    let(:machines) { [machine_a, machine_b] }
+    let(:on_failure) { :collect }
+
+    before do
+      machine.class_eval do
+        state :pending, initial: true
+        state :approved
+        state :rejected
+        transition from: :pending, to: :approved
+      end
+    end
+
+    it "returns every machine as a survivor, with no failures" do
+      survivors, failed = call
+      expect(survivors).to eq(machines)
+      expect(failed).to eq([])
+    end
+
+    context "with an invalid edge (to is not a successor of from)" do
+      subject(:call) do
+        machine.validate_bulk_transition(machines, from: "pending", to: "rejected", on_failure: on_failure)
+      end
+
+      it "returns no survivors, tagging every machine as invalid_current_state" do
+        survivors, failed = call
+        expect(survivors).to eq([])
+        expect(failed).to contain_exactly(
+          include(machine: machine_a, reason: :invalid_current_state),
+          include(machine: machine_b, reason: :invalid_current_state),
+        )
+      end
+
+      context "and on_failure is :raise" do
+        let(:on_failure) { :raise }
+
+        it "raises immediately instead of collecting failures" do
+          expect { call }.to raise_error(Statesman::TransitionFailedError)
+        end
+      end
+    end
+
+    context "with a guard" do
+      before { machine.guard_transition(from: :pending, to: :approved) { |object, *| object != order_b } }
+
+      it "partitions survivors from guard failures" do
+        survivors, failed = call
+        expect(survivors).to eq([machine_a])
+        expect(failed).to contain_exactly(include(machine: machine_b, reason: :guard))
+      end
+
+      context "and on_failure is :raise" do
+        let(:on_failure) { :raise }
+
+        it "raises immediately instead of collecting failures" do
+          expect { call }.to raise_error(Statesman::GuardFailedError)
+        end
+      end
+    end
+
+    context "with skip_guards: true" do
+      subject(:call) do
+        machine.validate_bulk_transition(machines, from: "pending", to: "approved", skip_guards: true,
+                                                   on_failure: on_failure)
+      end
+
+      before { machine.guard_transition(from: :pending, to: :approved) { false } }
+
+      it "suppresses guard evaluation, so every machine survives" do
+        survivors, failed = call
+        expect(survivors).to eq(machines)
+        expect(failed).to eq([])
+      end
+    end
+  end
+
+  # NOTE on verification strategy: the memory adapter's history is scoped to a single
+  # Machine instance's lifetime (Adapters::Memory#initialize always starts `@history =
+  # []`), not to the parent object — this is pre-existing and unrelated to bulk
+  # transitions (a fresh `machine_class.new(model)` never sees a transition written by a
+  # *different* instance for the same model, with or without bulk_transition_to! — this
+  # was confirmed on unmodified code too: `klass.new(m).transition_to!(:y)` followed by a
+  # fresh `klass.new(m).current_state` returns "x", not "y"). bulk_transition_to! itself
+  # only ever builds one machine per object per call and uses it consistently for that call,
+  # so this doesn't affect correctness — but it does mean these specs can't verify
+  # results by re-instantiating a fresh machine afterward. Instead they rely on
+  # `result.transitioned`/`result.failed` (built during the call itself), a real
+  # `after_transition` callback to capture written transitions where deeper properties
+  # matter, and `allow_any_instance_of` (already used elsewhere in this file) on the rare
+  # occasion a test needs objects starting from different states within one call.
+  describe ".bulk_transition_to!" do
+    let(:machine_class) do
+      Class.new do
+        include Statesman::Machine
+
+        def self.name
+          "MyBulkStateMachine"
+        end
+
+        state :x, initial: true
+        state :y
+        state :z
+        transition from: :x, to: :y
+        transition from: :x, to: :z
+        transition from: :y, to: :z
+      end
+    end
+
+    let(:model_class) { Class.new { attr_accessor :current_state } }
+    let(:captured) { {} }
+
+    def build_objects(count)
+      Array.new(count) { model_class.new }
+    end
+
+    # Registers a real Statesman `after` callback to capture the transition actually
+    # written for each object, keyed by object. Does not fire under skip_after_callbacks.
+    def capture_transitions!
+      store = captured
+      machine_class.after_transition { |object, transition| store[object] = transition }
+    end
+
+    describe "end-to-end on the memory adapter" do
+      subject(:result) { machine_class.bulk_transition_to!(objects, :y) }
+
+      let(:objects) { build_objects(3) }
+
+      before { capture_transitions! }
+
+      it "transitions every object and reports no failures" do
+        expect(result.transitioned).to match_array(objects)
+        expect(result.failed).to eq([])
+        expect(result.success?).to be(true)
+      end
+
+      it "actually writes each object's transition to state y" do
+        result
+        objects.each { |object| expect(captured[object].to_state).to eq("y") }
+      end
+
+      it "applies the given metadata to every transition in the batch" do
+        machine_class.bulk_transition_to!(objects, :y, metadata: { "batch_id" => 42 })
+        objects.each { |object| expect(captured[object].metadata).to eq({ "batch_id" => 42 }) }
+      end
+
+      context "with a mixed batch (some succeed, one is guarded, one has a bad edge)" do
+        let(:good_object) { model_class.new }
+        let(:guarded_object) { model_class.new }
+        let(:invalid_object) { model_class.new }
+        let(:objects) { [good_object, guarded_object, invalid_object] }
+
+        before do
+          machine_class.guard_transition(from: :x, to: :y) { |object, *| object != guarded_object }
+
+          # invalid_object needs a *different* starting state than the other two so that
+          # :y is not a declared successor of it; see the file-level NOTE on why this is
+          # stubbed rather than set up via a real prior transition.
+          allow_any_instance_of(machine_class).to receive(:current_state) do |instance|
+            instance.object == invalid_object ? "z" : "x"
+          end
+        end
+
+        it "partitions transitioned vs failed correctly" do
+          result = machine_class.bulk_transition_to!(objects, :y)
+
+          expect(result.transitioned).to eq([good_object])
+          expect(result.failed).to contain_exactly(
+            having_attributes(object: guarded_object, reason: :guard),
+            having_attributes(object: invalid_object, reason: :invalid_current_state),
+          )
+        end
+      end
+    end
+
+    describe "equivalence with a loop of #transition_to!" do
+      before { capture_transitions! }
+
+      it "produces the same final transition shape" do
+        looped = build_objects(2)
+        bulked = build_objects(2)
+
+        looped.each { |object| machine_class.new(object).transition_to!(:y, { "k" => "v" }) }
+        machine_class.bulk_transition_to!(bulked, :y, metadata: { "k" => "v" })
+
+        looped.zip(bulked).each do |looped_object, bulked_object|
+          looped_transition = captured[looped_object]
+          bulked_transition = captured[bulked_object]
+
+          expect(bulked_transition).to have_attributes(
+            from_state: looped_transition.from_state,
+            to_state: looped_transition.to_state,
+            sort_key: looped_transition.sort_key,
+            metadata: looped_transition.metadata,
+          )
+        end
+      end
+    end
+
+    describe "successor validation" do
+      subject(:result) do
+        machine_class.bulk_transition_to!([object], :x, skip_guards: true, skip_before_callbacks: true,
+                                                        skip_after_callbacks: true,
+                                                        skip_after_commit_callbacks: true)
+      end
+
+      let(:object) { model_class.new }
+
+      it "is enforced even with every skip option set" do
+        # x has no self-edge declared, so this must fail structurally regardless of the
+        # skips.
+        expect(result.transitioned).to eq([])
+        expect(result.failed.first.reason).to eq(:invalid_current_state)
+      end
+    end
+
+    describe "on_failure: :raise" do
+      let(:objects) { build_objects(2) }
+
+      before do
+        capture_transitions!
+        machine_class.guard_transition(from: :x, to: :y) { false }
+      end
+
+      it "raises the underlying error instead of collecting a failure, aborting the batch" do
+        expect { machine_class.bulk_transition_to!(objects, :y, on_failure: :raise) }.
+          to raise_error(Statesman::GuardFailedError)
+
+        expect(captured).to be_empty
+      end
+    end
+
+    describe "skip_guards" do
+      let(:objects) { build_objects(2) }
+
+      before { machine_class.guard_transition(from: :x, to: :y) { false } }
+
+      it "suppresses guard evaluation, so the transition succeeds" do
+        result = machine_class.bulk_transition_to!(objects, :y, skip_guards: true)
+
+        expect(result.transitioned).to match_array(objects)
+        expect(result.success?).to be(true)
+      end
+    end
+
+    describe "skip_before_callbacks, skip_after_callbacks, skip_after_commit_callbacks" do
+      let(:objects) { build_objects(2) }
+      let(:calls) { [] }
+
+      before do
+        recorder = calls
+        machine_class.before_transition { |*args| recorder << [:before, args] }
+        machine_class.after_transition { |*args| recorder << [:after, args] }
+        machine_class.after_transition(after_commit: true) { |*args| recorder << [:after_commit, args] }
+      end
+
+      it "skips only before when skip_before_callbacks is set" do
+        result = machine_class.bulk_transition_to!(objects, :y, skip_before_callbacks: true)
+
+        expect(calls.map(&:first)).to eq(%i[after after_commit after after_commit])
+        expect(result.transitioned).to match_array(objects)
+      end
+
+      it "skips only after when skip_after_callbacks is set" do
+        result = machine_class.bulk_transition_to!(objects, :y, skip_after_callbacks: true)
+
+        expect(calls.map(&:first)).to eq(%i[before before after_commit after_commit])
+        expect(result.transitioned).to match_array(objects)
+      end
+
+      it "skips only after_commit when skip_after_commit_callbacks is set" do
+        result = machine_class.bulk_transition_to!(objects, :y, skip_after_commit_callbacks: true)
+
+        expect(calls.map(&:first)).to eq(%i[before before after after])
+        expect(result.transitioned).to match_array(objects)
+      end
+
+      it "fires no callbacks at all when all three are set, but still persists the transition" do
+        result = machine_class.bulk_transition_to!(objects, :y, skip_before_callbacks: true,
+                                                                skip_after_callbacks: true,
+                                                                skip_after_commit_callbacks: true)
+
+        expect(calls).to eq([])
+        expect(result.transitioned).to match_array(objects)
+      end
+    end
+
+    describe "a batch spanning several from states" do
+      let(:x_object) { model_class.new }
+      let(:y_object) { model_class.new }
+
+      before do
+        # See the file-level NOTE: stubbing simulates y_object already being at :y,
+        # exactly what a real persisted adapter would give for free.
+        allow_any_instance_of(machine_class).to receive(:current_state) do |instance|
+          instance.object == y_object ? "y" : "x"
+        end
+        machine_class.guard_transition(from: :y, to: :z) { false }
+      end
+
+      it "buckets by from state and validates/guards each bucket independently" do
+        result = machine_class.bulk_transition_to!([x_object, y_object], :z)
+
+        expect(result.transitioned).to eq([x_object])
+        expect(result.failed.map(&:object)).to eq([y_object])
+        expect(result.failed.first.reason).to eq(:guard)
+      end
+    end
+
+    describe "chunking is the caller's responsibility" do
+      let(:objects) { build_objects(5) }
+
+      it "supports calling bulk_transition_to! once per caller-defined slice" do
+        results = objects.each_slice(2).map { |slice| machine_class.bulk_transition_to!(slice, :y) }
+
+        expect(results.flat_map(&:transitioned)).to match_array(objects)
+        expect(results).to all(have_attributes(success?: true))
+      end
+    end
+  end
+
   shared_examples "initial transition is not created" do
     it "doesn't call .create on storage adapter" do
       expect_any_instance_of(Statesman.storage_adapter).to_not receive(:create)

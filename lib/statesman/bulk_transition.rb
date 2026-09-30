@@ -1,138 +1,74 @@
 # frozen_string_literal: true
 
 require_relative "bulk_transition/result"
-require_relative "bulk_transition/failure"
-require_relative "exceptions"
 
 module Statesman
-  # Orchestrates Machine.bulk_transition_to!. Mirrors single-object semantics in two
-  # phases per (chunk, from-state) bucket: Phase A validates the transition is a legal
-  # edge and runs guards, entirely in Ruby, before anything is built or written. Phase B
-  # builds each surviving transition, runs `before`, then hands persistence off to the
-  # adapter's own `bulk_create` — which persists and, at whatever point is safe for that
-  # adapter, invokes the `after`/`after_commit` dispatch we hand it.
-  #
-  # Callback ownership is split rather than uniform across adapters because `after`/
-  # `after_commit` need the actual persisted record (a real id, assigned at write
-  # time), and only the adapter's bulk_create knows when persistence has completed and
-  # holds that record — so those two have to be adapter-side, or fed the persisted rows
-  # back from it. Successor validation, guards, and `before` need nothing from the
-  # write itself, so they run once, uniformly, here in the orchestrator instead.
+  # The write side of Machine.bulk_transition_to!, for one from-state bucket of already-
+  # validated survivors — see Machine.bulk_transition_to! for the validation that happens
+  # upstream of this, and Machine.validate_bulk_transition for why that lives on Machine
+  # rather than here. Builds each transition and runs `before` (unless
+  # skip_before_callbacks), then persists the bucket via the adapter's own bulk_create,
+  # which only persists. Once that reports back which items failed, dispatches `after`
+  # (unless skip_after_callbacks) and `after_commit` (unless skip_after_commit_callbacks)
+  # for every other item — each item already carries its own machine and transition
+  # forward, so there's no need to work backward from the objects bulk_create hands back
+  # to find them. The three skips are independent since each phase has its own use case
+  # for being suppressed on its own — see Machine.after_transition's `:after` vs
+  # `:after_commit` distinction.
   class BulkTransition
-    def initialize(machine_class, objects, new_state, metadata: {}, on_failure: :collect,
-                   batch_size: 100, skip_guards: false, skip_callbacks: false)
-      @machine_class = machine_class
-      @objects = objects
-      @new_state = new_state.to_s
+    def initialize(new_state, metadata: {}, skip_before_callbacks: false, skip_after_callbacks: false,
+                   skip_after_commit_callbacks: false)
+      @new_state = new_state
       @metadata = metadata
-      @on_failure = on_failure
-      @batch_size = batch_size
-      @skip_guards = skip_guards
-      @skip_callbacks = skip_callbacks
+      @skip_before_callbacks = skip_before_callbacks
+      @skip_after_callbacks = skip_after_callbacks
+      @skip_after_commit_callbacks = skip_after_commit_callbacks
     end
 
-    def call
-      transitioned = []
-      failed = []
+    def persist(from, machines)
+      items = machines.map do |machine|
+        transition = machine.storage_adapter.build_transition(from, @new_state, @metadata)
+        machine.execute(:before, from, @new_state, transition) unless @skip_before_callbacks
 
-      @objects.each_slice(@batch_size) do |chunk|
-        machines_by_object = chunk.to_h do |object|
-          [object, @machine_class.new(object)]
-        end
-
-        machines_by_object.group_by { |(_, machine)| machine.current_state }.each do |from, pairs|
-          bucket_result = process_bucket(from, pairs)
-          transitioned.concat(bucket_result.transitioned)
-          failed.concat(bucket_result.failed)
-        end
+        { object: machine.object, adapter: machine.storage_adapter, transition: transition, machine: machine }
       end
 
-      Result.new(transitioned: transitioned, failed: failed)
+      adapter_class = uniform_adapter_class(items)
+      result = adapter_class.bulk_create(items)
+
+      dispatch_after_callbacks(from, items, result.failed)
+
+      result
     end
 
     private
 
-    def process_bucket(from, machine_pairs)
-      survivors, phase_a_failures = run_phase_a(from, machine_pairs)
-      phase_b_result = run_phase_b(from, survivors)
+    # adapter_class.bulk_create(items) is called once for the whole bucket, so every
+    # item in it must actually be backed by the same adapter — otherwise we'd silently
+    # hand some items to a bulk_create implementation that doesn't know how to persist
+    # them (e.g. built for a different transition table). This can't happen via
+    # Machine.bulk_transition_to! today, since it builds every machine the same way, but
+    # it's cheap to guard against a Machine subclass that varies its adapter per object.
+    def uniform_adapter_class(items)
+      adapter_classes = items.map { |item| item[:adapter].class }.uniq
+      return adapter_classes.first if adapter_classes.one?
 
-      Result.new(
-        transitioned: phase_b_result.transitioned,
-        failed: phase_a_failures + phase_b_result.failed,
-      )
+      raise ArgumentError, "bulk_transition_to! requires every object to use the same storage " \
+                           "adapter, got: #{adapter_classes.join(', ')}"
     end
 
-    # Successor validation and guards, always in that order, entirely upstream of any
-    # write. Successor validation is never skippable; guards are, via skip_guards. An
-    # adapter's bulk_create is never handed an item that failed either check.
-    def run_phase_a(from, machine_pairs)
-      survivors = []
-      failed = []
+    def dispatch_after_callbacks(from, items, failures)
+      return if @skip_after_callbacks && @skip_after_commit_callbacks
 
-      machine_pairs.each do |object, machine|
-        unless successor?(from)
-          error = TransitionFailedError.new(from, @new_state)
-          raise error if @on_failure == :raise
+      failed_objects = failures.to_h { |failure| [failure.object, true] }
 
-          failed << Failure.new(object: object, reason: :invalid_current_state, error: error)
-          next
+      items.each do |item|
+        next if failed_objects.key?(item[:object])
+
+        item[:machine].execute(:after, from, @new_state, item[:transition]) unless @skip_after_callbacks
+        unless @skip_after_commit_callbacks
+          item[:machine].execute(:after_commit, from, @new_state, item[:transition])
         end
-
-        begin
-          run_guards(object, machine, from) unless @skip_guards
-        rescue GuardFailedError => e
-          raise if @on_failure == :raise
-
-          failed << Failure.new(object: object, reason: :guard, error: e)
-          next
-        end
-
-        survivors << [object, machine]
-      end
-
-      [survivors, failed]
-    end
-
-    def successor?(from)
-      (@machine_class.successors[from] || []).include?(@new_state)
-    end
-
-    def run_guards(object, machine, from)
-      guards_for(from).each { |guard| guard.call(object, machine.last_transition, @metadata) }
-    end
-
-    def guards_for(from)
-      @machine_class.callbacks[:guards].select { |guard| guard.applies_to?(from: from, to: @new_state) }
-    end
-
-    # Builds each surviving transition and runs `before` (unless skip_callbacks), then
-    # persists the bucket via the adapter's own bulk_create, passing it our `after`/
-    # `after_commit` dispatch to invoke once it's safe to do so.
-    def run_phase_b(from, machine_pairs)
-      return Result.new if machine_pairs.empty?
-
-      items = machine_pairs.map do |object, machine|
-        transition = machine.storage_adapter.build_transition(from, @new_state, @metadata)
-        machine.execute(:before, from, @new_state, transition) unless @skip_callbacks
-
-        { object: object, adapter: machine.storage_adapter, transition: transition }
-      end
-
-      machines_by_object = machine_pairs.to_h
-      adapter_class = items.first[:adapter].class
-
-      adapter_class.bulk_create(
-        items,
-        after_persist: callback_dispatcher(:after, from, machines_by_object),
-        after_commit: callback_dispatcher(:after_commit, from, machines_by_object),
-      )
-    end
-
-    def callback_dispatcher(phase, from, machines_by_object)
-      return nil if @skip_callbacks
-
-      ->(object, transition) do
-        machines_by_object.fetch(object).execute(phase, from, @new_state, transition)
       end
     end
   end
