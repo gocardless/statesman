@@ -26,12 +26,12 @@ module Statesman
       # that object's own Adapters::Memory instance and `transition` was already built
       # via #build_transition (and had `before` run on it, by the caller). Guard/
       # successor failures never reach here — that validation always happens upstream,
-      # in Statesman::BulkTransition, before an item is built at all.
+      # in Machine.validate_bulk_transition, before an item is built at all.
       #
       # Callback dispatch (before/after/after_commit) is deliberately left out at
       # this stage — this method only persists. Statesman::BulkTransition is the
-      # future orchestrator that will invoke those per item once it knows that
-      # item is durably written; wiring that up is follow-up work, not this PR.
+      # orchestrator that invokes those per item once it knows that item is durably
+      # written (see BulkTransition#persist/#dispatch_after_callbacks).
       #
       # Persisting can still fail even once an item has passed upstream guard/
       # successor validation (e.g. a write conflict on the real ActiveRecord

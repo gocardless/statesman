@@ -512,6 +512,90 @@ describe Statesman::Machine do
     it_behaves_like "a callback store", :after_guard_failure, :after_guard_failure
   end
 
+  describe ".validate_bulk_transition" do
+    subject(:call) do
+      machine.validate_bulk_transition(machines, from: "pending", to: "approved", on_failure: on_failure)
+    end
+
+    let(:order_a) { Class.new { attr_accessor :current_state }.new }
+    let(:order_b) { Class.new { attr_accessor :current_state }.new }
+    let(:machine_a) { machine.new(order_a) }
+    let(:machine_b) { machine.new(order_b) }
+    let(:machines) { [machine_a, machine_b] }
+    let(:on_failure) { :collect }
+
+    before do
+      machine.class_eval do
+        state :pending, initial: true
+        state :approved
+        state :rejected
+        transition from: :pending, to: :approved
+      end
+    end
+
+    it "returns every machine as a survivor, with no failures" do
+      survivors, failed = call
+      expect(survivors).to eq(machines)
+      expect(failed).to eq([])
+    end
+
+    context "with an invalid edge (to is not a successor of from)" do
+      subject(:call) do
+        machine.validate_bulk_transition(machines, from: "pending", to: "rejected", on_failure: on_failure)
+      end
+
+      it "returns no survivors, tagging every machine as invalid_current_state" do
+        survivors, failed = call
+        expect(survivors).to eq([])
+        expect(failed).to contain_exactly(
+          include(machine: machine_a, reason: :invalid_current_state),
+          include(machine: machine_b, reason: :invalid_current_state),
+        )
+      end
+
+      context "and on_failure is :raise" do
+        let(:on_failure) { :raise }
+
+        it "raises immediately instead of collecting failures" do
+          expect { call }.to raise_error(Statesman::TransitionFailedError)
+        end
+      end
+    end
+
+    context "with a guard" do
+      before { machine.guard_transition(from: :pending, to: :approved) { |object, *| object != order_b } }
+
+      it "partitions survivors from guard failures" do
+        survivors, failed = call
+        expect(survivors).to eq([machine_a])
+        expect(failed).to contain_exactly(include(machine: machine_b, reason: :guard))
+      end
+
+      context "and on_failure is :raise" do
+        let(:on_failure) { :raise }
+
+        it "raises immediately instead of collecting failures" do
+          expect { call }.to raise_error(Statesman::GuardFailedError)
+        end
+      end
+    end
+
+    context "with skip_guards: true" do
+      subject(:call) do
+        machine.validate_bulk_transition(machines, from: "pending", to: "approved", skip_guards: true,
+                                                   on_failure: on_failure)
+      end
+
+      before { machine.guard_transition(from: :pending, to: :approved) { false } }
+
+      it "suppresses guard evaluation, so every machine survives" do
+        survivors, failed = call
+        expect(survivors).to eq(machines)
+        expect(failed).to eq([])
+      end
+    end
+  end
+
   shared_examples "initial transition is not created" do
     it "doesn't call .create on storage adapter" do
       expect_any_instance_of(Statesman.storage_adapter).to_not receive(:create)
