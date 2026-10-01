@@ -28,10 +28,12 @@ module Statesman
       # successor failures never reach here — that validation always happens upstream,
       # in Machine.validate_bulk_transition, before an item is built at all.
       #
-      # Callback dispatch (before/after/after_commit) is deliberately left out at
-      # this stage — this method only persists. Statesman::BulkTransition is the
-      # orchestrator that invokes those per item once it knows that item is durably
-      # written (see BulkTransition#persist/#dispatch_after_callbacks).
+      # `after`/`after_commit` are per-item callables built by Statesman::BulkTransition
+      # (the orchestrator), invoked here rather than by the orchestrator itself, once an
+      # item is known to be durably written (see BulkTransition#persist). This adapter has
+      # no real transaction, so unlike Adapters::ActiveRecord it just calls both
+      # immediately, in order, right after persisting — `from` isn't needed here (it's
+      # already baked into the built transition) but is accepted for interface parity.
       #
       # Persisting can still fail even once an item has passed upstream guard/
       # successor validation (e.g. a write conflict on the real ActiveRecord
@@ -39,16 +41,22 @@ module Statesman
       # predicted in advance. Each item's persist is rescued individually so one
       # item's failure doesn't stop or lose track of the rest: the failing item
       # is recorded in Result#failed and every other item still gets persisted
-      # and recorded in Result#successful, keeping Result accurate either way.
-      def self.bulk_create(items)
+      # and recorded in Result#successful, keeping Result accurate either way. A raise
+      # from `after`/`after_commit` themselves is deliberately not rescued here, matching
+      # today's behaviour.
+      def self.bulk_create(items, from:, after:, after_commit:) # rubocop:disable Lint/UnusedMethodArgument
         successful = []
         failed = []
 
         items.each do |item|
           item[:adapter].persist(item[:transition])
-          successful << item[:object]
         rescue StandardError => e
           failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: e)
+          next
+        else
+          successful << item[:object]
+          after.call(item)
+          after_commit.call(item)
         end
 
         BulkTransition::Result.new(successful: successful, failed: failed)
