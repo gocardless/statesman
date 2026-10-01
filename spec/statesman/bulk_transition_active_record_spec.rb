@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# End-to-end equivalence spec for the WU3 DoD: a batch of Machine.bulk_transition_to!
+# End-to-end equivalence spec for the WU3 DoD: a batch of Statesman::BulkTransition.call
 # against the real ActiveRecord adapter must produce the same final state as a loop of
 # #transition_to! — same history, most_recent, sort_key spacing, and (where configured)
 # cached current-state column. Unit-level AR mechanics (conflicts, races, after/
@@ -8,7 +8,7 @@
 # spec/statesman/adapters/active_record_bulk_create_spec.rb; this file only checks the
 # success-path equivalence claim end-to-end, through the real Machine/BulkTransition/
 # Adapters::ActiveRecord stack together.
-describe "Machine.bulk_transition_to! vs a loop of #transition_to!", # rubocop:disable RSpec/DescribeClass
+describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable RSpec/DescribeClass
          :active_record do
   before do
     prepare_model_table
@@ -66,9 +66,9 @@ describe "Machine.bulk_transition_to! vs a loop of #transition_to!", # rubocop:d
     looped.each do |model|
       machine_class.new(model, transition_class: MyActiveRecordModelTransition).transition_to!(:processing)
     end
-    machine_class.bulk_transition_to!(
+    Statesman::BulkTransition.call(
       bulked.map { |model| machine_class.new(model, transition_class: MyActiveRecordModelTransition) },
-      new_state: :processing,
+      :processing,
     )
 
     looped.zip(bulked).each do |loop_model, bulk_model|
@@ -87,9 +87,9 @@ describe "Machine.bulk_transition_to! vs a loop of #transition_to!", # rubocop:d
 
     round_trip_machine_class.new(model_looped, transition_class: MyActiveRecordModelTransition).
       transition_to!(:processing)
-    round_trip_machine_class.bulk_transition_to!(
+    Statesman::BulkTransition.call(
       [round_trip_machine_class.new(model_bulked, transition_class: MyActiveRecordModelTransition)],
-      new_state: :processing,
+      :processing,
     )
 
     expect(history_snapshot(model_bulked)).to eq(history_snapshot(model_looped))
@@ -113,9 +113,9 @@ describe "Machine.bulk_transition_to! vs a loop of #transition_to!", # rubocop:d
       looped.each do |model|
         machine_class.new(model, transition_class: MyActiveRecordModelTransition).transition_to!(:processing)
       end
-      machine_class.bulk_transition_to!(
+      Statesman::BulkTransition.call(
         bulked.map { |model| machine_class.new(model, transition_class: MyActiveRecordModelTransition) },
-        new_state: :processing,
+        :processing,
       )
 
       expect(bulked.map { |m| m.reload.cached_current_state }).to eq(looped.map { |m| m.reload.cached_current_state })
