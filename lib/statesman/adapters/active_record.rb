@@ -31,9 +31,9 @@ module Statesman
         end
       end
 
-      # The batched write path behind Machine.bulk_transition_to!. `items` is an
+      # The batched write path behind Statesman::BulkTransition.call. `items` is an
       # Enumerable of { object:, adapter:, transition:, machine: }, all sharing one
-      # bucket's `from` state (see Machine#bulk_transition_batch!) — `adapter` is that
+      # bucket's `from` state (see BulkTransition.transition_batch) — `adapter` is that
       # item's own per-parent Adapters::ActiveRecord instance, `transition` was already
       # built via #build_transition (and had `before` run on it) by the caller.
       #
@@ -45,7 +45,7 @@ module Statesman
       # on the connection *before* that transaction closes, so — like the single-object
       # path's #add_after_commit_callback — it only actually fires once the *real*
       # outermost transaction commits, correctly deferring even when
-      # bulk_transition_to! runs inside a caller-managed transaction.
+      # Statesman::BulkTransition.call runs inside a caller-managed transaction.
       #
       # Phase A (no write transaction): read each parent's current most_recent row
       # (id/sort_key/to_state) in one query. A row whose to_state no longer matches
@@ -91,7 +91,7 @@ module Statesman
           classes = items.map { |item| item[:adapter].transition_class }.uniq
           return if classes.one?
 
-          raise ArgumentError, "bulk_transition_to! requires every object to use the same " \
+          raise ArgumentError, "BulkTransition requires every object to use the same " \
                                "transition class, got: #{classes.join(', ')}"
         end
 
