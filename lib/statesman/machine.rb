@@ -4,7 +4,6 @@ require_relative "version"
 require_relative "exceptions"
 require_relative "guard"
 require_relative "callback"
-require_relative "bulk_transition"
 require_relative "adapters/memory_transition"
 
 module Statesman
@@ -164,51 +163,11 @@ module Statesman
         end
       end
 
-      # Transition many objects to the same state in one call. Validates directly (see
-      # .validate_bulk_transition), the same way #transition_to! calls #validate_transition
-      # directly; only survivors are handed to Statesman::BulkTransition for the write
-      # side (build transition, `before`, adapter's bulk_create, `after`/`after_commit`).
-      #
-      # Doesn't chunk `objects` itself unless `in_batches_of` is given — safe batch size
-      # depends on the caller's own DB, which this gem can't know. Callers may still slice
-      # their own objects and call this once per slice instead; `in_batches_of` is just a
-      # convenience for the common case of "run this in groups of N", one
-      # validate+persist cycle per batch rather than one for the whole collection. The
-      # duplicate-object check still runs across *all* objects up front, before any
-      # batching, so a duplicate split across two batches is still caught. With
-      # on_failure: :raise, a failure part-way through aborts the remaining batches —
-      # already-persisted batches are not rolled back.
-      #
-      # Each entry may be a plain object (wrapped via `new`) or an already-built machine
-      # of this class, used as-is — not required to be machines outright, so the common
-      # case (`bulk_transition_to!(orders, :approved)`) stays ceremony-free. Passing an
-      # already-warm machine matters for adapters that memoize per-instance (e.g.
-      # Adapters::ActiveRecord#last caches @last_transition): that cache would otherwise
-      # be lost to a cold `new(object)`.
-      def bulk_transition_to!(objects, new_state:, in_batches_of: nil, metadata: {}, on_failure: :collect,
-                              skip_guards: false, skip_before_callbacks: false, skip_after_callbacks: false,
-                              skip_after_commit_callbacks: false)
-        new_state = new_state.to_s
-        machines = objects.map { |object| object.is_a?(self) ? object : new(object) }
-        validate_no_duplicate_objects(machines)
-
-        batches = in_batches_of ? machines.each_slice(validate_batch_size(in_batches_of)) : [machines]
-        results = batches.map do |batch|
-          bulk_transition_batch!(batch, new_state, metadata: metadata, on_failure: on_failure,
-                                                   skip_guards: skip_guards,
-                                                   skip_before_callbacks: skip_before_callbacks,
-                                                   skip_after_callbacks: skip_after_callbacks,
-                                                   skip_after_commit_callbacks: skip_after_commit_callbacks)
-        end
-
-        BulkTransition::Result.new(successful: results.flat_map(&:successful), failed: results.flat_map(&:failed))
-      end
-
       # Shared validation core behind #validate_transition (one machine) and
-      # .bulk_transition_to! (many) — caller guarantees every machine in `machines` is
-      # currently in `from`. Computes the edge check and guard list once per call rather
-      # than once per machine, since both depend only on (from, to); only the guard calls
-      # themselves are per-machine.
+      # Statesman::BulkTransition.call (many) — caller guarantees every machine in
+      # `machines` is currently in `from`. Computes the edge check and guard list once
+      # per call rather than once per machine, since both depend only on (from, to);
+      # only the guard calls themselves are per-machine.
       #
       # on_failure: :raise re-raises the first failure immediately, matching single-
       # transition semantics; :collect gathers every failure and keeps going, returning
@@ -237,59 +196,6 @@ module Statesman
       end
 
       private
-
-      def validate_no_duplicate_objects(machines)
-        duplicate_objects = machines.map(&:object).tally.select { |_, count| count > 1 }.keys
-        return if duplicate_objects.empty?
-
-        raise ArgumentError, "bulk_transition_to! does not support duplicate objects: #{duplicate_objects.inspect}"
-      end
-
-      def validate_batch_size(in_batches_of)
-        return in_batches_of if in_batches_of.is_a?(Integer) && in_batches_of.positive?
-
-        raise ArgumentError, "in_batches_of must be a positive integer, got: #{in_batches_of.inspect}"
-      end
-
-      # One validate+persist cycle for a single batch of already-built, already
-      # duplicate-checked machines — the body of .bulk_transition_to! prior to
-      # `in_batches_of` support, extracted so it can run once per batch.
-      #
-      # TODO: Verify DB usage against different machine conditions once develop the AR adapter
-      # Buckets by machine class too, not just current_state: a pre-built machine passed in
-      # (see the is_a?(self) check in .bulk_transition_to!) may be a subclass of `self`, with
-      # its own guards/successors — validating it against `self`'s rules instead of its own
-      # would silently skip whatever that subclass adds.
-      def bulk_transition_batch!(machines, new_state, metadata:, on_failure:, skip_guards:, skip_before_callbacks:,
-                                 skip_after_callbacks:, skip_after_commit_callbacks:)
-        writer = BulkTransition.new(new_state, metadata: metadata, skip_before_callbacks: skip_before_callbacks,
-                                               skip_after_callbacks: skip_after_callbacks,
-                                               skip_after_commit_callbacks: skip_after_commit_callbacks)
-        successful = []
-        failed = []
-
-        machines.group_by { |machine| [machine.class, machine.current_state] }.each do |(machine_class, from), bucket|
-          survivors, failures = machine_class.validate_bulk_transition(bucket, from: from, to: new_state,
-                                                                               metadata: metadata,
-                                                                               skip_guards: skip_guards,
-                                                                               on_failure: on_failure)
-          failed.concat(bulk_failed_items(failures))
-          next if survivors.empty?
-
-          result = writer.persist(from, survivors)
-          successful.concat(result.successful)
-          failed.concat(result.failed)
-        end
-
-        BulkTransition::Result.new(successful: successful, failed: failed)
-      end
-
-      def bulk_failed_items(failures)
-        failures.map do |failure|
-          BulkTransition::Result::FailedItem.new(object: failure[:machine].object, reason: failure[:reason],
-                                                 error: failure[:error])
-        end
-      end
 
       def validate_bulk_edge(from, to)
         return if (successors[from] || []).include?(to)
