@@ -619,12 +619,12 @@ describe Statesman::Machine do
           "MyBulkStateMachine"
         end
 
-        state :x, initial: true
-        state :y
-        state :z
-        transition from: :x, to: :y
-        transition from: :x, to: :z
-        transition from: :y, to: :z
+        state :pending, initial: true
+        state :processing
+        state :completed
+        transition from: :pending, to: :processing
+        transition from: :pending, to: :completed
+        transition from: :processing, to: :completed
       end
     end
 
@@ -643,7 +643,7 @@ describe Statesman::Machine do
     end
 
     describe "end-to-end on the memory adapter" do
-      subject(:result) { machine_class.bulk_transition_to!(objects, :y) }
+      subject(:result) { machine_class.bulk_transition_to!(objects, new_state: :processing) }
 
       let(:objects) { build_objects(3) }
 
@@ -655,13 +655,13 @@ describe Statesman::Machine do
         expect(result.success?).to be(true)
       end
 
-      it "actually writes each object's transition to state y" do
+      it "actually writes each object's transition to state processing" do
         result
-        objects.each { |object| expect(captured[object].to_state).to eq("y") }
+        objects.each { |object| expect(captured[object].to_state).to eq("processing") }
       end
 
       it "applies the given metadata to every transition in the batch" do
-        machine_class.bulk_transition_to!(objects, :y, metadata: { "batch_id" => 42 })
+        machine_class.bulk_transition_to!(objects, new_state: :processing, metadata: { "batch_id" => 42 })
         objects.each { |object| expect(captured[object].metadata).to eq({ "batch_id" => 42 }) }
       end
 
@@ -672,18 +672,18 @@ describe Statesman::Machine do
         let(:objects) { [good_object, guarded_object, invalid_object] }
 
         before do
-          machine_class.guard_transition(from: :x, to: :y) { |object, *| object != guarded_object }
+          machine_class.guard_transition(from: :pending, to: :processing) { |object, *| object != guarded_object }
 
           # invalid_object needs a *different* starting state than the other two so that
-          # :y is not a declared successor of it; see the file-level NOTE on why this is
-          # stubbed rather than set up via a real prior transition.
+          # :processing is not a declared successor of it; see the file-level NOTE on why
+          # this is stubbed rather than set up via a real prior transition.
           allow_any_instance_of(machine_class).to receive(:current_state) do |instance|
-            instance.object == invalid_object ? "z" : "x"
+            instance.object == invalid_object ? "completed" : "pending"
           end
         end
 
         it "partitions successful vs failed correctly" do
-          result = machine_class.bulk_transition_to!(objects, :y)
+          result = machine_class.bulk_transition_to!(objects, new_state: :processing)
 
           expect(result.successful).to eq([good_object])
           expect(result.failed).to contain_exactly(
@@ -702,7 +702,7 @@ describe Statesman::Machine do
         pre_built_machine
         expect(machine_class).to_not receive(:new)
 
-        result = machine_class.bulk_transition_to!([pre_built_machine], :y)
+        result = machine_class.bulk_transition_to!([pre_built_machine], new_state: :processing)
 
         expect(result.successful).to eq([object])
       end
@@ -715,10 +715,10 @@ describe Statesman::Machine do
             "MyBulkSubStateMachine"
           end
 
-          state :x, initial: true
-          state :y
-          transition from: :x, to: :y
-          guard_transition(from: :x, to: :y) { false }
+          state :pending, initial: true
+          state :processing
+          transition from: :pending, to: :processing
+          guard_transition(from: :pending, to: :processing) { false }
         end
       end
 
@@ -726,7 +726,7 @@ describe Statesman::Machine do
       let(:sub_machine) { sub_class.new(object) }
 
       it "validates against the subclass's own guards, not the receiver's" do
-        result = machine_class.bulk_transition_to!([sub_machine], :y)
+        result = machine_class.bulk_transition_to!([sub_machine], new_state: :processing)
 
         expect(result.successful).to eq([])
         expect(result.failed.first.reason).to eq(:guard)
@@ -737,7 +737,7 @@ describe Statesman::Machine do
       let(:object) { model_class.new }
 
       it "raises instead of persisting the same object twice" do
-        expect { machine_class.bulk_transition_to!([object, object], :y) }.
+        expect { machine_class.bulk_transition_to!([object, object], new_state: :processing) }.
           to raise_error(ArgumentError, /duplicate objects/)
       end
     end
@@ -749,8 +749,8 @@ describe Statesman::Machine do
         looped = build_objects(2)
         bulked = build_objects(2)
 
-        looped.each { |object| machine_class.new(object).transition_to!(:y, { "k" => "v" }) }
-        machine_class.bulk_transition_to!(bulked, :y, metadata: { "k" => "v" })
+        looped.each { |object| machine_class.new(object).transition_to!(:processing, { "k" => "v" }) }
+        machine_class.bulk_transition_to!(bulked, new_state: :processing, metadata: { "k" => "v" })
 
         looped.zip(bulked).each do |looped_object, bulked_object|
           looped_transition = captured[looped_object]
@@ -768,16 +768,17 @@ describe Statesman::Machine do
 
     describe "successor validation" do
       subject(:result) do
-        machine_class.bulk_transition_to!([object], :x, skip_guards: true, skip_before_callbacks: true,
-                                                        skip_after_callbacks: true,
-                                                        skip_after_commit_callbacks: true)
+        machine_class.bulk_transition_to!([object], new_state: :pending, skip_guards: true,
+                                                    skip_before_callbacks: true,
+                                                    skip_after_callbacks: true,
+                                                    skip_after_commit_callbacks: true)
       end
 
       let(:object) { model_class.new }
 
       it "is enforced even with every skip option set" do
-        # x has no self-edge declared, so this must fail structurally regardless of the
-        # skips.
+        # pending has no self-edge declared, so this must fail structurally regardless of
+        # the skips.
         expect(result.successful).to eq([])
         expect(result.failed.first.reason).to eq(:invalid_current_state)
       end
@@ -788,11 +789,11 @@ describe Statesman::Machine do
 
       before do
         capture_transitions!
-        machine_class.guard_transition(from: :x, to: :y) { false }
+        machine_class.guard_transition(from: :pending, to: :processing) { false }
       end
 
       it "raises the underlying error instead of collecting a failure, aborting the batch" do
-        expect { machine_class.bulk_transition_to!(objects, :y, on_failure: :raise) }.
+        expect { machine_class.bulk_transition_to!(objects, new_state: :processing, on_failure: :raise) }.
           to raise_error(Statesman::GuardFailedError)
 
         expect(captured).to be_empty
@@ -802,10 +803,10 @@ describe Statesman::Machine do
     describe "skip_guards" do
       let(:objects) { build_objects(2) }
 
-      before { machine_class.guard_transition(from: :x, to: :y) { false } }
+      before { machine_class.guard_transition(from: :pending, to: :processing) { false } }
 
       it "suppresses guard evaluation, so the transition succeeds" do
-        result = machine_class.bulk_transition_to!(objects, :y, skip_guards: true)
+        result = machine_class.bulk_transition_to!(objects, new_state: :processing, skip_guards: true)
 
         expect(result.successful).to match_array(objects)
         expect(result.success?).to be(true)
@@ -824,30 +825,31 @@ describe Statesman::Machine do
       end
 
       it "skips only before when skip_before_callbacks is set" do
-        result = machine_class.bulk_transition_to!(objects, :y, skip_before_callbacks: true)
+        result = machine_class.bulk_transition_to!(objects, new_state: :processing, skip_before_callbacks: true)
 
         expect(calls.map(&:first)).to eq(%i[after after_commit after after_commit])
         expect(result.successful).to match_array(objects)
       end
 
       it "skips only after when skip_after_callbacks is set" do
-        result = machine_class.bulk_transition_to!(objects, :y, skip_after_callbacks: true)
+        result = machine_class.bulk_transition_to!(objects, new_state: :processing, skip_after_callbacks: true)
 
         expect(calls.map(&:first)).to eq(%i[before before after_commit after_commit])
         expect(result.successful).to match_array(objects)
       end
 
       it "skips only after_commit when skip_after_commit_callbacks is set" do
-        result = machine_class.bulk_transition_to!(objects, :y, skip_after_commit_callbacks: true)
+        result = machine_class.bulk_transition_to!(objects, new_state: :processing,
+                                                            skip_after_commit_callbacks: true)
 
         expect(calls.map(&:first)).to eq(%i[before before after after])
         expect(result.successful).to match_array(objects)
       end
 
       it "fires no callbacks at all when all three are set, but still persists the transition" do
-        result = machine_class.bulk_transition_to!(objects, :y, skip_before_callbacks: true,
-                                                                skip_after_callbacks: true,
-                                                                skip_after_commit_callbacks: true)
+        result = machine_class.bulk_transition_to!(objects, new_state: :processing, skip_before_callbacks: true,
+                                                            skip_after_callbacks: true,
+                                                            skip_after_commit_callbacks: true)
 
         expect(calls).to eq([])
         expect(result.successful).to match_array(objects)
@@ -855,23 +857,23 @@ describe Statesman::Machine do
     end
 
     describe "a batch spanning several from states" do
-      let(:x_object) { model_class.new }
-      let(:y_object) { model_class.new }
+      let(:pending_object) { model_class.new }
+      let(:processing_object) { model_class.new }
 
       before do
-        # See the file-level NOTE: stubbing simulates y_object already being at :y,
-        # exactly what a real persisted adapter would give for free.
+        # See the file-level NOTE: stubbing simulates processing_object already being at
+        # :processing, exactly what a real persisted adapter would give for free.
         allow_any_instance_of(machine_class).to receive(:current_state) do |instance|
-          instance.object == y_object ? "y" : "x"
+          instance.object == processing_object ? "processing" : "pending"
         end
-        machine_class.guard_transition(from: :y, to: :z) { false }
+        machine_class.guard_transition(from: :processing, to: :completed) { false }
       end
 
       it "buckets by from state and validates/guards each bucket independently" do
-        result = machine_class.bulk_transition_to!([x_object, y_object], :z)
+        result = machine_class.bulk_transition_to!([pending_object, processing_object], new_state: :completed)
 
-        expect(result.successful).to eq([x_object])
-        expect(result.failed.map(&:object)).to eq([y_object])
+        expect(result.successful).to eq([pending_object])
+        expect(result.failed.map(&:object)).to eq([processing_object])
         expect(result.failed.first.reason).to eq(:guard)
       end
     end
@@ -880,7 +882,9 @@ describe Statesman::Machine do
       let(:objects) { build_objects(5) }
 
       it "supports calling bulk_transition_to! once per caller-defined slice" do
-        results = objects.each_slice(2).map { |slice| machine_class.bulk_transition_to!(slice, :y) }
+        results = objects.each_slice(2).map do |slice|
+          machine_class.bulk_transition_to!(slice, new_state: :processing)
+        end
 
         expect(results.flat_map(&:successful)).to match_array(objects)
         expect(results).to all(have_attributes(success?: true))
@@ -890,16 +894,16 @@ describe Statesman::Machine do
         before { capture_transitions! }
 
         it "runs one validate+persist cycle per batch and merges the results" do
-          result = machine_class.bulk_transition_to!(objects, :y, in_batches_of: 2)
+          result = machine_class.bulk_transition_to!(objects, new_state: :processing, in_batches_of: 2)
 
           expect(result.successful).to match_array(objects)
           expect(result.success?).to be(true)
-          objects.each { |object| expect(captured[object].to_state).to eq("y") }
+          objects.each { |object| expect(captured[object].to_state).to eq("processing") }
         end
 
         it "produces the same result as not batching at all" do
-          unbatched = machine_class.bulk_transition_to!(objects, :y)
-          batched = machine_class.bulk_transition_to!(build_objects(5), :y, in_batches_of: 2)
+          unbatched = machine_class.bulk_transition_to!(objects, new_state: :processing)
+          batched = machine_class.bulk_transition_to!(build_objects(5), new_state: :processing, in_batches_of: 2)
 
           expect(batched.successful.size).to eq(unbatched.successful.size)
           expect(batched.success?).to eq(unbatched.success?)
@@ -908,15 +912,19 @@ describe Statesman::Machine do
         it "catches a duplicate object even when it would land in different batches" do
           object = model_class.new
 
-          expect { machine_class.bulk_transition_to!([object, *build_objects(3), object], :y, in_batches_of: 2) }.
-            to raise_error(ArgumentError, /duplicate objects/)
+          expect do
+            machine_class.bulk_transition_to!([object, *build_objects(3), object], new_state: :processing,
+                                                                                   in_batches_of: 2)
+          end.to raise_error(ArgumentError, /duplicate objects/)
         end
 
         context "with a guard failure partway through" do
-          before { machine_class.guard_transition(from: :x, to: :y) { |object, *| object != objects[2] } }
+          before do
+            machine_class.guard_transition(from: :pending, to: :processing) { |object, *| object != objects[2] }
+          end
 
           it "reports the guarded object as failed but still persists the other batches" do
-            result = machine_class.bulk_transition_to!(objects, :y, in_batches_of: 2)
+            result = machine_class.bulk_transition_to!(objects, new_state: :processing, in_batches_of: 2)
 
             expect(result.successful).to match_array(objects - [objects[2]])
             expect(result.failed.map(&:object)).to eq([objects[2]])
@@ -924,11 +932,15 @@ describe Statesman::Machine do
         end
 
         context "with on_failure: :raise" do
-          before { machine_class.guard_transition(from: :x, to: :y) { |object, *| object != objects[2] } }
+          before do
+            machine_class.guard_transition(from: :pending, to: :processing) { |object, *| object != objects[2] }
+          end
 
           it "raises on the failing batch, leaving earlier batches already persisted" do
-            expect { machine_class.bulk_transition_to!(objects, :y, in_batches_of: 2, on_failure: :raise) }.
-              to raise_error(Statesman::GuardFailedError)
+            expect do
+              machine_class.bulk_transition_to!(objects, new_state: :processing, in_batches_of: 2,
+                                                         on_failure: :raise)
+            end.to raise_error(Statesman::GuardFailedError)
 
             expect(captured.keys).to match_array(objects.first(2))
           end
@@ -936,12 +948,12 @@ describe Statesman::Machine do
 
         context "with an invalid batch size" do
           it "raises for a zero batch size" do
-            expect { machine_class.bulk_transition_to!(objects, :y, in_batches_of: 0) }.
+            expect { machine_class.bulk_transition_to!(objects, new_state: :processing, in_batches_of: 0) }.
               to raise_error(ArgumentError, /in_batches_of must be a positive integer/)
           end
 
           it "raises for a negative batch size" do
-            expect { machine_class.bulk_transition_to!(objects, :y, in_batches_of: -1) }.
+            expect { machine_class.bulk_transition_to!(objects, new_state: :processing, in_batches_of: -1) }.
               to raise_error(ArgumentError, /in_batches_of must be a positive integer/)
           end
         end
