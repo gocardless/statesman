@@ -6,9 +6,9 @@
 # storage_adapter, no callback-capturing needed.
 describe Statesman::BulkTransition do
   subject(:writer) do
-    described_class.new("y", metadata: { "k" => "v" }, skip_before_callbacks: skip_before_callbacks,
-                             skip_after_callbacks: skip_after_callbacks,
-                             skip_after_commit_callbacks: skip_after_commit_callbacks)
+    described_class.new("approved", metadata: { "k" => "v" }, skip_before_callbacks: skip_before_callbacks,
+                                    skip_after_callbacks: skip_after_callbacks,
+                                    skip_after_commit_callbacks: skip_after_commit_callbacks)
   end
 
   let(:machine_class) do
@@ -19,9 +19,9 @@ describe Statesman::BulkTransition do
         "MyBulkStateMachine"
       end
 
-      state :x, initial: true
-      state :y
-      transition from: :x, to: :y
+      state :pending, initial: true
+      state :approved
+      transition from: :pending, to: :approved
     end
   end
 
@@ -44,7 +44,7 @@ describe Statesman::BulkTransition do
   end
 
   describe "#persist" do
-    subject(:result) { writer.persist("x", machines) }
+    subject(:result) { writer.persist("pending", machines) }
 
     context "with no machines" do
       let(:machines) { [] }
@@ -58,8 +58,8 @@ describe Statesman::BulkTransition do
 
     it "persists a transition for every machine, via each one's own storage_adapter" do
       result
-      expect(machine_a.storage_adapter.history.map(&:to_state)).to eq(["y"])
-      expect(machine_b.storage_adapter.history.map(&:to_state)).to eq(["y"])
+      expect(machine_a.storage_adapter.history.map(&:to_state)).to eq(["approved"])
+      expect(machine_b.storage_adapter.history.map(&:to_state)).to eq(["approved"])
     end
 
     it "returns every object as successful, with no failures" do
