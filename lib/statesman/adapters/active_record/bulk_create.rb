@@ -43,15 +43,44 @@ module Statesman
         # true can populate them instead.
         TIMESTAMP_COLUMNS = %w[created_at created_on updated_at updated_on].freeze
 
-        def self.call(items, from:, after:, after_commit:)
-          new(items, from: from, after: after, after_commit: after_commit).call
+        # #requires_save_fallback? below only treats a _validate_callbacks/
+        # _create_callbacks/_save_callbacks entry as "the user's own business logic" if
+        # it's neither of these — both are framework scaffolding present on an otherwise
+        # plain transition model, confirmed empirically against a vanilla Rails 8.1 model:
+        #
+        # - :cant_modify_encrypted_attributes_when_frozen is registered in
+        #   _validate_callbacks on *every* AR model by default, unrelated to whether the
+        #   model actually declares an encrypted attribute. This is why the check below
+        #   can't be a bare `_validate_callbacks.any?`.
+        # - Statesman's own convention (see spec/support/active_record.rb) is
+        #   `belongs_to :parent_model` on the transition class with no explicit autosave
+        #   option — Rails registers a `before_save :autosave_associated_records_for_*`
+        #   callback for that regardless, landing in _save_callbacks. This one is
+        #   trickier than the encrypted-attributes case: it isn't present on every AR
+        #   model, only on ones with an association, and it's added only once the
+        #   association is declared. An earlier design for this check snapshotted a
+        #   "baseline" callback-chain length at the point ActiveRecordTransition is
+        #   included into the transition class, then diffed against it later — but
+        #   Statesman's own convention declares `belongs_to` *after* `include
+        #   Statesman::Adapters::ActiveRecordTransition`, so that baseline would always
+        #   be captured too early and this callback would always show up as a "real"
+        #   addition, permanently defeating the fast path for every user. Matching on
+        #   the filter name instead sidesteps the ordering problem entirely: it's
+        #   evaluated lazily, once the whole class body (including `belongs_to`) has run.
+        FRAMEWORK_CALLBACK_FILTERS = [:cant_modify_encrypted_attributes_when_frozen].freeze
+        AUTOSAVE_CALLBACK_FILTER_PATTERN = /\Aautosave_associated_records_for_/
+
+        def self.call(items, from:, after:, after_commit:, model_validations: :auto)
+          new(items, from: from, after: after, after_commit: after_commit,
+                     model_validations: model_validations).call
         end
 
-        def initialize(items, from:, after:, after_commit:)
+        def initialize(items, from:, after:, after_commit:, model_validations: :auto)
           @items = items
           @from = from.to_s
           @after = after
           @after_commit = after_commit
+          @model_validations = model_validations
         end
 
         def call
@@ -69,7 +98,7 @@ module Statesman
 
         private
 
-        attr_reader :items, :from, :current_rows, :after, :after_commit,
+        attr_reader :items, :from, :current_rows, :after, :after_commit, :model_validations,
                     :transition_class, :parent_model_class, :foreign_key
 
         # This batch's SQL is one shared set of mechanics (one snapshot query, one flip
@@ -78,7 +107,9 @@ module Statesman
         # three. They're per-Machine-*instance* options (see Machine#initialize), not
         # fixed per Machine subclass, so bucketing by machine class upstream (see
         # BulkTransition.transition_batch) doesn't already guarantee this — it has to be
-        # checked for real, against every item, here.
+        # checked for real, against every item, here. transition_class being uniform and
+        # fixed for the whole chunk is also what makes it safe to decide
+        # #requires_save_fallback? once here, rather than per item.
         def assert_uniform_adapter!
           transition_classes = items.map { |item| item[:adapter].transition_class }.uniq
           parent_model_classes = items.map { |item| item[:object].class }.uniq
@@ -92,6 +123,40 @@ module Statesman
           @parent_model_class = parent_model_classes.first
           @foreign_key = ActiveRecord.parent_join_foreign_key(@parent_model_class, association_names.first,
                                                               @transition_class)
+          @save_fallback = resolve_save_fallback?
+        end
+
+        # :skip/:enforce are explicit caller overrides of the fast-path/slow-path choice
+        # (see BulkTransition for the option's full contract); :auto runs the real
+        # detection below.
+        def resolve_save_fallback?
+          case model_validations
+          when :skip then false
+          when :enforce then true
+          else requires_save_fallback?
+          end
+        end
+
+        # True if `transition_class` has any validation or create/save callback beyond
+        # the two known framework ones excluded below — see the constants' comment for
+        # why a bare `_validate_callbacks.any?`/baseline-diff approach doesn't work.
+        # `.validators` (rather than raw _validate_callbacks) would miss a bare `validate
+        # :my_method` callback, so every chain relevant to a #save! is scanned uniformly
+        # here instead of treating validations and callbacks differently.
+        def requires_save_fallback?
+          chains = transition_class._validate_callbacks.to_a +
+            transition_class._create_callbacks.to_a +
+            transition_class._save_callbacks.to_a
+
+          chains.any? do |callback|
+            filter = callback.filter
+            !(filter.is_a?(Symbol) &&
+              (FRAMEWORK_CALLBACK_FILTERS.include?(filter) || filter.match?(AUTOSAVE_CALLBACK_FILTER_PATTERN)))
+          end
+        end
+
+        def save_fallback?
+          @save_fallback
         end
 
         def assert_one!(label, values)
@@ -191,11 +256,14 @@ module Statesman
           [writable, failed]
         end
 
-        # Persists the survivors of #flip_and_partition: insert, batched cached-state
-        # write, then per-item `after` (inside this still-open transaction — a raise
-        # rolls it back) and a registered, deferred `after_commit` per item.
+        # Persists the survivors of #flip_and_partition — via the fast insert_all! path,
+        # or, if #save_fallback? says transition_class has real validations/callbacks
+        # the fast path would silently skip, a save_survivors! loop instead — then
+        # batched cached-state write, then per-item `after` (inside this still-open
+        # transaction — a raise rolls it back) and a registered, deferred `after_commit`
+        # per item.
         def persist_writable!(writable)
-          insert_survivors!(writable)
+          save_fallback? ? save_survivors!(writable) : insert_survivors!(writable)
           maintain_cached_current_state_batch(writable, writable.first[:transition].to_state)
 
           writable.each do |item|
@@ -230,6 +298,21 @@ module Statesman
           set_attrs[column] = timestamp if column
 
           transition_class.where(id: ids, most_recent: true).update_all(set_attrs)
+        end
+
+        # The save_fallback? counterpart to #insert_survivors!: one #save! per item,
+        # inside the same still-open transaction, so transition_class's own validations/
+        # before_create/before_save/etc. actually run. Deliberately skips the RETURNING/
+        # reselect/#hydrate! dance entirely — a save!'d record is already the real
+        # persisted row, no recovery step needed. Any ActiveRecord::RecordInvalid (a
+        # real validation failure) or ActiveRecord::RecordNotSaved (a halted callback)
+        # propagates out of here uncaught, aborting/rolling back the whole chunk — the
+        # same semantics a raising `after` callback already has; this is not a per-item
+        # :conflict/:guard-style failure and adds no new Result::FailedItem reason. A
+        # RecordNotUnique still reaches #write_chunk's own rescue/retry unchanged, since
+        # this runs inside the same transaction block that rescue wraps.
+        def save_survivors!(writable)
+          writable.each { |item| item[:transition].save! }
         end
 
         # Excludes "id" (let the DB generate it) and timestamp columns (items built via

@@ -44,7 +44,11 @@ module Statesman
       # and recorded in Result#successful, keeping Result accurate either way. A raise
       # from `after`/`after_commit` themselves is deliberately not rescued here, matching
       # today's behaviour.
-      def self.bulk_create(items, from:, after:, after_commit:) # rubocop:disable Lint/UnusedMethodArgument
+      #
+      # `model_validations:` is accepted (and ignored) purely for interface parity with
+      # Adapters::ActiveRecord — this adapter has no `insert_all!`-style fast path to
+      # guard, so there's nothing for the option to govern.
+      def self.bulk_create(items, from:, after:, after_commit:, model_validations: :auto) # rubocop:disable Lint/UnusedMethodArgument
         successful = []
         failed = []
 

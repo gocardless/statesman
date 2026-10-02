@@ -22,12 +22,26 @@ module Statesman
   # runs across *all* machines up front, before any batching, so a duplicate split across
   # two batches is still caught. With on_failure: :raise, a failure part-way through
   # aborts the remaining batches — already-persisted batches are not rolled back.
+  #
+  # `model_validations:` governs whether Adapters::ActiveRecord::BulkCreate's fast
+  # `insert_all!` write path is allowed to skip AR validations/callbacks defined directly
+  # on the transition model (as opposed to Statesman's own guards/before/after/
+  # after_commit, which always run regardless — see Machine.validate_bulk_transition and
+  # #after_callable/#after_commit_callable below). `:auto` (default) detects whether the
+  # transition class actually has any and routes around `insert_all!` with a `save!` loop
+  # only if so; `:skip` always takes the fast path, even if validations/callbacks are
+  # present, for callers who've verified it's safe and want maximum performance; `:enforce`
+  # always takes the `save!` loop, for callers who don't trust the auto-detection. Ignored
+  # by Adapters::Memory, which has no fast-path/slow-path distinction to make.
   class BulkTransition
+    MODEL_VALIDATIONS_OPTIONS = %i[auto skip enforce].freeze
+
     def self.call(machines, new_state, in_batches_of: nil, metadata: {}, on_failure: :collect,
                   skip_guards: false, skip_before_callbacks: false, skip_after_callbacks: false,
-                  skip_after_commit_callbacks: false)
+                  skip_after_commit_callbacks: false, model_validations: :auto)
       new_state = new_state.to_s
       validate_no_duplicate_objects(machines)
+      validate_model_validations_option(model_validations)
 
       batches = in_batches_of ? machines.each_slice(validate_batch_size(in_batches_of)) : [machines]
       results = batches.map do |batch|
@@ -35,7 +49,8 @@ module Statesman
                                            skip_guards: skip_guards,
                                            skip_before_callbacks: skip_before_callbacks,
                                            skip_after_callbacks: skip_after_callbacks,
-                                           skip_after_commit_callbacks: skip_after_commit_callbacks)
+                                           skip_after_commit_callbacks: skip_after_commit_callbacks,
+                                           model_validations: model_validations)
       end
 
       Result.new(successful: results.flat_map(&:successful), failed: results.flat_map(&:failed))
@@ -57,16 +72,24 @@ module Statesman
         raise ArgumentError, "in_batches_of must be a positive integer, got: #{in_batches_of.inspect}"
       end
 
+      def validate_model_validations_option(model_validations)
+        return if MODEL_VALIDATIONS_OPTIONS.include?(model_validations)
+
+        raise ArgumentError, "model_validations must be one of #{MODEL_VALIDATIONS_OPTIONS.inspect}, " \
+                             "got: #{model_validations.inspect}"
+      end
+
       # One validate+persist cycle for a single batch of already duplicate-checked
       # machines — the body of .call prior to `in_batches_of` support, extracted so it
       # can run once per batch. Buckets by machine class too, not just current_state: a
       # machine may be a subclass with its own guards/successors — validating it against
       # the wrong class's rules would silently skip whatever that subclass adds.
       def transition_batch(machines, new_state, metadata:, on_failure:, skip_guards:, skip_before_callbacks:,
-                           skip_after_callbacks:, skip_after_commit_callbacks:)
+                           skip_after_callbacks:, skip_after_commit_callbacks:, model_validations:)
         writer = new(new_state, metadata: metadata, skip_before_callbacks: skip_before_callbacks,
                                 skip_after_callbacks: skip_after_callbacks,
-                                skip_after_commit_callbacks: skip_after_commit_callbacks)
+                                skip_after_commit_callbacks: skip_after_commit_callbacks,
+                                model_validations: model_validations)
         successful = []
         failed = []
 
@@ -94,12 +117,13 @@ module Statesman
     end
 
     def initialize(new_state, metadata: {}, skip_before_callbacks: false, skip_after_callbacks: false,
-                   skip_after_commit_callbacks: false)
+                   skip_after_commit_callbacks: false, model_validations: :auto)
       @new_state = new_state
       @metadata = metadata
       @skip_before_callbacks = skip_before_callbacks
       @skip_after_callbacks = skip_after_callbacks
       @skip_after_commit_callbacks = skip_after_commit_callbacks
+      @model_validations = model_validations
     end
 
     def persist(from, machines)
@@ -114,7 +138,8 @@ module Statesman
 
       adapter_class = uniform_adapter_class(items)
       adapter_class.bulk_create(items, from: from, after: after_callable(from),
-                                       after_commit: after_commit_callable(from))
+                                       after_commit: after_commit_callable(from),
+                                       model_validations: @model_validations)
     end
 
     private

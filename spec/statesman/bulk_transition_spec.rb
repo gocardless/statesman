@@ -151,6 +151,17 @@ describe Statesman::BulkTransition do
         expect(calls).to eq([])
       end
     end
+
+    context "with model_validations: :enforce" do
+      let(:writer) { described_class.new("approved", model_validations: :enforce) }
+
+      it "threads model_validations through to the adapter's bulk_create" do
+        expect(Statesman::Adapters::Memory).to receive(:bulk_create).
+          with(anything, from: "pending", after: anything, after_commit: anything, model_validations: :enforce).
+          and_call_original
+        result
+      end
+    end
   end
 
   # NOTE on verification strategy: the memory adapter's history is scoped to a single
@@ -519,6 +530,13 @@ describe Statesman::BulkTransition do
           it "raises for a negative batch size" do
             expect { described_class.call(machines, :processing, in_batches_of: -1) }.
               to raise_error(ArgumentError, /in_batches_of must be a positive integer/)
+          end
+        end
+
+        context "with an invalid model_validations value" do
+          it "raises instead of silently falling back to auto-detection" do
+            expect { described_class.call(machines, :processing, model_validations: :bogus) }.
+              to raise_error(ArgumentError, /model_validations must be one of/)
           end
         end
       end
