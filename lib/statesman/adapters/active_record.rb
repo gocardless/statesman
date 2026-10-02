@@ -22,8 +22,12 @@ module Statesman
       # the full contract and mechanics. `items` is an Enumerable of { object:,
       # adapter:, transition:, machine: }, all sharing one bucket's `from` state;
       # `transition` was already built (and had `before` run on it) by the orchestrator.
-      def self.bulk_create(items, from:, after:, after_commit:)
-        BulkCreate.call(items, from: from, after: after, after_commit: after_commit)
+      # `model_validations:` governs BulkCreate's choice between its fast `insert_all!`
+      # write path and a `save!`-loop fallback — see BulkTransition for the option's
+      # full contract.
+      def self.bulk_create(items, from:, after:, after_commit:, model_validations: :auto)
+        BulkCreate.call(items, from: from, after: after, after_commit: after_commit,
+                               model_validations: model_validations)
       end
 
       def initialize(transition_class, parent_model, observer, options = {})
