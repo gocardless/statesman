@@ -10,6 +10,9 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     prepare_sti_model_table
     prepare_sti_transitions_table
 
+    prepare_validated_model_table
+    prepare_validated_transitions_table
+
     Statesman.configure do
       # described_class isn't reachable here — Statesman.configure instance_evals this
       # block against a Statesman::Config instance, not the example group.
@@ -306,6 +309,181 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
           and_raise(ActiveRecord::RecordNotUnique, "persistent")
 
         expect { result }.to raise_error(ActiveRecord::RecordNotUnique)
+      end
+    end
+
+    describe "model_validations (WU4: save! fallback for transition models with validations/callbacks)" do
+      context "with a plain transition model (no validations, only framework callback noise)" do
+        let(:model) { MyActiveRecordModel.create(current_state: "x") }
+        let(:items) { [item_for(model)] }
+
+        it "still uses the insert_all! fast path, unaffected by belongs_to's own autosave callback" do
+          expect_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!).and_call_original
+          expect_any_instance_of(described_class::BulkCreate).to_not receive(:save_survivors!)
+          result
+        end
+      end
+
+      context "with a transition model that has a real validation and create callback" do
+        let(:model) { ValidatedActiveRecordModel.create(current_state: "x") }
+
+        def validated_item_for(model: self.model, metadata: {})
+          item_for(model, metadata: metadata, transition_class: ValidatedActiveRecordModelTransition)
+        end
+
+        context "on the success path" do
+          let(:items) { [validated_item_for] }
+
+          it "uses save_survivors! (the fallback), not insert_all!" do
+            expect_any_instance_of(described_class::BulkCreate).to receive(:save_survivors!).and_call_original
+            expect_any_instance_of(described_class::BulkCreate).to_not receive(:insert_survivors!)
+            result
+          end
+
+          it "persists successfully, running the model's own validations/callbacks" do
+            expect(result.successful).to eq([model])
+            expect(result.failed).to eq([])
+            expect(model.reload.validated_active_record_model_transitions.pluck(:to_state)).to eq(["y"])
+          end
+
+          it "round-trips metadata correctly, same as the fast path" do
+            item = validated_item_for(metadata: { "some" => "hash" })
+            described_class.bulk_create([item], from: "x", to: "y")
+            expect(model.reload.validated_active_record_model_transitions.first.metadata).
+              to eq({ "some" => "hash" })
+          end
+        end
+
+        context "when a validation fails on one item in the chunk" do
+          let(:other_model) { ValidatedActiveRecordModel.create(current_state: "x") }
+          let(:items) { [validated_item_for, validated_item_for(model: other_model)] }
+
+          # Mutating `to_state` to blank in a `before` callback is the new-architecture
+          # equivalent of the old approach (building the item's transition early and
+          # setting a blank `to_state` on it directly) — items no longer carry a
+          # pre-built transition of their own, `to_state` is shared for the whole batch,
+          # so a per-item invalid value has to be injected via the one hook that still
+          # sees each item's own transition before it's persisted.
+          before do
+            machine_class.before_transition do |object, transition|
+              transition.to_state = "" if object == other_model
+            end
+          end
+
+          it "raises ActiveRecord::RecordInvalid instead of silently dropping the other item's work" do
+            expect { result }.to raise_error(ActiveRecord::RecordInvalid)
+          end
+
+          it "rolls back the whole chunk: no row survives for any item in it" do
+            suppress(ActiveRecord::RecordInvalid) { result }
+
+            expect(model.reload.validated_active_record_model_transitions).to be_empty
+            expect(other_model.reload.validated_active_record_model_transitions).to be_empty
+          end
+        end
+
+        context "when a before_create callback halts on one item in the chunk" do
+          let(:other_model) { ValidatedActiveRecordModel.create(current_state: "x") }
+          let(:items) { [validated_item_for, validated_item_for(model: other_model)] }
+
+          before do
+            machine_class.before_transition do |object, transition|
+              transition.abort_on_create = true if object == other_model
+            end
+          end
+
+          it "raises ActiveRecord::RecordNotSaved instead of silently dropping the other item's work" do
+            expect { result }.to raise_error(ActiveRecord::RecordNotSaved)
+          end
+
+          it "rolls back the whole chunk: no row survives for any item in it" do
+            suppress(ActiveRecord::RecordNotSaved) { result }
+
+            expect(model.reload.validated_active_record_model_transitions).to be_empty
+            expect(other_model.reload.validated_active_record_model_transitions).to be_empty
+          end
+        end
+
+        context "when save! itself hits a transient RecordNotUnique mid-loop" do
+          let(:other_model) { ValidatedActiveRecordModel.create(current_state: "x") }
+          let(:items) { [validated_item_for, validated_item_for(model: other_model)] }
+
+          before do
+            attempt = 0
+            allow_any_instance_of(described_class::BulkCreate).to receive(:most_recent_rows_for).
+              and_wrap_original do |original, parent_ids|
+                attempt += 1
+                rows = original.call(parent_ids)
+                attempt == 3 ? rows.merge(model.id => { id: -1, sort_key: 999, to_state: "x" }) : rows
+              end
+
+            raised = false
+            allow_any_instance_of(described_class::BulkCreate).to receive(:save_survivors!).
+              and_wrap_original do |original, *args|
+                unless raised
+                  raised = true
+                  raise ActiveRecord::RecordNotUnique, "simulated race"
+                end
+                original.call(*args)
+              end
+          end
+
+          it "retries via write_chunk's existing rescue, excluding whoever the retry finds raced" do
+            expect(result.successful).to eq([other_model])
+            expect(result.failed.map(&:object)).to eq([model])
+            expect(result.failed.first.reason).to eq(:conflict)
+          end
+        end
+      end
+
+      context "with an STI transition model that inherits a real validation" do
+        let(:sti_model) { StiActiveRecordModel.create }
+        let(:items) do
+          [item_for(sti_model, transition_class: StiAActiveRecordModelTransition,
+                               association_name: :sti_a_active_record_model_transitions)]
+        end
+
+        it "uses save_survivors!, same as any other transition class with a real validation" do
+          expect_any_instance_of(described_class::BulkCreate).to receive(:save_survivors!).and_call_original
+          expect_any_instance_of(described_class::BulkCreate).to_not receive(:insert_survivors!)
+          result
+        end
+
+        it "persists the STI type column correctly on the fallback path" do
+          result
+          transition = sti_model.reload.sti_a_active_record_model_transitions.first
+          expect(transition).to be_a(StiAActiveRecordModelTransition)
+          expect(transition.type).to eq("StiAActiveRecordModelTransition")
+        end
+      end
+
+      context "with model_validations: :skip" do
+        subject(:result) { described_class.bulk_create(items, from: "x", to: "", model_validations: :skip) }
+
+        let(:model) { ValidatedActiveRecordModel.create(current_state: "x") }
+        # Blank to_state would fail ValidatedActiveRecordModelTransition's `validates
+        # :to_state, presence: true` under the save! fallback — proving :skip really
+        # bypasses it, same tradeoff this whole option exists to let a caller opt into.
+        let(:items) { [item_for(model, transition_class: ValidatedActiveRecordModelTransition)] }
+
+        it "forces the fast insert_all! path even though the model has real validations" do
+          expect_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!).and_call_original
+          expect_any_instance_of(described_class::BulkCreate).to_not receive(:save_survivors!)
+          expect(result.successful).to eq([model])
+        end
+      end
+
+      context "with model_validations: :enforce" do
+        subject(:result) { described_class.bulk_create(items, from: "x", to: "y", model_validations: :enforce) }
+
+        let(:model) { MyActiveRecordModel.create(current_state: "x") }
+        let(:items) { [item_for(model)] }
+
+        it "forces the save! fallback even though the model has no real validations/callbacks" do
+          expect_any_instance_of(described_class::BulkCreate).to receive(:save_survivors!).and_call_original
+          expect_any_instance_of(described_class::BulkCreate).to_not receive(:insert_survivors!)
+          expect(result.successful).to eq([model])
+        end
       end
     end
 

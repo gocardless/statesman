@@ -23,13 +23,17 @@ module Statesman
       # after_commit dispatch, and persisting are all this one call's job rather than
       # split across several adapter methods the orchestrator calls in sequence.
       # `items` is an Enumerable of { object:, adapter:, metadata: }, all sharing one
-      # bucket's `from`/`to` state.
+      # bucket's `from`/`to` state. `model_validations:` governs BulkCreate's choice
+      # between its fast `insert_all!` write path and a `save!`-loop fallback — see
+      # BulkTransition for the option's full contract.
       def self.bulk_create(items, from:, to:, on_failure: :collect, skip_before_callbacks: false,
-                           skip_after_callbacks: false, skip_after_commit_callbacks: false)
+                           skip_after_callbacks: false, skip_after_commit_callbacks: false,
+                           model_validations: :auto)
         BulkCreate.call(items, from: from, to: to, on_failure: on_failure,
                                skip_before_callbacks: skip_before_callbacks,
                                skip_after_callbacks: skip_after_callbacks,
-                               skip_after_commit_callbacks: skip_after_commit_callbacks)
+                               skip_after_commit_callbacks: skip_after_commit_callbacks,
+                               model_validations: model_validations)
       end
 
       def initialize(transition_class, parent_model, observer, options = {})

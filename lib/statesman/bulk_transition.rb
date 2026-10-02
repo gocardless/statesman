@@ -41,19 +41,34 @@ module Statesman
   # item's failure undoing a shared batch write — is a decision only the adapter can
   # make correctly, so it belongs there (see Adapters::ActiveRecord::BulkCreate),
   # not here.
+  #
+  # `model_validations:` governs whether Adapters::ActiveRecord::BulkCreate's fast
+  # `insert_all!` write path is allowed to skip AR validations/callbacks defined directly
+  # on the transition model (as opposed to Statesman's own guards/before/after/
+  # after_commit, which always run regardless). `:auto` (default) detects whether the
+  # transition class actually has any and routes around `insert_all!` with a `save!` loop
+  # only if so; `:skip` always takes the fast path, even if validations/callbacks are
+  # present, for callers who've verified it's safe and want maximum performance; `:enforce`
+  # always takes the `save!` loop, for callers who don't trust the auto-detection. Ignored
+  # by Adapters::Memory, which has no fast-path/slow-path distinction to make.
   class BulkTransition
+    MODEL_VALIDATIONS_OPTIONS = %i[auto skip enforce].freeze
+
     def self.call(items, from_state:, to_state:, in_batches_of: nil, metadata: {},
                   on_failure: :collect, skip_guards: false, skip_before_callbacks: false,
-                  skip_after_callbacks: false, skip_after_commit_callbacks: false)
+                  skip_after_callbacks: false, skip_after_commit_callbacks: false,
+                  model_validations: :auto)
       new(from_state: from_state, to_state: to_state, metadata: metadata, on_failure: on_failure,
           skip_guards: skip_guards, skip_before_callbacks: skip_before_callbacks,
           skip_after_callbacks: skip_after_callbacks,
-          skip_after_commit_callbacks: skip_after_commit_callbacks).
+          skip_after_commit_callbacks: skip_after_commit_callbacks,
+          model_validations: model_validations).
         call(items, in_batches_of: in_batches_of)
     end
 
     def initialize(from_state:, to_state:, metadata: {}, on_failure: :collect, skip_guards: false,
-                   skip_before_callbacks: false, skip_after_callbacks: false, skip_after_commit_callbacks: false)
+                   skip_before_callbacks: false, skip_after_callbacks: false, skip_after_commit_callbacks: false,
+                   model_validations: :auto)
       @from_state = from_state.to_s
       @to_state = to_state.to_s
       @metadata = metadata
@@ -62,6 +77,8 @@ module Statesman
       @skip_before_callbacks = skip_before_callbacks
       @skip_after_callbacks = skip_after_callbacks
       @skip_after_commit_callbacks = skip_after_commit_callbacks
+      validate_model_validations_option(model_validations)
+      @model_validations = model_validations
     end
 
     def call(items, in_batches_of: nil)
@@ -110,6 +127,13 @@ module Statesman
       return if duplicate_objects.empty?
 
       raise ArgumentError, "BulkTransition does not support duplicate objects: #{duplicate_objects.inspect}"
+    end
+
+    def validate_model_validations_option(model_validations)
+      return if MODEL_VALIDATIONS_OPTIONS.include?(model_validations)
+
+      raise ArgumentError, "model_validations must be one of #{MODEL_VALIDATIONS_OPTIONS.inspect}, " \
+                           "got: #{model_validations.inspect}"
     end
 
     def transition_batch(items)
@@ -192,7 +216,8 @@ module Statesman
       @adapter_class.bulk_create(payload, from: @from_state, to: @to_state, on_failure: @on_failure,
                                           skip_before_callbacks: @skip_before_callbacks,
                                           skip_after_callbacks: @skip_after_callbacks,
-                                          skip_after_commit_callbacks: @skip_after_commit_callbacks)
+                                          skip_after_commit_callbacks: @skip_after_commit_callbacks,
+                                          model_validations: @model_validations)
     end
 
     def callbacks_for(phase)

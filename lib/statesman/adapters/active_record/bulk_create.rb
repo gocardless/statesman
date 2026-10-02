@@ -28,12 +28,14 @@ module Statesman
       #    persisted yet, so there's nothing to protect by holding one open.
       #
       # 3. #write_chunk — one transaction for the whole surviving chunk: flip
-      #    most_recent, insert_all!, cached-state, and `after_commit` registration (see
-      #    Adapters::ActiveRecord#defer_until_committed) — deliberately decoupled from
-      #    whether `after` succeeds (see #dispatch_after_callbacks below). Mechanics:
-      #    flip most_recent false for the has-history survivors' old rows, then
-      #    re-read every survivor's parent to find out who raced — an honest, unraced
-      #    flip leaves no most_recent row for that parent until the insert that
+      #    most_recent, insert (fast `insert_all!`, or a `save!` loop fallback — see
+      #    #save_fallback? — when `transition_class` has real validations/callbacks the
+      #    fast path would silently skip), cached-state, and `after_commit` registration
+      #    (see Adapters::ActiveRecord#defer_until_committed) — deliberately decoupled
+      #    from whether `after` succeeds (see #dispatch_after_callbacks below).
+      #    Mechanics: flip most_recent false for the has-history survivors' old rows,
+      #    then re-read every survivor's parent to find out who raced — an honest,
+      #    unraced flip leaves no most_recent row for that parent until the insert that
       #    follows, so any parent the re-read still finds a row for has raced, and is
       #    excluded as :conflict. This needs no RETURNING or locking: the flip UPDATE
       #    itself takes a row lock, so a concurrent writer on the same parent blocks
@@ -64,15 +66,43 @@ module Statesman
         # true can populate them instead.
         TIMESTAMP_COLUMNS = %w[created_at created_on updated_at updated_on].freeze
 
+        # #requires_save_fallback? below only treats a _validate_callbacks/
+        # _create_callbacks/_save_callbacks entry as "the user's own business logic" if
+        # it's neither of these — both are framework scaffolding present on an otherwise
+        # plain transition model, confirmed empirically against a vanilla Rails 8.1 model:
+        #
+        # - :cant_modify_encrypted_attributes_when_frozen is registered in
+        #   _validate_callbacks on *every* AR model by default, unrelated to whether the
+        #   model actually declares an encrypted attribute. This is why the check below
+        #   can't be a bare `_validate_callbacks.any?`.
+        # - Statesman's own convention (see spec/support/active_record.rb) is
+        #   `belongs_to :parent_model` on the transition class with no explicit autosave
+        #   option — Rails registers a `before_save :autosave_associated_records_for_*`
+        #   callback for that regardless, landing in _save_callbacks. This one is
+        #   trickier than the encrypted-attributes case: it isn't present on every AR
+        #   model, only on ones with an association, and it's added only once the
+        #   association is declared. An earlier design for this check snapshotted a
+        #   "baseline" callback-chain length at the point ActiveRecordTransition is
+        #   included into the transition class, then diffed against it later — but
+        #   Statesman's own convention declares `belongs_to` *after* `include
+        #   Statesman::Adapters::ActiveRecordTransition`, so that baseline would always
+        #   be captured too early and this callback would always show up as a "real"
+        #   addition, permanently defeating the fast path for every user. Matching on
+        #   the filter name instead sidesteps the ordering problem entirely: it's
+        #   evaluated lazily, once the whole class body (including `belongs_to`) has run.
+        FRAMEWORK_CALLBACK_FILTERS = [:cant_modify_encrypted_attributes_when_frozen].freeze
+        AUTOSAVE_CALLBACK_FILTER_PATTERN = /\Aautosave_associated_records_for_/
+
         def self.call(items, from:, to:, on_failure:, skip_before_callbacks:, skip_after_callbacks:,
-                      skip_after_commit_callbacks:)
+                      skip_after_commit_callbacks:, model_validations: :auto)
           new(items, from: from, to: to, on_failure: on_failure, skip_before_callbacks: skip_before_callbacks,
                      skip_after_callbacks: skip_after_callbacks,
-                     skip_after_commit_callbacks: skip_after_commit_callbacks).call
+                     skip_after_commit_callbacks: skip_after_commit_callbacks,
+                     model_validations: model_validations).call
         end
 
         def initialize(items, from:, to:, on_failure:, skip_before_callbacks:, skip_after_callbacks:,
-                       skip_after_commit_callbacks:)
+                       skip_after_commit_callbacks:, model_validations: :auto)
           @items = items
           @from = from.to_s
           @to = to.to_s
@@ -80,12 +110,14 @@ module Statesman
           @skip_before_callbacks = skip_before_callbacks
           @skip_after_callbacks = skip_after_callbacks
           @skip_after_commit_callbacks = skip_after_commit_callbacks
+          @model_validations = model_validations
         end
 
         def call
           return BulkTransition::Result.new if items.empty?
 
           assert_uniform_adapter!
+          @save_fallback = resolve_save_fallback?
 
           entries, build_failed = build_transitions
           raise build_failed.first.error if on_failure == :raise && build_failed.any?
@@ -105,7 +137,42 @@ module Statesman
         private
 
         attr_reader :items, :from, :to, :on_failure, :skip_before_callbacks, :skip_after_callbacks,
-                    :skip_after_commit_callbacks
+                    :skip_after_commit_callbacks, :model_validations
+
+        # :skip/:enforce are explicit caller overrides of the fast-path/slow-path choice
+        # (see BulkTransition for the option's full contract); :auto runs the real
+        # detection below. Only called once #assert_uniform_adapter! has resolved
+        # `transition_class` for the whole chunk, which is also what makes it safe to
+        # decide this once here rather than per item.
+        def resolve_save_fallback?
+          case model_validations
+          when :skip then false
+          when :enforce then true
+          else requires_save_fallback?
+          end
+        end
+
+        # True if `transition_class` has any validation or create/save callback beyond
+        # the two known framework ones excluded below — see the constants' comment for
+        # why a bare `_validate_callbacks.any?`/baseline-diff approach doesn't work.
+        # `.validators` (rather than raw _validate_callbacks) would miss a bare `validate
+        # :my_method` callback, so every chain relevant to a #save! is scanned uniformly
+        # here instead of treating validations and callbacks differently.
+        def requires_save_fallback?
+          chains = transition_class._validate_callbacks.to_a +
+            transition_class._create_callbacks.to_a +
+            transition_class._save_callbacks.to_a
+
+          chains.any? do |callback|
+            filter = callback.filter
+            !(filter.is_a?(Symbol) &&
+              (FRAMEWORK_CALLBACK_FILTERS.include?(filter) || filter.match?(AUTOSAVE_CALLBACK_FILTER_PATTERN)))
+          end
+        end
+
+        def save_fallback?
+          @save_fallback
+        end
 
         # ---- 1. BUILD ----
 
@@ -214,12 +281,15 @@ module Statesman
           [writable, failed]
         end
 
-        # Insert, batched cached-state write, then — still inside this chunk's open
-        # transaction — after_commit registration for every survivor, unconditionally
-        # (see Adapters::ActiveRecord#defer_until_committed's own docs for why this
-        # doesn't wait on #dispatch_after_callbacks).
+        # Persists the survivors of #flip_and_partition — via the fast insert_all! path,
+        # or, if #save_fallback? says transition_class has real validations/callbacks
+        # the fast path would silently skip, a save_survivors! loop instead — then
+        # batched cached-state write, then — still inside this chunk's open transaction
+        # — after_commit registration for every survivor, unconditionally (see
+        # Adapters::ActiveRecord#defer_until_committed's own docs for why this doesn't
+        # wait on #dispatch_after_callbacks).
         def persist_writable!(writable)
-          insert_survivors!(writable)
+          save_fallback? ? save_survivors!(writable) : insert_survivors!(writable)
           maintain_cached_current_state_batch(writable, writable.first[:transition].to_state)
           register_after_commit(writable) unless skip_after_commit_callbacks
         end
@@ -254,6 +324,21 @@ module Statesman
           set_attrs[column] = timestamp if column
 
           transition_class.where(id: ids, most_recent: true).update_all(set_attrs)
+        end
+
+        # The save_fallback? counterpart to #insert_survivors!: one #save! per item,
+        # inside the same still-open transaction, so transition_class's own validations/
+        # before_create/before_save/etc. actually run. Deliberately skips the RETURNING/
+        # reselect/#hydrate! dance entirely — a save!'d record is already the real
+        # persisted row, no recovery step needed. Any ActiveRecord::RecordInvalid (a
+        # real validation failure) or ActiveRecord::RecordNotSaved (a halted callback)
+        # propagates out of here uncaught, aborting/rolling back the whole chunk — the
+        # same semantics a raising `after` callback already has; this is not a per-item
+        # :conflict/:guard-style failure and adds no new Result::FailedItem reason. A
+        # RecordNotUnique still reaches #write_chunk's own rescue/retry unchanged, since
+        # this runs inside the same transaction block that rescue wraps.
+        def save_survivors!(writable)
+          writable.each { |item| item[:transition].save! }
         end
 
         # Excludes "id" (let the DB generate it) and timestamp columns (items built via
@@ -299,7 +384,8 @@ module Statesman
         # Merges the recovered row onto the already-`before`-mutated attributes (not
         # the recovered row alone, so a `before` callback's mutation survives), then
         # rebuilds a persisted record via .instantiate — materializes a row without
-        # re-running validations/callbacks/save!.
+        # re-running validations/callbacks/save!. Not used by #save_survivors!, whose
+        # save!'d record is already the real persisted row.
         def hydrate!(writable, rows_by_parent_id)
           writable.each do |item|
             row = rows_by_parent_id.fetch(item[:object].id)

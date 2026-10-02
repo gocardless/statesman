@@ -136,6 +136,102 @@ class OtherActiveRecordModelTransition < ActiveRecord::Base
   belongs_to :other_active_record_model
 end
 
+class ValidatedActiveRecordModel < ActiveRecord::Base
+  has_many :validated_active_record_model_transitions, autosave: false
+  alias_method :transitions, :validated_active_record_model_transitions
+
+  def state_machine
+    @state_machine ||= MyStateMachine.new(
+      self, transition_class: ValidatedActiveRecordModelTransition
+    )
+  end
+
+  def metadata
+    super || {}
+  end
+end
+
+# Exists purely so WU4's BulkCreate#requires_save_fallback? has a real validation and a
+# real create callback to detect — no fixture with either existed before. `belongs_to`
+# is declared the same way (and in the same order, after `include
+# ActiveRecordTransition`) as every other transition fixture in this file: that ordering
+# is exactly what makes the autosave-callback-filter exclusion in bulk_create.rb load-
+# bearing rather than incidental — see that file's FRAMEWORK_CALLBACK_FILTERS/
+# AUTOSAVE_CALLBACK_FILTER_PATTERN comment.
+class ValidatedActiveRecordModelTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
+  belongs_to :validated_active_record_model
+
+  validates :to_state, presence: true
+
+  # Not a real column — an in-memory-only flag a spec can set on a built-but-unsaved
+  # transition to force #save! to hit ActiveRecord::RecordNotSaved via a halted
+  # callback, independently of the `validates` above (which instead produces
+  # ActiveRecord::RecordInvalid when to_state is blank).
+  attr_accessor :abort_on_create
+
+  before_create :abort_if_flagged!
+
+  private
+
+  def abort_if_flagged!
+    throw :abort if abort_on_create
+  end
+end
+
+class CreateValidatedActiveRecordModelMigration < MIGRATION_CLASS
+  def change
+    create_table :validated_active_record_models do |t|
+      t.string :current_state
+      t.timestamps null: false
+    end
+  end
+end
+
+class CreateValidatedActiveRecordModelTransitionMigration < MIGRATION_CLASS
+  def change
+    create_table :validated_active_record_model_transitions do |t|
+      t.string  :from_state
+      t.string  :to_state
+      t.integer :validated_active_record_model_id
+      t.integer :sort_key
+
+      # MySQL doesn't allow default values on text fields
+      if ActiveRecord::Base.connection.adapter_name == "Mysql2"
+        t.text :metadata
+      else
+        t.text :metadata, default: "{}"
+      end
+
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
+        t.boolean :most_recent, default: true, null: false
+      else
+        t.boolean :most_recent, default: true
+      end
+
+      t.timestamps null: false
+    end
+
+    add_index :validated_active_record_model_transitions,
+              %i[validated_active_record_model_id sort_key],
+              unique: true, name: "validated_sort_key_index"
+
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
+      add_index :validated_active_record_model_transitions,
+                %i[validated_active_record_model_id most_recent],
+                unique: true,
+                where: "most_recent",
+                name: "index_validated_art_parent_latest"
+    else
+      add_index :validated_active_record_model_transitions,
+                %i[validated_active_record_model_id most_recent],
+                unique: true,
+                name: "index_validated_art_parent_latest"
+    end
+  end
+end
+
 class SecondaryRecord < ActiveRecord::Base
   self.abstract_class = true
 
@@ -357,6 +453,13 @@ class StiActiveRecordModelTransition < ActiveRecord::Base
   include Statesman::Adapters::ActiveRecordTransition
 
   belongs_to :sti_active_record_model
+
+  # A real validation, inherited by both STI subclasses below — exists so WU4's
+  # BulkCreate#requires_save_fallback? has an STI fixture to prove the save! fallback
+  # (not just the fast insert_all! path) persists the `type` column correctly. Every
+  # existing spec against these models already sets a real `to_state`, so this doesn't
+  # change behaviour anywhere else.
+  validates :to_state, presence: true
 end
 
 class StiAActiveRecordModelTransition < StiActiveRecordModelTransition

@@ -82,6 +82,8 @@ RSpec.configure do |config|
       other_active_record_model_transitions
       sti_active_record_models
       sti_active_record_model_transitions
+      validated_active_record_models
+      validated_active_record_model_transitions
     ]
     tables.each do |table_name|
       sql = "DROP TABLE IF EXISTS #{table_name};"
@@ -114,6 +116,15 @@ RSpec.configure do |config|
     def prepare_sti_transitions_table
       CreateStiActiveRecordModelTransitionMigration.migrate(:up)
       StiActiveRecordModelTransition.reset_column_information
+    end
+
+    def prepare_validated_model_table
+      CreateValidatedActiveRecordModelMigration.migrate(:up)
+    end
+
+    def prepare_validated_transitions_table
+      CreateValidatedActiveRecordModelTransitionMigration.migrate(:up)
+      ValidatedActiveRecordModelTransition.reset_column_information
     end
   end
 end

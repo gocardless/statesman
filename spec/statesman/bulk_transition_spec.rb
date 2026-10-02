@@ -261,6 +261,30 @@ describe Statesman::BulkTransition do
       end
     end
 
+    describe "model_validations option" do
+      let(:items) { build_items(2) }
+
+      it "defaults to :auto and threads through to the adapter's bulk_create" do
+        expect(Statesman::Adapters::Memory).to receive(:bulk_create).
+          with(anything, hash_including(model_validations: :auto)).and_call_original
+
+        described_class.call(items, from_state: :pending, to_state: :processing)
+      end
+
+      it "threads an explicit value through to the adapter's bulk_create" do
+        expect(Statesman::Adapters::Memory).to receive(:bulk_create).
+          with(anything, hash_including(model_validations: :enforce)).and_call_original
+
+        described_class.call(items, from_state: :pending, to_state: :processing, model_validations: :enforce)
+      end
+
+      it "raises instead of silently falling back to auto-detection for an invalid value" do
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing, model_validations: :bogus)
+        end.to raise_error(ArgumentError, /model_validations must be one of/)
+      end
+    end
+
     describe "successor validation" do
       subject(:call) do
         described_class.call(

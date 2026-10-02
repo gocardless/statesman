@@ -37,8 +37,13 @@ module Statesman
       # real transactions, so unlike Adapters::ActiveRecord there's nothing to batch and
       # nothing to isolate: after/after_commit just run immediately, right where
       # they're dispatched.
+      #
+      # `model_validations:` is accepted (and ignored) purely for interface parity with
+      # Adapters::ActiveRecord — this adapter has no `insert_all!`-style fast path to
+      # guard, so there's nothing for the option to govern.
       def self.bulk_create(items, from:, to:, on_failure: :collect, skip_before_callbacks: false,
-                           skip_after_callbacks: false, skip_after_commit_callbacks: false)
+                           skip_after_callbacks: false, skip_after_commit_callbacks: false,
+                           model_validations: :auto) # rubocop:disable Lint/UnusedMethodArgument
         from = from.to_s
         to = to.to_s
         successful = []
