@@ -10,11 +10,12 @@ module Statesman
   # through its own class's rules (successors/guards are per-subclass DSL state that only
   # the including class has — see Machine.validate_bulk_transition). #persist is then the
   # write side for one such already-validated, already-homogeneous group: builds each
-  # transition, runs `before`, persists via the adapter's own bulk_create, then
-  # dispatches `after`/`after_commit` for whatever didn't fail — each item already
-  # carries its own machine and transition, so there's no need to work backward from the
-  # objects bulk_create hands back. The three skip_* options are independent since
-  # `after` vs `after_commit` serve different purposes (see Machine.after_transition).
+  # transition and runs `before` here, uniformly for every adapter, then hands persistence
+  # *and* `after`/`after_commit` dispatch to the adapter's own bulk_create — as per-item
+  # callables, not dispatched here — because only the adapter knows when it's correct to
+  # invoke them relative to its own transaction (see #after_callable). The three skip_*
+  # options are independent since `after` vs `after_commit` serve different purposes (see
+  # Machine.after_transition).
   #
   # Doesn't chunk `machines` itself unless `in_batches_of` is given — safe batch size
   # depends on the caller's own DB, which this gem can't know. The duplicate-object check
@@ -112,11 +113,8 @@ module Statesman
       end
 
       adapter_class = uniform_adapter_class(items)
-      result = adapter_class.bulk_create(items)
-
-      dispatch_after_callbacks(from, items, result.failed)
-
-      result
+      adapter_class.bulk_create(items, from: from, after: after_callable(from),
+                                       after_commit: after_commit_callable(from))
     end
 
     private
@@ -136,19 +134,23 @@ module Statesman
                            "adapter, got: #{adapter_classes.join(', ')}"
     end
 
-    def dispatch_after_callbacks(from, items, failures)
-      return if @skip_after_callbacks && @skip_after_commit_callbacks
+    # `after`/`after_commit` are handed to bulk_create as per-item callables, rather than
+    # dispatched here once bulk_create returns, because only the adapter knows when it's
+    # correct to invoke them relative to its own transaction — e.g. Adapters::ActiveRecord
+    # needs `after` to run *inside* its write transaction (so a raise rolls back the chunk)
+    # and `after_commit` registered on the connection *before* that transaction closes (so
+    # it defers to the real outermost commit, like the single-object path). Adapters::Memory
+    # has no real transaction, so it just calls both immediately after persisting.
+    def after_callable(from)
+      return ->(_item) {} if @skip_after_callbacks
 
-      failed_objects = failures.to_h { |failure| [failure.object, true] }
+      ->(item) { item[:machine].execute(:after, from, @new_state, item[:transition]) }
+    end
 
-      items.each do |item|
-        next if failed_objects.key?(item[:object])
+    def after_commit_callable(from)
+      return ->(_item) {} if @skip_after_commit_callbacks
 
-        item[:machine].execute(:after, from, @new_state, item[:transition]) unless @skip_after_callbacks
-        unless @skip_after_commit_callbacks
-          item[:machine].execute(:after_commit, from, @new_state, item[:transition])
-        end
-      end
+      ->(item) { item[:machine].execute(:after_commit, from, @new_state, item[:transition]) }
     end
   end
 end
