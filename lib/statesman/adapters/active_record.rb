@@ -2,25 +2,12 @@
 
 require_relative "../exceptions"
 require_relative "../bulk_transition"
+require_relative "active_record/bulk_create"
 
 module Statesman
   module Adapters
     class ActiveRecord
       JSON_COLUMN_TYPES = %w[json jsonb].freeze
-
-      # Bounds the RecordNotUnique retry in .write_chunk — see the rescue there. Each
-      # retry's own pre-insert recheck should always have excluded the previous attempt's
-      # racer, so more than a couple of attempts means something is persistently wrong
-      # rather than an ordinary transient race.
-      MAX_INSERT_ATTEMPTS = 3
-
-      # Rails recognises both the modern (created_at/updated_at) and legacy
-      # (created_on/updated_on) timestamp column names for auto-timestamping — see
-      # ActiveRecordTransition's own `updated_on` column, used elsewhere in this gem's
-      # test suite to exercise the customisable updated_timestamp_column setting. Used by
-      # .insert_survivors! to exclude them from a batched insert and let insert_all!'s own
-      # record_timestamps: true populate them instead.
-      TIMESTAMP_COLUMNS = %w[created_at created_on updated_at updated_on].freeze
 
       def self.database_supports_partial_indexes?(model)
         # Rails 3 doesn't implement `supports_partial_index?`
@@ -31,285 +18,12 @@ module Statesman
         end
       end
 
-      # The batched write path behind Statesman::BulkTransition.call. `items` is an
-      # Enumerable of { object:, adapter:, transition:, machine: }, all sharing one
-      # bucket's `from` state (see BulkTransition.transition_batch) — `adapter` is that
-      # item's own per-parent Adapters::ActiveRecord instance, `transition` was already
-      # built via #build_transition (and had `before` run on it) by the caller.
-      #
-      # `after`/`after_commit` are per-item callables built by the orchestrator
-      # (Statesman::BulkTransition#persist) — invoked here, not by the orchestrator,
-      # because only this adapter knows when that's correct relative to its own
-      # transaction: `after` runs *inside* the write transaction (a raise rolls back the
-      # whole chunk, matching single-object semantics), and `after_commit` is registered
-      # on the connection *before* that transaction closes, so — like the single-object
-      # path's #add_after_commit_callback — it only actually fires once the *real*
-      # outermost transaction commits, correctly deferring even when
-      # Statesman::BulkTransition.call runs inside a caller-managed transaction.
-      #
-      # Phase A (no write transaction): read each parent's current most_recent row
-      # (id/sort_key/to_state) in one query. A row whose to_state no longer matches
-      # `from` is a stale read — the in-memory current_state check upstream in
-      # Machine.validate_bulk_transition raced with a concurrent writer — and becomes a
-      # :conflict immediately, before any write is attempted (see H2 in the design doc).
-      #
-      # Phase B (inside one transaction(requires_new: true)): flip most_recent false for
-      # the has-history survivors' old rows, scoped to the ids read in Phase A, then
-      # re-run Phase A's own read (.most_recent_rows_for) for every survivor's parent —
-      # has-history or not. An honest, unraced flip leaves *no* most_recent row for that
-      # parent (we haven't inserted the new one yet); a no-history parent never had one.
-      # So *any* parent this re-read still finds a row for has raced — either a
-      # concurrent writer's new row (it beat our flip, or inserted the parent's first-ever
-      # transition) or, in the rare case our own flip simply hadn't run yet, a row that's
-      # about to be contested — and becomes a :conflict, excluded from the insert. This
-      # needs no RETURNING and no pessimistic locking (see .flip_most_recent for why the
-      # row lock alone is enough), and is identical on Postgres/MySQL/SQLite. insert_all
-      # persists the rest in one statement; a RecordNotUnique escaping that (the one
-      # residual race window between the re-read above and the INSERT statement itself)
-      # is handled by retrying the *whole* chunk, with the same survivors, outside this
-      # transaction — see the rescue below for why, both for where it must sit and why it
-      # doesn't need to work out who caused it.
+      # Batched write path behind Statesman::BulkTransition.call — see BulkCreate for
+      # the full contract and mechanics. `items` is an Enumerable of { object:,
+      # adapter:, transition:, machine: }, all sharing one bucket's `from` state;
+      # `transition` was already built (and had `before` run on it) by the orchestrator.
       def self.bulk_create(items, from:, after:, after_commit:)
-        return BulkTransition::Result.new if items.empty?
-
-        representative = items.first[:adapter]
-        transition_class = representative.transition_class
-        assert_uniform_transition_class!(items)
-
-        parent_ids = items.map { |item| item[:adapter].parent_model.id }
-        current_rows = most_recent_rows_for(representative, parent_ids)
-        survivors, failed = partition_by_staleness(items, current_rows, from)
-
-        result = write_chunk(transition_class, representative, survivors, current_rows, after, after_commit)
-        BulkTransition::Result.new(successful: result.successful, failed: failed + result.failed)
-      end
-
-      class << self
-        private
-
-        def assert_uniform_transition_class!(items)
-          classes = items.map { |item| item[:adapter].transition_class }.uniq
-          return if classes.one?
-
-          raise ArgumentError, "BulkTransition requires every object to use the same " \
-                               "transition class, got: #{classes.join(', ')}"
-        end
-
-        def partition_by_staleness(items, current_rows, from)
-          from = from.to_s
-          survivors = []
-          failed = []
-
-          items.each do |item|
-            row = current_rows[item[:adapter].parent_model.id]
-
-            if row.nil? || row[:to_state] == from
-              survivors << item
-            else
-              failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict)
-            end
-          end
-
-          [survivors, failed]
-        end
-
-        # One query, up front: every surviving parent's current most_recent row — its id
-        # (the optimistic-concurrency token checked in Phase B), sort_key (the new
-        # transition's basis), and to_state (the authoritative from_state, per H2 in the
-        # design doc). A parent absent from the result has no history yet.
-        def most_recent_rows_for(adapter, parent_ids, columns: %i[id sort_key to_state])
-          return {} if parent_ids.empty?
-
-          fk = adapter.send(:parent_join_foreign_key)
-          scope = adapter.transition_class.where(adapter.send(:most_recent_transitions, nil, parent_ids))
-
-          scope.pluck(fk, *columns).each_with_object({}) do |row, hash|
-            parent_id, *values = row
-            hash[parent_id] = columns.zip(values).to_h
-          end
-        end
-
-        # Runs the full flip -> recheck -> insert -> hydrate -> cached-state -> callback
-        # sequence for one chunk, inside one transaction. Retries, outside that
-        # transaction, if the final insert hits the one residual race window the recheck
-        # can't close — see the RecordNotUnique rescue below.
-        def write_chunk(transition_class, representative, survivors, current_rows, after, after_commit, attempt: 1)
-          return BulkTransition::Result.new if survivors.empty?
-
-          assign_sort_keys!(survivors, current_rows)
-          successful = []
-          failed = []
-
-          begin
-            transition_class.transaction(requires_new: true) do
-              writable, raced = flip_and_partition(transition_class, representative, survivors, current_rows)
-              failed.concat(raced)
-              next if writable.empty?
-
-              persist_writable!(transition_class, representative, writable, after, after_commit)
-              successful.concat(writable.map { |item| item[:object] })
-            end
-          rescue ::ActiveRecord::RecordNotUnique
-            raise if attempt >= MAX_INSERT_ATTEMPTS
-
-            # This must be rescued *outside* the transaction(requires_new: true) block,
-            # not around insert_all within it: on Postgres, a statement error leaves that
-            # transaction/savepoint aborted until it's rolled back, and only letting the
-            # error escape the `transaction do...end` block gets Rails to do that rollback
-            # cleanly — rescuing inside would leave the connection unusable for anything
-            # that follows. Retrying the *whole* chunk with the *same* survivor set (not a
-            # pre-filtered one) is deliberate, not wasteful: the retry's own flip + recheck
-            # above re-discovers whoever just raced — their row is now actually committed
-            # and visible — and correctly excludes them before the next insert attempt, so
-            # there's no need to parse the exception to work out who caused it.
-            retried = write_chunk(transition_class, representative, survivors, current_rows, after, after_commit,
-                                  attempt: attempt + 1)
-            successful.concat(retried.successful)
-            failed.concat(retried.failed)
-          end
-
-          BulkTransition::Result.new(successful: successful, failed: failed)
-        end
-
-        # Flips most_recent for the has-history survivors' old rows, then re-reads every
-        # survivor's parent (see .most_recent_rows_for) to find out who raced — see
-        # .write_chunk's own comment and .flip_most_recent for the detection mechanism.
-        def flip_and_partition(transition_class, representative, survivors, current_rows)
-          flip_ids = survivors.filter_map { |item| current_rows.dig(item[:adapter].parent_model.id, :id) }
-          flip_most_recent(transition_class, representative, flip_ids)
-
-          parent_ids = survivors.map { |item| item[:adapter].parent_model.id }
-          raced_rows = most_recent_rows_for(representative, parent_ids)
-
-          writable, raced = survivors.partition { |item| !raced_rows.key?(item[:adapter].parent_model.id) }
-          failed = raced.map { |item| BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict) }
-          [writable, failed]
-        end
-
-        # Persists the survivors of .flip_and_partition: insert, batched cached-state
-        # write, then per-item `after` (inside this still-open transaction — a raise rolls
-        # it back) and a registered, deferred `after_commit` per item.
-        def persist_writable!(transition_class, representative, writable, after, after_commit)
-          insert_survivors!(transition_class, representative, writable)
-          maintain_cached_current_state_batch(representative, writable, writable.first[:transition].to_state)
-
-          writable.each do |item|
-            after.call(item)
-            transition_class.connection.add_transaction_record(
-              ActiveRecordAfterCommitWrap.new(transition_class.connection) { after_commit.call(item) },
-            )
-          end
-        end
-
-        def assign_sort_keys!(survivors, current_rows)
-          survivors.each do |item|
-            base_sort_key = current_rows.dig(item[:adapter].parent_model.id, :sort_key)
-            item[:transition].assign_attributes(
-              sort_key: base_sort_key ? base_sort_key + 10 : 10,
-              most_recent: true,
-            )
-          end
-        end
-
-        # Flips most_recent false for the given ids, scoped to the Phase-A-captured
-        # tokens. Needs no RETURNING and no pessimistic locking to be safe: the UPDATE
-        # itself takes a row lock on every id it actually matches, so a concurrent writer
-        # targeting the same parent physically blocks on that lock until our transaction
-        # ends. Whether a given id ends up flipped by us, or was already flipped away by a
-        # racer before we got here, it's false either way afterward — which is exactly why
-        # race detection isn't done by re-querying these ids (that can't distinguish the
-        # two cases), but by the separate, unambiguous .most_recent_rows_for re-read in
-        # .write_chunk: an honest, unraced flip leaves no most_recent row for that parent
-        # at all until the insert that follows.
-        def flip_most_recent(transition_class, representative, ids)
-          return if ids.empty?
-
-          set_attrs = { most_recent: representative.send(:not_most_recent_value, db_cast: false) }
-          column, timestamp = representative.send(:updated_column_and_timestamp)
-          set_attrs[column] = timestamp if column
-
-          transition_class.where(id: ids, most_recent: true).update_all(set_attrs)
-        end
-
-        # Excludes "id" (let the DB generate it) and any timestamp columns (let
-        # insert_all!'s own record_timestamps: true populate them, matching what #save!
-        # would do for the single-object path — items built via #build_transition carry
-        # these as explicit nil keys, which would otherwise suppress insert_all!'s
-        # auto-timestamping and insert literal NULLs).
-        #
-        # Deliberately insert_all! (bang), not insert_all: the plain, non-bang insert_all
-        # silently does ON CONFLICT DO NOTHING — it never raises on a unique violation, it
-        # just drops the conflicting row and returns fewer rows than requested. That would
-        # both violate "survivors commit atomically per chunk" (silently discarding a row
-        # that should have been a loud :conflict) and mean the RecordNotUnique rescue
-        # around .write_chunk's whole insert-and-retry sequence is dead code. insert_all!
-        # raises, matching #save!'s own behaviour on the single-object path.
-        def insert_survivors!(transition_class, representative, writable)
-          timestamp_columns = TIMESTAMP_COLUMNS & transition_class.column_names
-          insert_attrs = writable.map { |item| item[:transition].attributes.except("id", *timestamp_columns) }
-
-          if transition_class.connection.supports_insert_returning?
-            result = transition_class.insert_all!(insert_attrs, returning: transition_class.column_names,
-                                                                record_timestamps: true)
-            rows_by_parent_id = index_rows_by_parent_id(result.to_a, representative)
-          else
-            transition_class.insert_all!(insert_attrs, record_timestamps: true)
-            rows_by_parent_id = reselect_rows_by_parent_id(transition_class, representative, writable)
-          end
-
-          hydrate!(writable, rows_by_parent_id)
-        end
-
-        def index_rows_by_parent_id(rows, representative)
-          fk = representative.send(:parent_join_foreign_key)
-          rows.to_h { |row| [row[fk], row] }
-        end
-
-        # MySQL has no insert_all RETURNING support — re-read the rows we just inserted
-        # instead. Safe inside our still-open transaction: has-history parents are lock-
-        # protected and no-history parents were just verified-then-inserted here, so
-        # nothing else can be writing a competing transition for any of these parents
-        # right now.
-        def reselect_rows_by_parent_id(transition_class, representative, writable)
-          fk = representative.send(:parent_join_foreign_key)
-          parent_ids = writable.map { |item| item[:adapter].parent_model.id }
-
-          transition_class.where(representative.send(:most_recent_transitions, nil, parent_ids)).
-            to_h { |record| [record[fk], record.attributes] }
-        end
-
-        # Merges the recovered, persisted row (id, timestamps, final sort_key/
-        # most_recent) onto the already-`before`-mutated in-memory attributes — not the
-        # recovered row alone, so a `before` callback's mutation (e.g. custom metadata)
-        # survives — then rebuilds a real, persisted-looking record via .instantiate: the
-        # idiomatic Rails way to materialize a row without re-running
-        # validations/callbacks/save!.
-        def hydrate!(writable, rows_by_parent_id)
-          writable.each do |item|
-            row = rows_by_parent_id.fetch(item[:adapter].parent_model.id)
-            merged = item[:transition].attributes.merge(row)
-            item[:transition] = item[:transition].class.instantiate(merged)
-          end
-        end
-
-        # Batched generalization of #maintain_cached_current_state: one UPDATE for every
-        # written parent, since the target state is homogeneous across the whole chunk.
-        def maintain_cached_current_state_batch(representative, writable, to_state)
-          model_class = representative.parent_model.class
-          return unless model_class.respond_to?(:cached_state_column_name)
-
-          column = model_class.cached_state_column_name
-          unless model_class.column_names.include?(column.to_s)
-            raise ArgumentError,
-                  "cache_current_state_column: #{column.inspect} is not a column " \
-                  "on #{model_class.name}"
-          end
-
-          attributes = { column => to_state }
-          attributes[:updated_at] = Time.current if model_class.cached_current_state_touch_updated_at?
-          parent_ids = writable.map { |item| item[:adapter].parent_model.id }
-          model_class.where(id: parent_ids).update_all(attributes)
-        end
+        BulkCreate.call(items, from: from, after: after, after_commit: after_commit)
       end
 
       def initialize(transition_class, parent_model, observer, options = {})
@@ -329,7 +43,7 @@ module Statesman
           options[:association_name] || @transition_class.table_name
       end
 
-      attr_reader :transition_class, :transition_table, :parent_model
+      attr_reader :transition_class, :transition_table, :parent_model, :association_name
 
       def create(from, to, metadata = {})
         create_transition(from.to_s, to.to_s, metadata)
@@ -391,6 +105,141 @@ module Statesman
       def reset
         if instance_variable_defined?(:@last_transition)
           remove_instance_variable(:@last_transition)
+        end
+      end
+
+      # Public (not private) because Adapters::ActiveRecord::BulkCreate, a sibling class
+      # with no instance of its own, needs these — they used to be private and reached
+      # via `adapter.send(...)`. Each is a thin wrapper around the class method of the
+      # same name below, which does the real work as a pure function of
+      # transition_class/parent_model_class/association_name/parent_id — none of it
+      # depends on *this* adapter's specific parent_model identity. BulkCreate calls the
+      # class methods directly with its own validated, uniform-across-the-batch values
+      # (see BulkCreate#assert_uniform_adapter!) instead of going through any one item's
+      # adapter instance; these instance wrappers exist only for the single-object write
+      # path below (`unique_indexes`, `update_most_recents`, etc.), which already has an
+      # adapter instance sitting around and has no need to reach past it.
+      def parent_join_foreign_key
+        self.class.parent_join_foreign_key(parent_model.class, @association_name, transition_class)
+      end
+
+      def most_recent_transitions(most_recent_id = nil, parent_id = parent_model.id)
+        self.class.most_recent_transitions(transition_class, parent_join_foreign_key, parent_id, most_recent_id)
+      end
+
+      def not_most_recent_value(db_cast: true)
+        self.class.not_most_recent_value(transition_class, db_cast: db_cast)
+      end
+
+      def updated_column_and_timestamp
+        self.class.updated_column_and_timestamp(transition_class)
+      end
+
+      class << self
+        def parent_join_foreign_key(parent_model_class, association_name, transition_class)
+          association = parent_model_class.
+            reflect_on_all_associations(:has_many).
+            find { |r| r.name.to_s == association_name.to_s }
+          association_join_primary_key(association, transition_class)
+        end
+
+        def most_recent_transitions(transition_class, foreign_key, parent_id, most_recent_id = nil)
+          table = transition_class.arel_table
+          scope = concrete_transitions_of_parent(transition_class, foreign_key, parent_id)
+
+          if most_recent_id
+            scope.and(table[:id].eq(most_recent_id).or(table[:most_recent].eq(true)))
+          else
+            scope.and(table[:most_recent].eq(true))
+          end
+        end
+
+        # Check whether the `most_recent` column allows null values. If it doesn't, set
+        # old records to `false`, otherwise, set them to `NULL`.
+        #
+        # Some conditioning here is required to support databases that don't support
+        # partial indexes. By doing the conditioning on the column, rather than Rails'
+        # opinion of whether the database supports partial indexes, we're robust to DBs
+        # later adding support for partial indexes.
+        def not_most_recent_value(transition_class, db_cast: true)
+          if transition_class.columns_hash["most_recent"].null == false
+            return db_cast ? db_false(transition_class) : false
+          end
+
+          db_cast ? db_null : nil
+        end
+
+        def updated_column_and_timestamp(transition_class)
+          # TODO: Once we've set expectations that transition classes should conform to
+          # the interface of Adapters::ActiveRecordTransition as a breaking change in the
+          # next major version, we can stop calling `#respond_to?` first and instead
+          # assume that there is a `.updated_timestamp_column` method we can call.
+          #
+          # At the moment, most transition classes will include the module, but not all,
+          # not least because it doesn't work with PostgreSQL JSON columns for metadata.
+          column = if transition_class.respond_to?(:updated_timestamp_column)
+                     transition_class.updated_timestamp_column
+                   else
+                     ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
+                   end
+
+          # No updated timestamp column, don't return anything
+          return nil if column.nil?
+
+          [column, default_timezone == :utc ? Time.now.utc : Time.now]
+        end
+
+        private
+
+        def association_join_primary_key(association, transition_class)
+          if association.respond_to?(:join_primary_key)
+            association.join_primary_key
+          elsif association.method(:join_keys).arity.zero?
+            # Support for Rails 5.1
+            association.join_keys.key
+          else
+            # Support for Rails < 5.1
+            association.join_keys(transition_class).key
+          end
+        end
+
+        # `parent_id` accepts either a single id (the single-object write path, via the
+        # instance wrapper above) or an Array of ids (bulk_create's batched reads/writes,
+        # scoped to many parents at once) — `Arel::Nodes::Node#in` vs `#eq` handles the
+        # distinction.
+        def concrete_transitions_of_parent(transition_class, foreign_key, parent_id)
+          if transition_sti?(transition_class)
+            transitions_of_parent(transition_class, foreign_key, parent_id).and(
+              transition_class.arel_table[transition_class.inheritance_column].eq(transition_class.name),
+            )
+          else
+            transitions_of_parent(transition_class, foreign_key, parent_id)
+          end
+        end
+
+        def transitions_of_parent(transition_class, foreign_key, parent_id)
+          column = transition_class.arel_table[foreign_key.to_sym]
+          parent_id.is_a?(Array) ? column.in(parent_id) : column.eq(parent_id)
+        end
+
+        def transition_sti?(transition_class)
+          transition_class.column_names.include?(transition_class.inheritance_column)
+        end
+
+        # Rails 7 deprecates ActiveRecord::Base.default_timezone in favour of
+        # ActiveRecord.default_timezone
+        def default_timezone
+          return ::ActiveRecord.default_timezone if ::ActiveRecord.respond_to?(:default_timezone)
+
+          ::ActiveRecord::Base.default_timezone
+        end
+
+        def db_false(transition_class)
+          transition_class.connection.quote(transition_class.connection.type_cast(false))
+        end
+
+        def db_null
+          Arel::Nodes::SqlLiteral.new("NULL")
         end
       end
 
@@ -504,41 +353,6 @@ module Statesman
         transition_class.connection.update(update.to_sql(transition_class))
       end
 
-      # `parent_id` accepts either a single id (the single-object write path) or an Array
-      # of ids (Adapters::ActiveRecord.bulk_create's batched reads/writes, scoped to many
-      # parents at once) — `Arel::Nodes::Node#in` vs `#eq` handles the distinction.
-      # `most_recent_id`, by contrast, is always a single id: it's the single-object flip's
-      # own CASE-WHEN token (see #build_most_recents_update_all_values) and has no batched
-      # equivalent — bulk_create's flip is a separate, simpler statement (see
-      # .flip_most_recent) that doesn't need it.
-      def most_recent_transitions(most_recent_id = nil, parent_id = parent_model.id)
-        if most_recent_id
-          concrete_transitions_of_parent(parent_id).and(
-            transition_table[:id].eq(most_recent_id).or(
-              transition_table[:most_recent].eq(true),
-            ),
-          )
-        else
-          concrete_transitions_of_parent(parent_id).and(transition_table[:most_recent].eq(true))
-        end
-      end
-
-      def concrete_transitions_of_parent(parent_id = parent_model.id)
-        if transition_sti?
-          transitions_of_parent(parent_id).and(
-            transition_table[transition_class.inheritance_column].
-              eq(transition_class.name),
-          )
-        else
-          transitions_of_parent(parent_id)
-        end
-      end
-
-      def transitions_of_parent(parent_id = parent_model.id)
-        column = transition_table[parent_join_foreign_key.to_sym]
-        parent_id.is_a?(Array) ? column.in(parent_id) : column.eq(parent_id)
-      end
-
       # Generates update_all Arel values that will touch the updated timestamp (if valid
       # for this model) and set most_recent to true only for the transition with a
       # matching most_recent ID.
@@ -625,65 +439,6 @@ module Statesman
           end
       end
 
-      def transition_sti?
-        transition_class.column_names.include?(transition_class.inheritance_column)
-      end
-
-      def parent_association
-        parent_model.class.
-          reflect_on_all_associations(:has_many).
-          find { |r| r.name.to_s == @association_name.to_s }
-      end
-
-      def parent_join_foreign_key
-        association_join_primary_key(parent_association)
-      end
-
-      def association_join_primary_key(association)
-        if association.respond_to?(:join_primary_key)
-          association.join_primary_key
-        elsif association.method(:join_keys).arity.zero?
-          # Support for Rails 5.1
-          association.join_keys.key
-        else
-          # Support for Rails < 5.1
-          association.join_keys(transition_class).key
-        end
-      end
-
-      # updated_column_and_timestamp should return [column_name, value]
-      def updated_column_and_timestamp
-        # TODO: Once we've set expectations that transition classes should conform to
-        # the interface of Adapters::ActiveRecordTransition as a breaking change in the
-        # next major version, we can stop calling `#respond_to?` first and instead
-        # assume that there is a `.updated_timestamp_column` method we can call.
-        #
-        # At the moment, most transition classes will include the module, but not all,
-        # not least because it doesn't work with PostgreSQL JSON columns for metadata.
-        column = if transition_class.respond_to?(:updated_timestamp_column)
-                   transition_class.updated_timestamp_column
-                 else
-                   ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
-                 end
-
-        # No updated timestamp column, don't return anything
-        return nil if column.nil?
-
-        [
-          column, default_timezone == :utc ? Time.now.utc : Time.now
-        ]
-      end
-
-      def default_timezone
-        # Rails 7 deprecates ActiveRecord::Base.default_timezone
-        # in favour of ActiveRecord.default_timezone
-        if ::ActiveRecord.respond_to?(:default_timezone)
-          return ::ActiveRecord.default_timezone
-        end
-
-        ::ActiveRecord::Base.default_timezone
-      end
-
       def mysql_gaplock_protection?(connection)
         Statesman.mysql_gaplock_protection?(connection)
       end
@@ -692,33 +447,10 @@ module Statesman
         transition_class.connection.quote(type_cast(true))
       end
 
-      def db_false
-        transition_class.connection.quote(type_cast(false))
-      end
-
-      def db_null
-        Arel::Nodes::SqlLiteral.new("NULL")
-      end
-
       # Type casting against a column is deprecated and will be removed in Rails 6.2.
       # See https://github.com/rails/arel/commit/6160bfbda1d1781c3b08a33ec4955f170e95be11
       def type_cast(value)
         transition_class.connection.type_cast(value)
-      end
-
-      # Check whether the `most_recent` column allows null values. If it doesn't, set old
-      # records to `false`, otherwise, set them to `NULL`.
-      #
-      # Some conditioning here is required to support databases that don't support partial
-      # indexes. By doing the conditioning on the column, rather than Rails' opinion of
-      # whether the database supports partial indexes, we're robust to DBs later adding
-      # support for partial indexes.
-      def not_most_recent_value(db_cast: true)
-        if transition_class.columns_hash["most_recent"].null == false
-          return db_cast ? db_false : false
-        end
-
-        db_cast ? db_null : nil
       end
     end
 
