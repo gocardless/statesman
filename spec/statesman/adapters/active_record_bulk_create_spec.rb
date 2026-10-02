@@ -166,7 +166,7 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       end
     end
 
-    context "when a parent is raced between Phase A and the flip/insert (H1)" do
+    context "when a parent is raced between the snapshot read and the flip/insert (H1)" do
       let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
       let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
       let(:items) { [item_for(model_a, "x", "y"), item_for(model_b, "x", "y")] }
@@ -175,16 +175,17 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         adapter_for(model_a).create("w", "x")
 
         raced = false
-        allow(described_class).to receive(:most_recent_rows_for).and_wrap_original do |original, *args|
-          rows = original.call(*args)
-          unless raced
-            raced = true
-            # A concurrent single transition lands for model_a right after Phase A's read,
-            # before our flip/recheck — exactly the race window this call protects.
-            adapter_for(model_a).create("x", "z")
+        allow_any_instance_of(described_class::BulkCreate).to receive(:most_recent_rows_for).
+          and_wrap_original do |original, *args|
+            rows = original.call(*args)
+            unless raced
+              raced = true
+              # A concurrent single transition lands for model_a right after the snapshot read,
+              # before our flip/recheck — exactly the race window this call protects.
+              adapter_for(model_a).create("x", "z")
+            end
+            rows
           end
-          rows
-        end
       end
 
       it "drops only the raced parent as a conflict; the rest commit" do
@@ -202,20 +203,21 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       end
     end
 
-    context "when a brand-new parent is raced between Phase A and the insert" do
+    context "when a brand-new parent is raced between the snapshot read and the insert" do
       let(:model) { MyActiveRecordModel.create(current_state: "x") }
       let(:items) { [item_for(model, "x", "y")] }
 
       before do
         raced = false
-        allow(described_class).to receive(:most_recent_rows_for).and_wrap_original do |original, *args|
-          rows = original.call(*args)
-          if rows.empty? && !raced
-            raced = true
-            adapter_for(model).create("x", "z")
+        allow_any_instance_of(described_class::BulkCreate).to receive(:most_recent_rows_for).
+          and_wrap_original do |original, *args|
+            rows = original.call(*args)
+            if rows.empty? && !raced
+              raced = true
+              adapter_for(model).create("x", "z")
+            end
+            rows
           end
-          rows
-        end
       end
 
       it "reports a conflict instead of double-inserting the parent's first transition" do
@@ -245,20 +247,22 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       # raced parent — exactly what a real race landing in that window would produce.
       before do
         attempt = 0
-        allow(described_class).to receive(:most_recent_rows_for).and_wrap_original do |original, adapter, parent_ids|
-          attempt += 1
-          rows = original.call(adapter, parent_ids)
-          attempt == 3 ? rows.merge(model_a.id => { id: -1, sort_key: 999, to_state: "x" }) : rows
-        end
+        allow_any_instance_of(described_class::BulkCreate).to receive(:most_recent_rows_for).
+          and_wrap_original do |original, parent_ids|
+            attempt += 1
+            rows = original.call(parent_ids)
+            attempt == 3 ? rows.merge(model_a.id => { id: -1, sort_key: 999, to_state: "x" }) : rows
+          end
 
         raised = false
-        allow(described_class).to receive(:insert_survivors!).and_wrap_original do |original, *args|
-          unless raised
-            raised = true
-            raise ActiveRecord::RecordNotUnique, "simulated race"
+        allow_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!).
+          and_wrap_original do |original, *args|
+            unless raised
+              raised = true
+              raise ActiveRecord::RecordNotUnique, "simulated race"
+            end
+            original.call(*args)
           end
-          original.call(*args)
-        end
       end
 
       it "retries the chunk, excluding whoever the retry's own recheck finds raced, and still commits the rest" do
@@ -274,7 +278,8 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       end
 
       it "gives up and raises after MAX_INSERT_ATTEMPTS consecutive conflicts" do
-        allow(described_class).to receive(:insert_survivors!).and_raise(ActiveRecord::RecordNotUnique, "persistent")
+        allow_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!).
+          and_raise(ActiveRecord::RecordNotUnique, "persistent")
 
         expect { result }.to raise_error(ActiveRecord::RecordNotUnique)
       end
@@ -314,6 +319,39 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
 
       it "raises instead of silently writing some items against the wrong table" do
         expect { result }.to raise_error(ArgumentError, /same.*transition class/)
+      end
+    end
+
+    context "when items use different parent model classes (but share a transition class)" do
+      let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
+      # A real Ruby subclass, not STI (my_active_record_models has no `type` column) —
+      # exists purely so item[:object].class differs from model_a's while both still
+      # resolve the same transition_class/association, isolating this one check.
+      let(:other_model_class) { Class.new(MyActiveRecordModel) }
+      let(:model_b) { other_model_class.create(current_state: "x") }
+      let(:items) { [item_for(model_a, "x", "y"), item_for(model_b, "x", "y")] }
+
+      it "raises instead of silently resolving the wrong foreign key for some items" do
+        expect { result }.to raise_error(ArgumentError, /same.*parent model class/)
+      end
+    end
+
+    context "when items use different association names (but share a transition class)" do
+      let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
+      let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
+      let(:items) do
+        [
+          item_for(model_a, "x", "y"),
+          # :transitions is MyActiveRecordModel's own alias for the same association
+          # (`alias_method :transitions, :my_active_record_model_transitions`) — a real,
+          # callable method under a different name, so #build_transition still succeeds
+          # and only the association_name *value* actually diverges.
+          item_for(model_b, "x", "y", association_name: :transitions),
+        ]
+      end
+
+      it "raises instead of silently resolving the wrong foreign key for some items" do
+        expect { result }.to raise_error(ArgumentError, /same.*association name/)
       end
     end
 
