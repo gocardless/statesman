@@ -299,6 +299,24 @@ describe Statesman::BulkTransition do
         expect { described_class.call(duplicated_machines, :processing) }.
           to raise_error(ArgumentError, /duplicate objects/)
       end
+
+      it "does not raise for the same object run through two different, unrelated machine classes" do
+        other_machine_class = Class.new do
+          include Statesman::Machine
+
+          def self.name
+            "MyOtherBulkStateMachine"
+          end
+
+          state :pending, initial: true
+          state :processing
+          transition from: :pending, to: :processing
+        end
+
+        machines = [machine_class.new(object), other_machine_class.new(object)]
+
+        expect(described_class.call(machines, :processing).successful).to eq([object, object])
+      end
     end
 
     describe "equivalence with a loop of #transition_to!" do

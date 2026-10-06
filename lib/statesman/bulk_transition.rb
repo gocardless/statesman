@@ -43,11 +43,16 @@ module Statesman
     class << self
       private
 
+      # Keyed on (object, machine class), not object alone: one object can legitimately
+      # run two different state machines (e.g. two independent transition histories on
+      # the same record), which isn't a duplicate call for either machine.
       def validate_no_duplicate_objects(machines)
-        duplicate_objects = machines.map(&:object).tally.select { |_, count| count > 1 }.keys
-        return if duplicate_objects.empty?
+        duplicates = machines.map { |machine| [machine.object, machine.class] }.
+          tally.select { |_, count| count > 1 }.keys
+        return if duplicates.empty?
 
-        raise ArgumentError, "BulkTransition does not support duplicate objects: #{duplicate_objects.inspect}"
+        raise ArgumentError, "BulkTransition does not support duplicate objects: " \
+                             "#{duplicates.map(&:first).inspect}"
       end
 
       def validate_batch_size(in_batches_of)
