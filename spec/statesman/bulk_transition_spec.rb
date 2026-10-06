@@ -361,6 +361,49 @@ describe Statesman::BulkTransition do
       end
     end
 
+    describe "after_guard_failure and after_transition_failure callbacks" do
+      let(:objects) { build_objects(2) }
+      let(:machines) { build_machines(objects) }
+      let(:guard_failure_calls) { [] }
+      let(:transition_failure_calls) { [] }
+
+      before do
+        guard_calls = guard_failure_calls
+        transition_calls = transition_failure_calls
+        machine_class.after_guard_failure { |object, error| guard_calls << [object, error] }
+        machine_class.after_transition_failure { |object, error| transition_calls << [object, error] }
+      end
+
+      it "fires after_guard_failure for a machine whose guard fails" do
+        machine_class.guard_transition(from: :pending, to: :processing) { |object, *| object != objects[0] }
+
+        described_class.call(machines, :processing)
+
+        expect(guard_failure_calls.map(&:first)).to eq([objects[0]])
+        expect(guard_failure_calls.first.last).to be_a(Statesman::GuardFailedError)
+        expect(transition_failure_calls).to eq([])
+      end
+
+      it "fires after_transition_failure for a machine with an invalid edge" do
+        allow_any_instance_of(machine_class).to receive(:current_state).and_return("completed")
+
+        described_class.call(machines, :processing)
+
+        expect(transition_failure_calls.map(&:first)).to match_array(objects)
+        expect(transition_failure_calls.first.last).to be_a(Statesman::TransitionFailedError)
+        expect(guard_failure_calls).to eq([])
+      end
+
+      it "still fires the callback when on_failure: :raise aborts the batch" do
+        machine_class.guard_transition(from: :pending, to: :processing) { false }
+
+        expect { described_class.call(machines, :processing, on_failure: :raise) }.
+          to raise_error(Statesman::GuardFailedError)
+
+        expect(guard_failure_calls.map(&:first)).to eq([objects[0]])
+      end
+    end
+
     describe "on_failure: :raise" do
       let(:objects) { build_objects(2) }
       let(:machines) { build_machines(objects) }

@@ -934,6 +934,36 @@ describe Statesman::Machine do
           expect(can_transition_to?).to be_falsey
         end
       end
+
+      context "with a terminal from state and an after_transition_failure callback defined" do
+        let(:failure_cb) { -> { true } }
+        let(:new_state) { :y }
+
+        before do
+          instance.transition_to!(:y)
+          machine.after_transition_failure(&failure_cb)
+        end
+
+        it "is a dry run: does not fire the failure callback as a side effect" do
+          expect(failure_cb).to_not receive(:call)
+          expect(can_transition_to?).to be_falsey
+        end
+      end
+    end
+
+    context "when the transition is valid but guarded, with an after_guard_failure callback defined" do
+      let(:guard_failure_cb) { -> { true } }
+      let(:new_state) { :y }
+
+      before do
+        machine.guard_transition(to: :y) { false }
+        machine.after_guard_failure(&guard_failure_cb)
+      end
+
+      it "is a dry run: does not fire the failure callback as a side effect" do
+        expect(guard_failure_cb).to_not receive(:call)
+        expect(can_transition_to?).to be_falsey
+      end
     end
 
     context "when the transition valid" do

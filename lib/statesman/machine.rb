@@ -173,12 +173,22 @@ module Statesman
       # transition semantics; :collect gathers every failure and keeps going, returning
       # [survivors, failures] as plain {machine:, reason:, error:} hashes — not a
       # BulkTransition::Result, since Machine shouldn't need to know that shape.
-      def validate_bulk_transition(machines, from:, to:, metadata: {}, skip_guards: false, on_failure: :raise)
+      #
+      # notify_on_failure: true (default) fires after_guard_failure/after_transition_failure
+      # for every machine that fails here — the single place both #validate_transition (a
+      # real transition_to! attempt) and BulkTransition rely on for that dispatch.
+      # #can_transition_to? is the one caller that passes false: it's a dry-run predicate
+      # with no side effects, so a failing guard there must not fire the failure callback.
+      def validate_bulk_transition(machines, from:, to:, metadata: {}, skip_guards: false, on_failure: :raise,
+                                   notify_on_failure: true)
         from = from.to_s
         to = to.to_s
 
         edge_error = validate_bulk_edge(from, to)
         if edge_error
+          if notify_on_failure
+            machines.each { |machine| machine.execute_on_failure(:after_transition_failure, from, to, edge_error) }
+          end
           raise edge_error if on_failure == :raise
 
           failed = machines.map { |machine| { machine: machine, reason: :invalid_current_state, error: edge_error } }
@@ -186,7 +196,7 @@ module Statesman
         end
 
         applicable_guards = skip_guards ? [] : applicable_guards_for(from, to)
-        run_bulk_guards(machines, applicable_guards, metadata, on_failure)
+        run_bulk_guards(machines, applicable_guards, from, to, metadata, on_failure, notify_on_failure)
       end
 
       # Public so #guards_for can call it directly instead of duplicating this filter —
@@ -203,7 +213,7 @@ module Statesman
         TransitionFailedError.new(from, to)
       end
 
-      def run_bulk_guards(machines, applicable_guards, metadata, on_failure)
+      def run_bulk_guards(machines, applicable_guards, from, to, metadata, on_failure, notify_on_failure)
         survivors = []
         failed = []
 
@@ -211,6 +221,7 @@ module Statesman
           applicable_guards.each { |guard| guard.call(machine.object, machine.last_transition, metadata) }
           survivors << machine
         rescue GuardFailedError => e
+          machine.execute_on_failure(:after_guard_failure, from, to, e) if notify_on_failure
           raise if on_failure == :raise
 
           failed << { machine: machine, reason: :guard, error: e }
@@ -345,10 +356,15 @@ module Statesman
       history.reverse.find { |transition| transition.to_state.to_sym == state.to_sym }
     end
 
+    # A dry-run check with no side effects — explicitly opts out of the failure-callback
+    # dispatch that #validate_transition's shared core otherwise performs on behalf of a
+    # real transition attempt (see #transition_to!), so merely asking "can I?" never
+    # fires after_guard_failure/after_transition_failure.
     def can_transition_to?(new_state, metadata = {})
       validate_transition(from: current_state,
                           to: new_state,
-                          metadata: metadata)
+                          metadata: metadata,
+                          notify_on_failure: false)
       true
     rescue TransitionFailedError, GuardFailedError
       false
@@ -358,6 +374,10 @@ module Statesman
       @storage_adapter.history
     end
 
+    # Failure-callback dispatch happens inside #validate_transition's shared core
+    # (Machine.validate_bulk_transition), not here — it's the same core BulkTransition
+    # uses, so both paths get identical on_failure/notify_on_failure semantics from one
+    # place instead of two.
     def transition_to!(new_state, metadata = {})
       initial_state = current_state
       new_state = new_state.to_s
@@ -369,12 +389,6 @@ module Statesman
       @storage_adapter.create(initial_state, new_state, metadata)
 
       true
-    rescue TransitionFailedError => e
-      execute_on_failure(:after_transition_failure, initial_state, new_state, e)
-      raise
-    rescue GuardFailedError => e
-      execute_on_failure(:after_guard_failure, initial_state, new_state, e)
-      raise
     end
 
     def execute_on_failure(phase, initial_state, new_state, exception)
@@ -427,9 +441,10 @@ module Statesman
       callbacks.select { |callback| callback.applies_to?(from: from, to: to) }
     end
 
-    def validate_transition(options = { from: nil, to: nil, metadata: nil })
+    def validate_transition(options = { from: nil, to: nil, metadata: nil, notify_on_failure: true })
       self.class.validate_bulk_transition(
-        [self], from: options[:from], to: options[:to], metadata: options[:metadata], on_failure: :raise
+        [self], from: options[:from], to: options[:to], metadata: options[:metadata], on_failure: :raise,
+                notify_on_failure: options.fetch(:notify_on_failure, true)
       )
     end
 
