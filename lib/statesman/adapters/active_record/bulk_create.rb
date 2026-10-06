@@ -90,8 +90,18 @@ module Statesman
         #   addition, permanently defeating the fast path for every user. Matching on
         #   the filter name instead sidesteps the ordering problem entirely: it's
         #   evaluated lazily, once the whole class body (including `belongs_to`) has run.
+        # - A non-`optional:` `belongs_to` under `belongs_to_required_by_default` (the
+        #   Rails 5+ app default, off by default for a bare ActiveRecord::Base outside a
+        #   full Rails app, which is why this doesn't show up against this gem's own spec
+        #   models) registers `validates_presence_of reflection.name, message: :required`
+        #   — see ActiveRecord::Associations::Builder::BelongsTo. That's framework
+        #   scaffolding too, not a real validation the caller wrote, so it needs its own
+        #   check below: unlike the two filters above, it isn't a Symbol at all (a
+        #   `validates ...`-style declaration registers the validator *instance* as the
+        #   filter), so the bare `filter.is_a?(Symbol)` check never even looks at it.
         FRAMEWORK_CALLBACK_FILTERS = [:cant_modify_encrypted_attributes_when_frozen].freeze
         AUTOSAVE_CALLBACK_FILTER_PATTERN = /\Aautosave_associated_records_for_/
+        REQUIRED_ASSOCIATION_PRESENCE_MESSAGE = :required
 
         def self.call(items, from:, to:, on_failure:, skip_before_callbacks:, skip_after_callbacks:,
                       skip_after_commit_callbacks:, model_validations: :auto)
@@ -163,11 +173,20 @@ module Statesman
             transition_class._create_callbacks.to_a +
             transition_class._save_callbacks.to_a
 
-          chains.any? do |callback|
-            filter = callback.filter
-            !(filter.is_a?(Symbol) &&
-              (FRAMEWORK_CALLBACK_FILTERS.include?(filter) || filter.match?(AUTOSAVE_CALLBACK_FILTER_PATTERN)))
+          chains.any? { |callback| !framework_callback?(callback.filter) }
+        end
+
+        def framework_callback?(filter)
+          if filter.is_a?(Symbol)
+            FRAMEWORK_CALLBACK_FILTERS.include?(filter) || filter.match?(AUTOSAVE_CALLBACK_FILTER_PATTERN)
+          else
+            required_association_presence_validator?(filter)
           end
+        end
+
+        def required_association_presence_validator?(filter)
+          filter.is_a?(::ActiveRecord::Validations::PresenceValidator) &&
+            filter.options[:message] == REQUIRED_ASSOCIATION_PRESENCE_MESSAGE
         end
 
         def save_fallback?

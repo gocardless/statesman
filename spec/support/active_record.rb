@@ -57,6 +57,25 @@ class MyActiveRecordModelTransitionWithoutInclude < ActiveRecord::Base
   end
 end
 
+# A second view onto the same table as MyActiveRecordModelTransition (same trick as
+# MyActiveRecordModelTransitionWithoutInclude above), with one addition: an explicit
+# `validates_presence_of ..., message: :required` on the belongs_to. That's exactly what
+# ActiveRecord::Associations::Builder::BelongsTo registers for a non-`optional:`
+# belongs_to when `belongs_to_required_by_default` is true — the Rails app default since
+# 5.0, but off by default for a bare ActiveRecord::Base outside a full Rails app, which is
+# why plain MyActiveRecordModelTransition above doesn't exercise this. This model has *no
+# other* validations/callbacks, so it isolates exactly that one framework-injected check,
+# for BulkCreate#requires_save_fallback? to be tested against (see bulk_create.rb's
+# REQUIRED_ASSOCIATION_PRESENCE_MESSAGE).
+class RequiredAssociationActiveRecordModelTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
+  self.table_name = "my_active_record_model_transitions"
+
+  belongs_to :my_active_record_model
+  validates_presence_of :my_active_record_model, message: :required
+end
+
 class CreateMyActiveRecordModelMigration < MIGRATION_CLASS
   def change
     create_table :my_active_record_models do |t|

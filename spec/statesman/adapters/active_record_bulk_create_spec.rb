@@ -324,6 +324,25 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         end
       end
 
+      context "with a transition model whose only 'validation' is a Rails-injected " \
+              "required-belongs_to presence check (bug: :auto used to always pick the slow path here)" do
+        let(:model) { MyActiveRecordModel.create(current_state: "x") }
+        let(:items) do
+          [item_for(model, transition_class: RequiredAssociationActiveRecordModelTransition)]
+        end
+
+        it "still uses the fast insert_all! path, not save_survivors!" do
+          expect_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!).and_call_original
+          expect_any_instance_of(described_class::BulkCreate).to_not receive(:save_survivors!)
+          result
+        end
+
+        it "persists successfully" do
+          expect(result.successful).to eq([model])
+          expect(result.failed).to eq([])
+        end
+      end
+
       context "with a transition model that has a real validation and create callback" do
         let(:model) { ValidatedActiveRecordModel.create(current_state: "x") }
 
