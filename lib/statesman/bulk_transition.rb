@@ -15,6 +15,10 @@ module Statesman
   # carries its own machine and transition, so there's no need to work backward from the
   # objects bulk_create hands back. The three skip_* options are independent since
   # `after` vs `after_commit` serve different purposes (see Machine.after_transition).
+  # If `before` raises, on_failure: :raise lets it propagate; :collect records a
+  # :before_callback failure for that item and excludes it from the write, the same
+  # on_failure contract Machine.validate_bulk_transition already applies to guard/edge
+  # failures.
   #
   # Doesn't chunk `machines` itself unless `in_batches_of` is given — safe batch size
   # depends on the caller's own DB, which this gem can't know. The duplicate-object check
@@ -70,7 +74,8 @@ module Statesman
                            skip_after_callbacks:, skip_after_commit_callbacks:)
         writer = new(new_state, metadata: metadata, skip_before_callbacks: skip_before_callbacks,
                                 skip_after_callbacks: skip_after_callbacks,
-                                skip_after_commit_callbacks: skip_after_commit_callbacks)
+                                skip_after_commit_callbacks: skip_after_commit_callbacks,
+                                on_failure: on_failure)
         successful = []
         failed = []
 
@@ -98,43 +103,55 @@ module Statesman
     end
 
     def initialize(new_state, metadata: {}, skip_before_callbacks: false, skip_after_callbacks: false,
-                   skip_after_commit_callbacks: false)
+                   skip_after_commit_callbacks: false, on_failure: :collect)
       @new_state = new_state
       @metadata = metadata
       @skip_before_callbacks = skip_before_callbacks
       @skip_after_callbacks = skip_after_callbacks
       @skip_after_commit_callbacks = skip_after_commit_callbacks
+      @on_failure = on_failure
     end
 
     def persist(from, machines)
       return Result.new if machines.empty?
 
-      items = machines.map do |machine|
-        transition = machine.storage_adapter.build_transition(from, @new_state, @metadata)
+      adapter_class = uniform_adapter_class(machines)
+      items = []
+      failed = []
+
+      machines.each do |machine|
+        transition = machine.storage_adapter.build_transition(from, @new_state, @metadata.dup)
         machine.execute(:before, from, @new_state, transition) unless @skip_before_callbacks
 
-        { object: machine.object, adapter: machine.storage_adapter, transition: transition, machine: machine }
+        items << { object: machine.object, adapter: machine.storage_adapter, transition: transition,
+                   machine: machine }
+      rescue StandardError => e
+        raise if @on_failure == :raise
+
+        failed << Result::FailedItem.new(object: machine.object, reason: :before_callback, error: e)
       end
 
-      adapter_class = uniform_adapter_class(items)
+      return Result.new(failed: failed) if items.empty?
+
       result = adapter_class.bulk_create(items)
 
       dispatch_after_callbacks(from, items, result.failed)
 
-      result
+      Result.new(successful: result.successful, failed: failed + result.failed)
     end
 
     private
 
     # bulk_create is called once per bucket, so every item must share one adapter class —
     # otherwise some would silently hit a bulk_create that doesn't know how to persist
-    # them. Can't happen via .call today, since machines are grouped by class (and
-    # therefore adapter) before reaching #persist, but cheap to guard against a Machine
-    # subclass that varies its adapter per object. Always raises, regardless of
-    # on_failure: this is a Machine-subclass configuration bug, not a per-item outcome a
-    # caller would want collected into Result#failed.
-    def uniform_adapter_class(items)
-      adapter_classes = items.map { |item| item[:adapter].class }.uniq
+    # them. Checked upfront, against the raw machines, before any transition is built or
+    # `before` callback runs — so a Machine subclass that varies its adapter per object
+    # fails with zero side effects, rather than after every machine's `before` callback
+    # has already fired. Always raises, regardless of on_failure: this is a
+    # Machine-subclass configuration bug, not a per-item outcome a caller would want
+    # collected into Result#failed.
+    def uniform_adapter_class(machines)
+      adapter_classes = machines.map { |machine| machine.storage_adapter.class }.uniq
       return adapter_classes.first if adapter_classes.one?
 
       raise ArgumentError, "BulkTransition requires every object to use the same storage " \

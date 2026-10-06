@@ -4,7 +4,7 @@ module Statesman
   class BulkTransition
     class Result < Struct.new(:successful, :failed, keyword_init: true)
       FailedItem = Struct.new(:object, :reason, :error, keyword_init: true) do
-        REASONS = %i[guard conflict invalid_current_state].freeze
+        REASONS = %i[guard conflict invalid_current_state before_callback].freeze
 
         def initialize(object:, reason:, error: nil)
           unless REASONS.include?(reason)

@@ -11,7 +11,8 @@ describe Statesman::BulkTransition do
     let(:writer) do
       described_class.new("approved", metadata: { "k" => "v" }, skip_before_callbacks: skip_before_callbacks,
                                       skip_after_callbacks: skip_after_callbacks,
-                                      skip_after_commit_callbacks: skip_after_commit_callbacks)
+                                      skip_after_commit_callbacks: skip_after_commit_callbacks,
+                                      on_failure: on_failure)
     end
     let(:machine_class) do
       Class.new do
@@ -36,6 +37,7 @@ describe Statesman::BulkTransition do
     let(:skip_before_callbacks) { false }
     let(:skip_after_callbacks) { false }
     let(:skip_after_commit_callbacks) { false }
+    let(:on_failure) { :collect }
 
     before do
       recorder = calls
@@ -94,6 +96,45 @@ describe Statesman::BulkTransition do
       it "raises instead of silently persisting some items through the wrong adapter" do
         expect { result }.to raise_error(ArgumentError, /same storage adapter/)
       end
+
+      it "raises before building any transition or running any before callback" do
+        expect { result }.to raise_error(ArgumentError)
+        expect(calls).to eq([])
+      end
+    end
+
+    context "when a before callback raises for one item" do
+      before do
+        machine_class.before_transition { |object, _transition| raise StandardError, "boom" if object == object_a }
+      end
+
+      it "collects the failure and still persists the other item" do
+        expect(result.successful).to eq([object_b])
+        expect(result.failed.map(&:object)).to eq([object_a])
+      end
+
+      it "records the failure with reason :before_callback and the raised error" do
+        expect(result.failed.first.reason).to eq(:before_callback)
+        expect(result.failed.first.error.message).to eq("boom")
+      end
+
+      context "with on_failure: :raise" do
+        let(:on_failure) { :raise }
+
+        it "raises instead of collecting the failure" do
+          expect { result }.to raise_error(StandardError, "boom")
+        end
+      end
+    end
+
+    it "gives each item its own metadata object, so one item's before callback can't " \
+       "mutate another item's metadata" do
+      machine_class.before_transition { |object, transition| transition.metadata.delete("k") if object == object_a }
+
+      result
+
+      expect(machine_a.storage_adapter.history.first.metadata).to eq({})
+      expect(machine_b.storage_adapter.history.first.metadata).to eq({ "k" => "v" })
     end
 
     context "when one item fails to persist" do
