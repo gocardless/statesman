@@ -65,19 +65,20 @@ module Statesman
     private
 
     def extract_machine_class(items)
-      classes = items.map { |item| item.machine.class }.uniq
-      return classes.first if classes.size == 1
-
-      raise ArgumentError, "BulkTransition expects every machine to be the same class, " \
-                           "got: #{classes.inspect}"
+      extract_uniform_class(items, "every machine to be the same class") { |item| item.machine.class }
     end
 
     def extract_adapter_class(items)
-      classes = items.map { |item| item.machine.storage_adapter.class }.uniq
+      extract_uniform_class(items, "every machine to share the same adapter class") do |item|
+        item.machine.storage_adapter.class
+      end
+    end
+
+    def extract_uniform_class(items, requirement, &block)
+      classes = items.map(&block).uniq
       return classes.first if classes.size == 1
 
-      raise ArgumentError, "BulkTransition expects every machine to share the same " \
-                           "adapter class, got: #{classes.inspect}"
+      raise ArgumentError, "BulkTransition expects #{requirement}, got: #{classes.inspect}"
     end
 
     def transition_batch(items)
@@ -110,7 +111,12 @@ module Statesman
         applicable_guards.each { |guard| guard.call(machine.object, machine.last_transition, metadata) }
         successful << item
       rescue GuardFailedError => e
-        machine.execute_on_failure(:after_guard_failure, @from_state, @to_state, e)
+        begin
+          machine.execute_on_failure(:after_guard_failure, @from_state, @to_state, e)
+        rescue StandardError
+          nil # a broken after_guard_failure hook must not stop guard evaluation for the rest of the batch
+        end
+
         raise if @on_failure == :raise
 
         failed << { object: machine.object, reason: :guard, error: e }
@@ -128,44 +134,83 @@ module Statesman
     def write_batch(items)
       return Result.new if items.empty?
 
+      entries, build_failed = build_transitions(items)
+      raise build_failed.first.error if @on_failure == :raise && build_failed.any?
+
+      ready, before_failed = run_before_callbacks(entries)
+      failed = build_failed + before_failed
+
+      return Result.new(failed: failed) if ready.empty?
+
+      result = @adapter_class.bulk_create(ready)
+      after_failed = dispatch_after_callbacks(ready, result.failed)
+
+      Result.new(successful: result.successful, failed: failed + result.failed + after_failed)
+    end
+
+    # Delegates the actual building of each item's transition to the adapter class
+    # (see Adapters::Memory.build_transitions), rather than calling #build_transition on
+    # each machine's own adapter instance one at a time here. That seam lets an adapter
+    # batch away the per-object cost of building a transition (e.g. an ActiveRecord
+    # adapter could preload every parent's `last` transition in a single query instead of
+    # one query per item) without BulkTransition needing to know how.
+    def build_transitions(items)
+      payload = items.map do |item|
+        machine = item.machine
+        {
+          object: machine.object, adapter: machine.storage_adapter,
+          from: @from_state, to: @to_state, metadata: @metadata.merge(item.metadata)
+        }
+      end
+
+      @adapter_class.build_transitions(payload)
+    end
+
+    def run_before_callbacks(entries)
       before_callbacks = @skip_before_callbacks ? [] : callbacks_for(:before)
-      entries = []
+      return [entries, []] if before_callbacks.empty?
+
+      ready = []
       failed = []
 
-      items.each do |item|
-        machine = item.machine
-        transition = machine.storage_adapter.build_transition(@from_state, @to_state, @metadata.merge(item.metadata))
-        before_callbacks.each { |callback| callback.call(machine.object, transition) }
-
-        entries << { object: machine.object, adapter: machine.storage_adapter, transition: transition }
+      entries.each do |entry|
+        before_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
+        ready << entry
       rescue StandardError => e
         raise if @on_failure == :raise
 
-        failed << Result::FailedItem.new(object: machine.object, reason: :before_callback, error: e)
+        failed << Result::FailedItem.new(object: entry[:object], reason: :before_callback, error: e)
       end
 
-      return Result.new(failed: failed) if entries.empty?
-
-      result = @adapter_class.bulk_create(entries)
-
-      dispatch_after_callbacks(entries, result.failed)
-
-      Result.new(successful: result.successful, failed: failed + result.failed)
+      [ready, failed]
     end
 
+    # An after/after_commit callback raising doesn't undo the write — the transition is
+    # already durably persisted by this point — so a failure here is recorded as
+    # reason: :after_callback in Result#failed *in addition to* the object staying in
+    # Result#successful, rather than moving it across. Each entry's callbacks are rescued
+    # individually so one entry's broken callback doesn't stop the rest of the batch from
+    # getting theirs.
     def dispatch_after_callbacks(entries, failures)
-      return if @skip_after_callbacks && @skip_after_commit_callbacks
+      return [] if @skip_after_callbacks && @skip_after_commit_callbacks
 
       failed_objects = failures.to_h { |failure| [failure.object, true] }
       after_callbacks = @skip_after_callbacks ? [] : callbacks_for(:after)
       after_commit_callbacks = @skip_after_commit_callbacks ? [] : callbacks_for(:after_commit)
 
-      entries.each do |entry|
-        next if failed_objects.key?(entry[:object])
+      entries.
+        reject { |entry| failed_objects.key?(entry[:object]) }.
+        filter_map { |entry| dispatch_after_callbacks_for(entry, after_callbacks, after_commit_callbacks) }
+    end
 
-        after_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
-        after_commit_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
-      end
+    def dispatch_after_callbacks_for(entry, after_callbacks, after_commit_callbacks)
+      after_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
+      after_commit_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
+      nil
+    rescue StandardError => e
+      raise if @on_failure == :raise
+
+      Result::FailedItem.new(object: entry[:object], reason: :after_callback, error: e)
     end
 
     def callbacks_for(phase)

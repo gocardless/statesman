@@ -168,6 +168,62 @@ describe Statesman::BulkTransition do
       end
     end
 
+    context "when building a transition raises for one item" do
+      before do
+        allow_any_instance_of(machine_class).to receive(:storage_adapter) do |machine|
+          real_adapter = machine.instance_variable_get(:@storage_adapter)
+          if machine.object == object_a
+            allow(real_adapter).to receive(:build_transition).and_raise(StandardError.new("boom"))
+          end
+          real_adapter
+        end
+      end
+
+      it "collects the failure and still persists the other item" do
+        expect(result.successful).to eq([object_b])
+        expect(result.failed.map(&:object)).to eq([object_a])
+      end
+
+      it "records the failure with reason :build_transition, not :before_callback" do
+        expect(result.failed.first.reason).to eq(:build_transition)
+        expect(result.failed.first.error.message).to eq("boom")
+      end
+
+      it "never runs before/after callbacks for the item whose build failed" do
+        result
+        expect(calls).to eq([[:before, object_b], [:after, object_b], [:after_commit, object_b]])
+      end
+    end
+
+    context "when an after callback raises for one item" do
+      before do
+        machine_class.after_transition { |object, _transition| raise StandardError, "boom" if object == object_a }
+      end
+
+      it "still reports the item as successful, since the transition did persist" do
+        expect(result.successful).to eq([object_a, object_b])
+      end
+
+      it "also records the failure, with reason :after_callback" do
+        expect(result.failed.map(&:object)).to eq([object_a])
+        expect(result.failed.first.reason).to eq(:after_callback)
+        expect(result.failed.first.error.message).to eq("boom")
+      end
+
+      it "still dispatches after/after_commit for the other item" do
+        result
+        expect(calls).to include([:after_commit, object_b])
+      end
+
+      context "with on_failure: :raise" do
+        let(:on_failure) { :raise }
+
+        it "raises instead of collecting the failure" do
+          expect { result }.to raise_error(StandardError, "boom")
+        end
+      end
+    end
+
     context "with skip_before_callbacks: true" do
       let(:skip_before_callbacks) { true }
 
@@ -489,6 +545,23 @@ describe Statesman::BulkTransition do
         end.to raise_error(Statesman::GuardFailedError)
 
         expect(guard_failure_calls.map(&:first)).to eq([objects[0]])
+      end
+    end
+
+    describe "a broken after_guard_failure hook" do
+      let(:items) { build_items(3) }
+      let(:objects) { items.map { |item| item.machine.object } }
+
+      before do
+        machine_class.guard_transition(from: :pending, to: :processing) { |object, *| object == objects[2] }
+        machine_class.after_guard_failure { raise StandardError, "boom" }
+      end
+
+      it "doesn't stop guard evaluation for the rest of the batch" do
+        result = described_class.call(items, from_state: :pending, to_state: :processing)
+
+        expect(result.successful).to eq([objects[2]])
+        expect(result.failed.map(&:object)).to match_array(objects[0..1])
       end
     end
 
