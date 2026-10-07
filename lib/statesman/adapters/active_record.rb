@@ -114,6 +114,21 @@ module Statesman
         end
       end
 
+      # Runs the given block only once genuinely committed, via the same
+      # ActiveRecordAfterCommitWrap/connection.add_transaction_record machinery
+      # #add_after_commit_callback below already uses for the single-object write path —
+      # this just exposes it as a public seam. Used by
+      # BulkTransition#dispatch_after_callbacks_for so a bulk `after_commit` callback
+      # gets the same guarantee the single-object path already has: it only fires once
+      # the real, outermost transaction commits, not whenever this adapter's own
+      # bulk_create transaction happens to close (which may be well before that, if the
+      # caller wrapped the whole BulkTransition.call in its own transaction).
+      def defer_until_committed(&block)
+        transition_class.connection.add_transaction_record(
+          ActiveRecordAfterCommitWrap.new(transition_class.connection, &block),
+        )
+      end
+
       def reset
         if instance_variable_defined?(:@last_transition)
           remove_instance_variable(:@last_transition)
@@ -337,11 +352,7 @@ module Statesman
       end
 
       def add_after_commit_callback(from, to, transition)
-        transition_class.connection.add_transaction_record(
-          ActiveRecordAfterCommitWrap.new(transition_class.connection) do
-            @observer.execute(:after_commit, from, to, transition)
-          end,
-        )
+        defer_until_committed { @observer.execute(:after_commit, from, to, transition) }
       end
 
       def transitions_for_parent

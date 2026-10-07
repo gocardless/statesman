@@ -185,9 +185,9 @@ module Statesman
       [ready, failed]
     end
 
-    # An after/after_commit callback raising doesn't undo the write — the transition is
-    # already durably persisted by this point — so a failure here is recorded as
-    # reason: :after_callback in Result#failed *in addition to* the object staying in
+    # An after callback raising doesn't undo the write — the transition is already
+    # durably persisted by this point — so a failure here is recorded as reason:
+    # :after_callback in Result#failed *in addition to* the object staying in
     # Result#successful, rather than moving it across. Each entry's callbacks are rescued
     # individually so one entry's broken callback doesn't stop the rest of the batch from
     # getting theirs.
@@ -205,12 +205,34 @@ module Statesman
 
     def dispatch_after_callbacks_for(entry, after_callbacks, after_commit_callbacks)
       after_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
-      after_commit_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
+      defer_after_commit_callbacks(entry, after_commit_callbacks)
       nil
     rescue StandardError => e
       raise if @on_failure == :raise
 
       Result::FailedItem.new(object: entry[:object], reason: :after_callback, error: e)
+    end
+
+    # Deferred via the entry's own adapter instance (see Adapters::ActiveRecord
+    # #defer_until_committed), not called directly here, so `after_commit` only ever
+    # fires once genuinely committed — the same guarantee the single-object write path
+    # already gives it (Machine#execute(:after_commit, ...) via the adapter's own
+    # add_after_commit_callback), rather than firing as soon as this call happens to
+    # reach this point, which could be well before a caller-held outer transaction
+    # around the whole BulkTransition.call has actually committed.
+    #
+    # A failure inside the deferred block can't be folded into *this* call's
+    # Result#failed — by the time it runs (at the real commit, possibly well outside
+    # this method's own call stack, maybe never if the caller's transaction never
+    # commits), this method has already returned. That's not a gap introduced here: the
+    # single-object path's own add_after_commit_callback has exactly the same
+    # limitation today.
+    def defer_after_commit_callbacks(entry, after_commit_callbacks)
+      return if after_commit_callbacks.empty?
+
+      entry[:adapter].defer_until_committed do
+        after_commit_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
+      end
     end
 
     def callbacks_for(phase)
