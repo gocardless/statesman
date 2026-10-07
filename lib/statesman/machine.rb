@@ -163,61 +163,20 @@ module Statesman
         end
       end
 
-      # Shared validation core behind #validate_transition (one machine) and
-      # Statesman::BulkTransition.call (many) — caller guarantees every machine in
-      # `machines` is currently in `from`. Computes the edge check and guard list once
-      # per call rather than once per machine, since both depend only on (from, to);
-      # only the guard calls themselves are per-machine.
-      #
-      # on_failure: :raise re-raises the first failure immediately, matching single-
-      # transition semantics; :collect gathers every failure and keeps going, returning
-      # [survivors, failures] as plain {machine:, reason:, error:} hashes — not a
-      # BulkTransition::Result, since Machine shouldn't need to know that shape.
-      def validate_bulk_transition(machines, from:, to:, metadata: {}, skip_guards: false, on_failure: :raise)
-        from = from.to_s
-        to = to.to_s
-
-        edge_error = validate_bulk_edge(from, to)
-        if edge_error
-          raise edge_error if on_failure == :raise
-
-          failed = machines.map { |machine| { machine: machine, reason: :invalid_current_state, error: edge_error } }
-          return [[], failed]
+      # A pure function of `transition_class`, not of any instance — public (and the
+      # default here matches #initialize's own default) so a caller that already knows
+      # which transition_class it's building with, like Statesman::BulkTransition, can
+      # resolve the storage adapter class directly, with no object and no instance
+      # required.
+      def adapter_class(transition_class = Statesman::Adapters::MemoryTransition)
+        if transition_class == Statesman::Adapters::MemoryTransition
+          Adapters::Memory
+        else
+          Statesman.storage_adapter
         end
-
-        applicable_guards = skip_guards ? [] : applicable_guards_for(from, to)
-        run_bulk_guards(machines, applicable_guards, metadata, on_failure)
-      end
-
-      # Public so #guards_for can call it directly instead of duplicating this filter —
-      # it exposes nothing callbacks[:guards] (already public) didn't already.
-      def applicable_guards_for(from, to)
-        callbacks[:guards].select { |guard| guard.applies_to?(from: from, to: to) }
       end
 
       private
-
-      def validate_bulk_edge(from, to)
-        return if (successors[from] || []).include?(to)
-
-        TransitionFailedError.new(from, to)
-      end
-
-      def run_bulk_guards(machines, applicable_guards, metadata, on_failure)
-        survivors = []
-        failed = []
-
-        machines.each do |machine|
-          applicable_guards.each { |guard| guard.call(machine.object, machine.last_transition, metadata) }
-          survivors << machine
-        rescue GuardFailedError => e
-          raise if on_failure == :raise
-
-          failed << { machine: machine, reason: :guard, error: e }
-        end
-
-        [survivors, failed]
-      end
 
       def define_state_constant(state_name)
         constant_name = state_name.upcase.gsub(/[^A-Z0-9]/, "_")
@@ -300,6 +259,9 @@ module Statesman
       end
     end
 
+    # Public so Statesman::BulkTransition can build a transition and check adapter
+    # uniformity directly off each machine, without this class needing to know anything
+    # about bulk writing itself.
     attr_reader :storage_adapter
 
     def initialize(object,
@@ -309,7 +271,7 @@ module Statesman
                    })
       @object = object
       @transition_class = options[:transition_class]
-      @storage_adapter = adapter_class(@transition_class).new(
+      @storage_adapter = self.class.adapter_class(@transition_class).new(
         @transition_class, object, self, options
       )
 
@@ -399,22 +361,12 @@ module Statesman
 
     private
 
-    def adapter_class(transition_class)
-      if transition_class == Statesman::Adapters::MemoryTransition
-        Adapters::Memory
-      else
-        Statesman.storage_adapter
-      end
-    end
-
     def successors_for(from)
       self.class.successors[from] || []
     end
 
-    # Delegates to the class-level .applicable_guards_for rather than duplicating its
-    # callbacks[:guards].select { ... } filter here.
     def guards_for(options = { from: nil, to: nil })
-      self.class.applicable_guards_for(to_s_or_nil(options[:from]), to_s_or_nil(options[:to]))
+      select_callbacks_for(self.class.callbacks[:guards], options)
     end
 
     def callbacks_for(phase, options = { from: nil, to: nil })
@@ -428,9 +380,16 @@ module Statesman
     end
 
     def validate_transition(options = { from: nil, to: nil, metadata: nil })
-      self.class.validate_bulk_transition(
-        [self], from: options[:from], to: options[:to], metadata: options[:metadata], on_failure: :raise
-      )
+      from = to_s_or_nil(options[:from])
+      to   = to_s_or_nil(options[:to])
+
+      successors = self.class.successors[from] || []
+      raise TransitionFailedError.new(from, to) unless successors.include?(to)
+
+      # Call all guards, they raise exceptions if they fail
+      guards_for(from: from, to: to).each do |guard|
+        guard.call(@object, last_transition, options[:metadata])
+      end
     end
 
     def to_s_or_nil(input)

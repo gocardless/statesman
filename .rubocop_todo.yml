@@ -19,6 +19,7 @@ Lint/MissingSuper:
 Naming/PredicateMethod:
   Exclude:
     - 'lib/statesman/callback.rb'
+    - 'lib/statesman/machine.rb'
 
 # Offense count: 1
 # Configuration parameters: NamePrefix, ForbiddenPrefixes, AllowedMethods, MethodDefinitionMacros, UseSorbetSigs.

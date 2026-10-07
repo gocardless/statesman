@@ -19,44 +19,58 @@ module Statesman
       end
 
       # A single adapter instance is bound to one parent object (see #initialize), so
-      # bulk writing across many parents can't be an instance method here — it has to
-      # take each object's own already-built transition and adapter instead.
+      # bulk building/writing across many parents can't be instance methods here — they
+      # have to take each object's own adapter instead (see #build_transitions and
+      # #bulk_create below). Guard failures never reach either — that validation always
+      # happens upstream, in BulkTransition#run_guards, before an item gets this far.
       #
-      # items: an Enumerable of { object:, adapter:, transition: }, where `adapter` is
-      # that object's own Adapters::Memory instance and `transition` was already built
-      # via #build_transition (and had `before` run on it, by the caller). Guard/
-      # successor failures never reach here — that validation always happens upstream,
-      # in Machine.validate_bulk_transition, before an item is built at all.
+      # items: an Enumerable of { object:, adapter:, from:, to:, metadata: }, where
+      # `adapter` is that object's own Adapters::Memory instance. Building a transition
+      # has no side effects, so each item is rescued individually and a failure here
+      # (reason: :build_transition) doesn't stop the rest of the batch from being built.
       #
-      # `after`/`after_commit` are per-item callables built by Statesman::BulkTransition
-      # (the orchestrator), invoked here rather than by the orchestrator itself, once an
-      # item is known to be durably written (see BulkTransition#persist). This adapter has
-      # no real transaction, so unlike Adapters::ActiveRecord it just calls both
-      # immediately, in order, right after persisting — `from` isn't needed here (it's
-      # already baked into the built transition) but is accepted for interface parity.
+      # This is the seam a smarter adapter can use to batch away the per-object cost of
+      # building a transition — e.g. an ActiveRecord adapter could preload every parent's
+      # `last` transition in a single query up front, instead of one query per item here.
+      # Memory's `last` is already an in-memory array lookup, so there's nothing to batch.
+      def self.build_transitions(items)
+        entries = []
+        failed = []
+
+        items.each do |item|
+          transition = item[:adapter].build_transition(item[:from], item[:to], item[:metadata])
+          entries << { object: item[:object], adapter: item[:adapter], transition: transition }
+        rescue StandardError => e
+          failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :build_transition, error: e)
+        end
+
+        [entries, failed]
+      end
+
+      # items: an Enumerable of { object:, adapter:, transition: }, where `transition`
+      # was already built via .build_transitions (and had `before` run on it, by the
+      # caller).
       #
-      # Persisting can still fail even once an item has passed upstream guard/
-      # successor validation (e.g. a write conflict on the real ActiveRecord
-      # adapter) — that kind of failure can only be observed at write time, not
-      # predicted in advance. Each item's persist is rescued individually so one
-      # item's failure doesn't stop or lose track of the rest: the failing item
+      # Callback dispatch (before/after/after_commit) is deliberately left out at
+      # this stage — this method only persists. Statesman::BulkTransition is the
+      # orchestrator that invokes those per item once it knows that item is durably
+      # written (see BulkTransition#run_before_callbacks/#dispatch_after_callbacks).
+      #
+      # Persisting can still fail even once an item has been built (e.g. a write conflict
+      # on the real ActiveRecord adapter) — that kind of failure can only be observed at
+      # write time, not predicted in advance. Each item's persist is rescued individually
+      # so one item's failure doesn't stop or lose track of the rest: the failing item
       # is recorded in Result#failed and every other item still gets persisted
-      # and recorded in Result#successful, keeping Result accurate either way. A raise
-      # from `after`/`after_commit` themselves is deliberately not rescued here, matching
-      # today's behaviour.
-      def self.bulk_create(items, from:, after:, after_commit:) # rubocop:disable Lint/UnusedMethodArgument
+      # and recorded in Result#successful, keeping Result accurate either way.
+      def self.bulk_create(items)
         successful = []
         failed = []
 
         items.each do |item|
           item[:adapter].persist(item[:transition])
+          successful << item[:object]
         rescue StandardError => e
           failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: e)
-          next
-        else
-          successful << item[:object]
-          after.call(item)
-          after_commit.call(item)
         end
 
         BulkTransition::Result.new(successful: successful, failed: failed)
