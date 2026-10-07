@@ -2,6 +2,7 @@
 
 require_relative "../exceptions"
 require_relative "../bulk_transition"
+require_relative "active_record/build_transitions"
 require_relative "active_record/bulk_create"
 
 module Statesman
@@ -18,12 +19,23 @@ module Statesman
         end
       end
 
+      # Batched build path behind Statesman::BulkTransition.call — see BuildTransitions
+      # for the full contract and mechanics. `items` is an Enumerable of { object:,
+      # adapter:, from:, to:, metadata: }, all sharing one bucket's `from`/`to` state.
+      # Preloads every parent's current most_recent row in one query, instead of one
+      # query per item the way #build_transition alone would need to compute a correct
+      # sort_key — that same read also catches a parent that's already moved on from
+      # `from` before any transition is even built for it.
+      def self.build_transitions(items)
+        BuildTransitions.call(items)
+      end
+
       # Batched write path behind Statesman::BulkTransition.call — see BulkCreate for
       # the full contract and mechanics. `items` is an Enumerable of { object:,
-      # adapter:, transition:, machine: }, all sharing one bucket's `from` state;
-      # `transition` was already built (and had `before` run on it) by the orchestrator.
-      def self.bulk_create(items, from:, after:, after_commit:)
-        BulkCreate.call(items, from: from, after: after, after_commit: after_commit)
+      # adapter:, transition: }, where `transition` was already built (and had `before`
+      # run on it) via .build_transitions/the orchestrator.
+      def self.bulk_create(items)
+        BulkCreate.call(items)
       end
 
       def initialize(transition_class, parent_model, observer, options = {})
@@ -108,17 +120,18 @@ module Statesman
         end
       end
 
-      # Public (not private) because Adapters::ActiveRecord::BulkCreate, a sibling class
-      # with no instance of its own, needs these — they used to be private and reached
-      # via `adapter.send(...)`. Each is a thin wrapper around the class method of the
-      # same name below, which does the real work as a pure function of
-      # transition_class/parent_model_class/association_name/parent_id — none of it
-      # depends on *this* adapter's specific parent_model identity. BulkCreate calls the
-      # class methods directly with its own validated, uniform-across-the-batch values
-      # (see BulkCreate#assert_uniform_adapter!) instead of going through any one item's
-      # adapter instance; these instance wrappers exist only for the single-object write
-      # path below (`unique_indexes`, `update_most_recents`, etc.), which already has an
-      # adapter instance sitting around and has no need to reach past it.
+      # Public (not private) because Adapters::ActiveRecord::BuildTransitions and
+      # ::BulkCreate, sibling classes with no instance of their own, need these — they
+      # used to be private and reached via `adapter.send(...)`. Each is a thin wrapper
+      # around the class method of the same name below, which does the real work as a
+      # pure function of transition_class/parent_model_class/association_name/parent_id
+      # — none of it depends on *this* adapter's specific parent_model identity.
+      # BuildTransitions/BulkCreate call the class methods directly with their own
+      # validated, uniform-across-the-batch values (see UniformAdapter) instead of
+      # going through any one item's adapter instance; these instance wrappers exist
+      # only for the single-object write path below (`unique_indexes`,
+      # `update_most_recents`, etc.), which already has an adapter instance sitting
+      # around and has no need to reach past it.
       def parent_join_foreign_key
         self.class.parent_join_foreign_key(parent_model.class, @association_name, transition_class)
       end

@@ -105,7 +105,7 @@ describe Statesman::Adapters::Memory do
   end
 
   describe ".bulk_create" do
-    subject(:result) { described_class.bulk_create(items, from: "x", after: after, after_commit: after_commit) }
+    subject(:result) { described_class.bulk_create(items) }
 
     let(:observer) { instance_double(Statesman::Machine, execute: nil) }
     let(:object_a) { Object.new }
@@ -124,9 +124,6 @@ describe Statesman::Adapters::Memory do
         { object: object_b, adapter: adapter_b, transition: transition_b },
       ]
     end
-    let(:calls) { [] }
-    let(:after) { ->(item) { calls << [:after, item[:object]] } }
-    let(:after_commit) { ->(item) { calls << [:after_commit, item[:object]] } }
 
     it "reports every object as successful, with no failures" do
       expect(result.successful).to eq([object_a, object_b])
@@ -140,21 +137,9 @@ describe Statesman::Adapters::Memory do
       expect(adapter_b.history).to eq([transition_b])
     end
 
-    it "fires no observer callbacks itself (that's BulkTransition's job via after/after_commit)" do
+    it "fires no callbacks" do
       expect(observer).to_not receive(:execute)
       result
-    end
-
-    it "invokes after then after_commit per item, immediately after persisting, in order" do
-      result
-      expect(calls).to eq(
-        [
-          [:after, object_a],
-          [:after_commit, object_a],
-          [:after, object_b],
-          [:after_commit, object_b],
-        ],
-      )
     end
 
     context "when persisting an item raises" do
@@ -183,11 +168,6 @@ describe Statesman::Adapters::Memory do
       it "reports a partial status" do
         expect(result.status).to eq(:partial)
         expect(result.success?).to be(false)
-      end
-
-      it "does not invoke after/after_commit for the failing item" do
-        result
-        expect(calls).to eq([[:after, object_b], [:after_commit, object_b]])
       end
     end
   end

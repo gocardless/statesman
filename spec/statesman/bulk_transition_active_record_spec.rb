@@ -53,6 +53,10 @@ describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable R
     Array.new(count) { MyActiveRecordModel.create(current_state: "pending") }
   end
 
+  def item_for(machine, metadata: {})
+    Statesman::BulkTransition::Item.new(machine: machine, metadata: metadata)
+  end
+
   def history_snapshot(model)
     model.reload.my_active_record_model_transitions.order(:sort_key).map do |transition|
       transition.attributes.except("id", "my_active_record_model_id", "created_at", "updated_at")
@@ -67,8 +71,8 @@ describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable R
       machine_class.new(model, transition_class: MyActiveRecordModelTransition).transition_to!(:processing)
     end
     Statesman::BulkTransition.call(
-      bulked.map { |model| machine_class.new(model, transition_class: MyActiveRecordModelTransition) },
-      :processing,
+      bulked.map { |model| item_for(machine_class.new(model, transition_class: MyActiveRecordModelTransition)) },
+      from_state: :pending, to_state: :processing,
     )
 
     looped.zip(bulked).each do |loop_model, bulk_model|
@@ -88,8 +92,8 @@ describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable R
     round_trip_machine_class.new(model_looped, transition_class: MyActiveRecordModelTransition).
       transition_to!(:processing)
     Statesman::BulkTransition.call(
-      [round_trip_machine_class.new(model_bulked, transition_class: MyActiveRecordModelTransition)],
-      :processing,
+      [item_for(round_trip_machine_class.new(model_bulked, transition_class: MyActiveRecordModelTransition))],
+      from_state: :pending, to_state: :processing,
     )
 
     expect(history_snapshot(model_bulked)).to eq(history_snapshot(model_looped))
@@ -114,8 +118,8 @@ describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable R
         machine_class.new(model, transition_class: MyActiveRecordModelTransition).transition_to!(:processing)
       end
       Statesman::BulkTransition.call(
-        bulked.map { |model| machine_class.new(model, transition_class: MyActiveRecordModelTransition) },
-        :processing,
+        bulked.map { |model| item_for(machine_class.new(model, transition_class: MyActiveRecordModelTransition)) },
+        from_state: :pending, to_state: :processing,
       )
 
       expect(bulked.map { |m| m.reload.cached_current_state }).to eq(looped.map { |m| m.reload.cached_current_state })
