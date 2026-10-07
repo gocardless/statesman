@@ -1,36 +1,43 @@
 # frozen_string_literal: true
 
 require_relative "../../bulk_transition"
+require_relative "uniform_adapter"
 
 module Statesman
   module Adapters
     class ActiveRecord
       # The real implementation behind Adapters::ActiveRecord.bulk_create — see that
-      # method for the full contract (what `items`/`after`/`after_commit` are and why
-      # `after`/`after_commit` are invoked here rather than by the orchestrator).
+      # method for the full contract. `items` were already built (and had `before` run
+      # on them) by BulkTransition, via .build_transitions above — each entry's
+      # `most_recent_id` is that call's own snapshot-read token (nil for a no-history
+      # parent), reused here rather than re-read, since this method's own flip+recheck
+      # below is self-correcting regardless of whether that token is still current (see
+      # #flip_and_partition).
       #
       # One instance per call. #assert_uniform_adapter! derives transition_class/
       # parent_model_class/foreign_key once, validating they're uniform across every
-      # item (not assumed from one representative item) — every private method below
-      # reads those as plain instance state instead of having them threaded through as
-      # parameters, or reaching into any one item's adapter instance.
+      # item — see UniformAdapter.
       #
-      # Mechanics, two steps:
-      # 1. Snapshot read (no transaction yet): read each parent's current most_recent
-      #    row in one query. If its to_state no longer matches `from`, a concurrent
-      #    writer already moved that parent on — fail it as :conflict before
-      #    attempting any write.
-      # 2. Write transaction: flip most_recent false for the has-history survivors'
-      #    old rows, then re-run the snapshot read for every survivor. An honest,
-      #    unraced flip leaves no most_recent row for that parent until the insert
-      #    that follows, so any parent the re-read still finds a row for has raced —
-      #    exclude it as :conflict. This needs no RETURNING or locking: the flip
-      #    UPDATE itself takes a row lock, so a concurrent writer on the same parent
-      #    blocks until we commit or roll back. insert_all! persists the rest; if it
-      #    still hits a RecordNotUnique (the one remaining race window, between the
-      #    re-read and the INSERT), retry the whole chunk outside this transaction —
-      #    see the rescue below.
+      # Mechanics: flip most_recent false for the has-history survivors' old rows, then
+      # re-run the snapshot read for every survivor. An honest, unraced flip leaves no
+      # most_recent row for that parent until the insert that follows, so any parent the
+      # re-read still finds a row for has raced — exclude it as :conflict. This needs no
+      # RETURNING or locking: the flip UPDATE itself takes a row lock, so a concurrent
+      # writer on the same parent blocks until we commit or roll back. insert_all!
+      # persists the rest; if it still hits a RecordNotUnique (the one remaining race
+      # window, between the re-read and the INSERT), retry the whole chunk outside this
+      # transaction — see the rescue below.
+      #
+      # `after`/`after_commit` dispatch is no longer this class's concern — unlike the
+      # single-object write path, BulkTransition itself now dispatches after/after_commit
+      # once this call returns, uniformly for every adapter (see
+      # BulkTransition#dispatch_after_callbacks). That also means, unlike before, a bulk
+      # `after` raising no longer rolls back this chunk's write, and a bulk `after_commit`
+      # is no longer deferred to the real outermost transaction's commit via
+      # ActiveRecordAfterCommitWrap — it simply runs right after this method returns.
       class BulkCreate
+        include UniformAdapter
+
         # Bounds the RecordNotUnique retry in #write_chunk — see the rescue there. Each
         # retry's own pre-insert recheck should always have excluded the previous
         # attempt's racer, so more than a couple of attempts means something is
@@ -43,110 +50,31 @@ module Statesman
         # true can populate them instead.
         TIMESTAMP_COLUMNS = %w[created_at created_on updated_at updated_on].freeze
 
-        def self.call(items, from:, after:, after_commit:)
-          new(items, from: from, after: after, after_commit: after_commit).call
+        def self.call(items)
+          new(items).call
         end
 
-        def initialize(items, from:, after:, after_commit:)
+        def initialize(items)
           @items = items
-          @from = from.to_s
-          @after = after
-          @after_commit = after_commit
         end
 
         def call
           return BulkTransition::Result.new if items.empty?
 
           assert_uniform_adapter!
-
-          parent_ids = items.map { |item| item[:object].id }
-          @current_rows = most_recent_rows_for(parent_ids)
-          survivors, failed = partition_by_staleness
-
-          result = write_chunk(survivors)
-          BulkTransition::Result.new(successful: result.successful, failed: failed + result.failed)
+          write_chunk(items)
         end
 
         private
 
-        attr_reader :items, :from, :current_rows, :after, :after_commit,
-                    :transition_class, :parent_model_class, :foreign_key
+        attr_reader :items
 
-        # This batch's SQL is one shared set of mechanics (one snapshot query, one flip
-        # UPDATE, one insert_all!) built from transition_class/parent_model_class/
-        # association_name — it only produces correct SQL if every item agrees on all
-        # three. They're per-Machine-*instance* options (see Machine#initialize), not
-        # fixed per Machine subclass, so bucketing by machine class upstream (see
-        # BulkTransition.transition_batch) doesn't already guarantee this — it has to be
-        # checked for real, against every item, here.
-        def assert_uniform_adapter!
-          transition_classes = items.map { |item| item[:adapter].transition_class }.uniq
-          parent_model_classes = items.map { |item| item[:object].class }.uniq
-          association_names = items.map { |item| item[:adapter].association_name }.uniq
-
-          assert_one!("transition class", transition_classes)
-          assert_one!("parent model class", parent_model_classes)
-          assert_one!("association name", association_names)
-
-          @transition_class = transition_classes.first
-          @parent_model_class = parent_model_classes.first
-          @foreign_key = ActiveRecord.parent_join_foreign_key(@parent_model_class, association_names.first,
-                                                              @transition_class)
-        end
-
-        def assert_one!(label, values)
-          return if values.one?
-
-          raise ArgumentError, "BulkTransition requires every object to use the same #{label}, " \
-                               "got: #{values.join(', ')}"
-        end
-
-        # Machine.validate_bulk_transition's current_state check can already be stale
-        # by the time this runs — it ran before the snapshot read. Re-check each
-        # survivor's assumed `from` against the row actually read: a mismatch means a
-        # concurrent writer already moved that parent on, so it fails as :conflict here,
-        # before the write transaction even opens. A parent absent from `current_rows`
-        # has no history yet and always survives.
-        def partition_by_staleness
-          survivors = []
-          failed = []
-
-          items.each do |item|
-            row = current_rows[item[:object].id]
-
-            if row.nil? || row[:to_state] == from
-              survivors << item
-            else
-              failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict)
-            end
-          end
-
-          [survivors, failed]
-        end
-
-        # Every surviving parent's current most_recent row, in one query: id (the
-        # optimistic-concurrency token), sort_key (the new transition's basis), and
-        # to_state (the authoritative from_state). A parent absent from the result has
-        # no history yet.
-        def most_recent_rows_for(parent_ids, columns: %i[id sort_key to_state])
-          return {} if parent_ids.empty?
-
-          scope = transition_class.where(ActiveRecord.most_recent_transitions(transition_class, foreign_key,
-                                                                              parent_ids))
-
-          scope.pluck(foreign_key, *columns).each_with_object({}) do |row, hash|
-            parent_id, *values = row
-            hash[parent_id] = columns.zip(values).to_h
-          end
-        end
-
-        # Flip -> recheck -> insert -> hydrate -> cached-state -> callbacks, for one
-        # chunk, inside one transaction. Retries outside that transaction if the final
-        # insert still races — see the rescue below.
+        # Flip -> recheck -> insert -> hydrate -> cached-state, for one chunk, inside
+        # one transaction. Retries outside that transaction if the final insert still
+        # races — see the rescue below.
         def write_chunk(survivors, attempt: 1)
           return BulkTransition::Result.new if survivors.empty?
 
-          assign_sort_keys!(survivors)
           successful = []
           failed = []
 
@@ -178,9 +106,12 @@ module Statesman
 
         # Flips most_recent for the has-history survivors' old rows, then re-reads every
         # survivor's parent to find out who raced — see #flip_most_recent for why this
-        # needs no locking or RETURNING.
+        # needs no locking or RETURNING. `item[:most_recent_id]` is nil for a parent that
+        # had no history as of .build_transitions's own read — filtered out of the flip
+        # target list (there's no old row to flip) but still included in the re-read, so
+        # a brand-new racer that inserted *first* history for that parent is still caught.
         def flip_and_partition(survivors)
-          flip_ids = survivors.filter_map { |item| current_rows.dig(item[:object].id, :id) }
+          flip_ids = survivors.filter_map { |item| item[:most_recent_id] }
           flip_most_recent(flip_ids)
 
           parent_ids = survivors.map { |item| item[:object].id }
@@ -191,29 +122,11 @@ module Statesman
           [writable, failed]
         end
 
-        # Persists the survivors of #flip_and_partition: insert, batched cached-state
-        # write, then per-item `after` (inside this still-open transaction — a raise
-        # rolls it back) and a registered, deferred `after_commit` per item.
+        # Persists the survivors of #flip_and_partition: insert, then a batched
+        # cached-state write.
         def persist_writable!(writable)
           insert_survivors!(writable)
           maintain_cached_current_state_batch(writable, writable.first[:transition].to_state)
-
-          writable.each do |item|
-            after.call(item)
-            transition_class.connection.add_transaction_record(
-              ActiveRecordAfterCommitWrap.new(transition_class.connection) { after_commit.call(item) },
-            )
-          end
-        end
-
-        def assign_sort_keys!(survivors)
-          survivors.each do |item|
-            base_sort_key = current_rows.dig(item[:object].id, :sort_key)
-            item[:transition].assign_attributes(
-              sort_key: base_sort_key ? base_sort_key + 10 : 10,
-              most_recent: true,
-            )
-          end
         end
 
         # Flips most_recent false for the given (snapshot-read) ids. No RETURNING or
@@ -284,8 +197,8 @@ module Statesman
           end
         end
 
-        # Batched generalization of #maintain_cached_current_state: one UPDATE for every
-        # written parent, since the target state is homogeneous across the whole chunk.
+        # One UPDATE for every written parent, since the target state is homogeneous
+        # across the whole chunk.
         def maintain_cached_current_state_batch(writable, to_state)
           return unless parent_model_class.respond_to?(:cached_state_column_name)
 
