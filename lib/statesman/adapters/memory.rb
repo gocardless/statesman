@@ -100,6 +100,14 @@ module Statesman
         transition
       end
 
+      # Used by BulkTransition#dispatch_after_callbacks_for to run `after_commit`
+      # callbacks only once genuinely committed (see Adapters::ActiveRecord's own
+      # version for why this needs to be a seam at all). Memory has no real
+      # transactions, so "committed" is immediate — same as #create above.
+      def defer_until_committed
+        yield
+      end
+
       def last(*)
         @history.max_by(&:sort_key)
       end

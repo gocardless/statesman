@@ -3,11 +3,12 @@
 # End-to-end equivalence spec for the WU3 DoD: a batch of Statesman::BulkTransition.call
 # against the real ActiveRecord adapter must produce the same final state as a loop of
 # #transition_to! — same history, most_recent, sort_key spacing, and (where configured)
-# cached current-state column. Unit-level AR mechanics (conflicts, races, after/
-# after_commit timing) are covered in
-# spec/statesman/adapters/active_record_bulk_create_spec.rb; this file only checks the
-# success-path equivalence claim end-to-end, through the real Machine/BulkTransition/
-# Adapters::ActiveRecord stack together.
+# cached current-state column, including after_commit's deferred-until-real-commit
+# timing (see "after_commit transactional integrity" below). Unit-level AR mechanics
+# (conflicts, races, sort_key batching) are covered in
+# spec/statesman/adapters/active_record_bulk_create_spec.rb; this file checks end-to-end
+# equivalence claims that need the real Machine/BulkTransition/Adapters::ActiveRecord
+# stack together, not just BuildTransitions/BulkCreate in isolation.
 describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable RSpec/DescribeClass
          :active_record do
   before do
@@ -124,6 +125,54 @@ describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable R
 
       expect(bulked.map { |m| m.reload.cached_current_state }).to eq(looped.map { |m| m.reload.cached_current_state })
       expect(bulked.map { |m| m.reload.cached_current_state }).to all(eq("processing"))
+    end
+  end
+
+  # BulkTransition dispatches after_commit itself, once .bulk_create returns (see
+  # BulkTransition#defer_after_commit_callbacks) — by then, Adapters::ActiveRecord's own
+  # bulk write transaction has already closed. If the caller also wraps the whole call
+  # in their own outer transaction, after_commit must still wait for *that* to commit,
+  # not fire the moment this adapter's own inner transaction happens to close. Both
+  # paths below share one real outer transaction with the single-object path, so this
+  # also demonstrates equivalence: the bulk path gets no worse (or better) a guarantee
+  # than #transition_to! already has.
+  describe "after_commit transactional integrity" do
+    let(:after_commit_fired) { [] }
+
+    before { machine_class.after_transition(after_commit: true) { |object, _transition| after_commit_fired << object } }
+
+    it "fires after_commit for neither path if the real outermost transaction rolls back" do
+      model_looped = MyActiveRecordModel.create(current_state: "pending")
+      model_bulked = MyActiveRecordModel.create(current_state: "pending")
+
+      expect do
+        ActiveRecord::Base.transaction do
+          machine_class.new(model_looped, transition_class: MyActiveRecordModelTransition).transition_to!(:processing)
+          Statesman::BulkTransition.call(
+            [item_for(machine_class.new(model_bulked, transition_class: MyActiveRecordModelTransition))],
+            from_state: :pending, to_state: :processing,
+          )
+          raise ActiveRecord::Rollback
+        end
+      end.to_not change(after_commit_fired, :count)
+    end
+
+    it "fires after_commit for both paths once the real outermost transaction commits" do
+      model_looped = MyActiveRecordModel.create(current_state: "pending")
+      model_bulked = MyActiveRecordModel.create(current_state: "pending")
+
+      ActiveRecord::Base.transaction do
+        machine_class.new(model_looped, transition_class: MyActiveRecordModelTransition).transition_to!(:processing)
+        Statesman::BulkTransition.call(
+          [item_for(machine_class.new(model_bulked, transition_class: MyActiveRecordModelTransition))],
+          from_state: :pending, to_state: :processing,
+        )
+        # Neither after_commit has fired yet — both are still waiting on this
+        # transaction, not on whichever of their own inner transactions already closed.
+        expect(after_commit_fired).to eq([])
+      end
+
+      expect(after_commit_fired).to contain_exactly(model_looped, model_bulked)
     end
   end
 end
