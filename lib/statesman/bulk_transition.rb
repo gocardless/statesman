@@ -27,6 +27,15 @@ module Statesman
   # failure part-way through aborts remaining batches; already-persisted batches are not
   # rolled back.
   #
+  # `conflict_retry_attempts:` bounds Adapters::ActiveRecord::BulkCreate's internal retry
+  # of a chunk that raced on insert (a RecordNotUnique) — each retry's own pre-insert
+  # recheck excludes whoever just raced, so this is "how many consecutive unlucky races
+  # in a row before giving up", not a general-purpose retry count. Once exhausted,
+  # on_failure decides the outcome: :collect (default) reports the remaining survivors as
+  # :conflict in Result#failed; :raise raises BulkTransitionConflictError (wrapping the
+  # underlying RecordNotUnique as #cause). Ignored by Adapters::Memory, which has no
+  # chunked retry to bound.
+  #
   # Guards are the one phase this class runs itself (#run_guards) — everything else
   # (building each transition, before/after/after_commit dispatch, persisting) is
   # entirely the adapter's job, via #write_batch's single call to adapter_class
@@ -44,16 +53,22 @@ module Statesman
   class BulkTransition
     def self.call(items, from_state:, to_state:, in_batches_of: nil, metadata: {},
                   on_failure: :collect, skip_guards: false, skip_before_callbacks: false,
-                  skip_after_callbacks: false, skip_after_commit_callbacks: false)
+                  skip_after_callbacks: false, skip_after_commit_callbacks: false,
+                  conflict_retry_attempts: 3)
       new(from_state: from_state, to_state: to_state, metadata: metadata, on_failure: on_failure,
           skip_guards: skip_guards, skip_before_callbacks: skip_before_callbacks,
           skip_after_callbacks: skip_after_callbacks,
-          skip_after_commit_callbacks: skip_after_commit_callbacks).
+          skip_after_commit_callbacks: skip_after_commit_callbacks,
+          conflict_retry_attempts: conflict_retry_attempts).
         call(items, in_batches_of: in_batches_of)
     end
 
+    # conflict_retry_attempts: 3 mirrors Adapters::ActiveRecord::BulkCreate::
+    # MAX_INSERT_ATTEMPTS's own default — this layer has no direct reference to that
+    # adapter-specific constant, so the two defaults are kept in sync by hand.
     def initialize(from_state:, to_state:, metadata: {}, on_failure: :collect, skip_guards: false,
-                   skip_before_callbacks: false, skip_after_callbacks: false, skip_after_commit_callbacks: false)
+                   skip_before_callbacks: false, skip_after_callbacks: false, skip_after_commit_callbacks: false,
+                   conflict_retry_attempts: 3)
       @from_state = from_state.to_s
       @to_state = to_state.to_s
       @metadata = metadata
@@ -62,6 +77,7 @@ module Statesman
       @skip_before_callbacks = skip_before_callbacks
       @skip_after_callbacks = skip_after_callbacks
       @skip_after_commit_callbacks = skip_after_commit_callbacks
+      @conflict_retry_attempts = conflict_retry_attempts
     end
 
     def call(items, in_batches_of: nil)
@@ -71,6 +87,7 @@ module Statesman
       @adapter_class = extract_adapter_class(items)
       @machine_class.validate_from_and_to_state(@from_state, @to_state)
       validate_no_duplicate_objects(items)
+      validate_conflict_retry_attempts(@conflict_retry_attempts)
 
       batches = in_batches_of ? items.each_slice(in_batches_of) : [items]
       results = batches.map { |batch| transition_batch(batch) }
@@ -110,6 +127,15 @@ module Statesman
       return if duplicate_objects.empty?
 
       raise ArgumentError, "BulkTransition does not support duplicate objects: #{duplicate_objects.inspect}"
+    end
+
+    # A configuration-level mistake, like validate_no_duplicate_objects above — always
+    # raises regardless of on_failure.
+    def validate_conflict_retry_attempts(conflict_retry_attempts)
+      return if conflict_retry_attempts.is_a?(Integer) && conflict_retry_attempts.positive?
+
+      raise ArgumentError, "conflict_retry_attempts must be a positive integer, got: " \
+                           "#{conflict_retry_attempts.inspect}"
     end
 
     def transition_batch(items)
@@ -192,7 +218,8 @@ module Statesman
       @adapter_class.bulk_create(payload, from: @from_state, to: @to_state, on_failure: @on_failure,
                                           skip_before_callbacks: @skip_before_callbacks,
                                           skip_after_callbacks: @skip_after_callbacks,
-                                          skip_after_commit_callbacks: @skip_after_commit_callbacks)
+                                          skip_after_commit_callbacks: @skip_after_commit_callbacks,
+                                          conflict_retry_attempts: @conflict_retry_attempts)
     end
 
     def callbacks_for(phase)
