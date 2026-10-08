@@ -95,6 +95,8 @@ module Statesman
           return BulkTransition::Result.new(failed: failed) if ready.empty?
 
           result = write_chunk(ready)
+          raise result.failed.first.error if on_failure == :raise && result.failed.any?
+
           after_failed = dispatch_after_callbacks(ready, result)
 
           BulkTransition::Result.new(successful: result.successful, failed: failed + result.failed + after_failed)
@@ -208,7 +210,7 @@ module Statesman
           raced_rows = most_recent_rows_for(parent_ids)
 
           writable, raced = survivors.partition { |item| !raced_rows.key?(item[:object].id) }
-          failed = raced.map { |item| BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict) }
+          failed = raced.map { |item| conflict_failure(item, raced_rows[item[:object].id]) }
           [writable, failed]
         end
 
@@ -236,6 +238,14 @@ module Statesman
         # Whether an id ends up false because we flipped it or a racer already had,
         # it's false either way afterward — so race detection can't come from
         # re-querying these ids; see #flip_and_partition's re-read instead.
+        #
+        # TODO: unlike the single-object write path (see #create_transition's
+        # mysql_gaplock_protection? branch), this flip-then-insert ordering doesn't
+        # account for MySQL's next-key locking on the partial unique index over
+        # (most_recent, parent foreign key) — a concurrent bulk write for a different
+        # parent could still hit the same gap-lock deadlock hazard that branch exists
+        # to avoid. Bulk writes here have only been verified against PostgreSQL so far;
+        # revisit before treating MySQL as a fully supported target for bulk_create.
         def flip_most_recent(ids)
           return if ids.empty?
 

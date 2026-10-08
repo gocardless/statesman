@@ -70,6 +70,7 @@ module Statesman
       @machine_class = extract_machine_class(items)
       @adapter_class = extract_adapter_class(items)
       @machine_class.validate_from_and_to_state(@from_state, @to_state)
+      validate_no_duplicate_objects(items)
 
       batches = in_batches_of ? items.each_slice(in_batches_of) : [items]
       results = batches.map { |batch| transition_batch(batch) }
@@ -96,6 +97,21 @@ module Statesman
       raise ArgumentError, "BulkTransition expects #{requirement}, got: #{classes.inspect}"
     end
 
+    # Checked across *all* items up front, before any batching (see #call), so a
+    # duplicate object split across two in_batches_of chunks is still caught — two
+    # items for the same object would otherwise reach the adapter as two rows with
+    # identical sort_key/most_recent during its own build phase, which (at least on an
+    # adapter with the uniqueness constraints Adapters::ActiveRecord relies on) either
+    # raises a raw, unhelpful database error or, with no such constraint, silently
+    # leaves inconsistent state. Always raises, regardless of on_failure: this is a
+    # caller bug — a fact about the call, not a per-object outcome.
+    def validate_no_duplicate_objects(items)
+      duplicate_objects = items.map { |item| item.machine.object }.tally.select { |_, count| count > 1 }.keys
+      return if duplicate_objects.empty?
+
+      raise ArgumentError, "BulkTransition does not support duplicate objects: #{duplicate_objects.inspect}"
+    end
+
     def transition_batch(items)
       if @skip_guards
         successful = items
@@ -116,6 +132,16 @@ module Statesman
     # phase (there's no single-object adapter equivalent to delegate to), so this is the
     # one piece of per-item dispatch logic that stays here rather than moving to the
     # adapter.
+    #
+    # machine.last_transition is a query per item for any adapter that doesn't already
+    # have it cached (e.g. a freshly-built Adapters::ActiveRecord machine) — there's no
+    # batching seam here the way build_transitions has one on the write side. If any
+    # guard reads it and per-item queries here matter for your batch size, machines
+    # should be preloaded with their last transition before calling BulkTransition.call
+    # for maximum efficiency — there's no built-in seam for this yet, so today that
+    # means batch-fetching every parent's last transition yourself and populating each
+    # machine's adapter cache with it before this runs, rather than letting this method
+    # discover it one query at a time.
     def run_guards(items)
       applicable_guards = callbacks_for(:guards)
       return [items, []] if applicable_guards.empty?
