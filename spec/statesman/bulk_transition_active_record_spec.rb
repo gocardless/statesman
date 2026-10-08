@@ -8,7 +8,7 @@
 # (conflicts, races, sort_key batching) are covered in
 # spec/statesman/adapters/active_record_bulk_create_spec.rb; this file checks end-to-end
 # equivalence claims that need the real Machine/BulkTransition/Adapters::ActiveRecord
-# stack together, not just BuildTransitions/BulkCreate in isolation.
+# stack together, not just BulkCreate in isolation.
 describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable RSpec/DescribeClass
          :active_record do
   before do

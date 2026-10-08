@@ -3,18 +3,17 @@
 module Statesman
   module Adapters
     class ActiveRecord
-      # Shared by BuildTransitions and BulkCreate — both are one-instance-per-call,
-      # operating on a batch of items that must all resolve to the same
-      # transition_class/parent_model_class/association_name, since each produces one
-      # shared set of SQL (one snapshot query, one flip UPDATE, one insert_all!) that
-      # only targets the right table/foreign key if every item agrees on all three.
-      # They're per-Machine-*instance* options (see Machine#initialize), not fixed per
-      # Machine subclass, so bucketing by machine class upstream (see
+      # Used by Adapters::ActiveRecord::BulkCreate, one instance per call, operating on
+      # a batch of items that must all resolve to the same
+      # transition_class/parent_model_class/association_name, since each of BulkCreate's
+      # phases produces one shared set of SQL (one snapshot query, one flip UPDATE, one
+      # insert_all!) that only targets the right table/foreign key if every item agrees
+      # on all three. They're per-Machine-*instance* options (see Machine#initialize),
+      # not fixed per Machine subclass, so bucketing by machine class upstream (see
       # BulkTransition#transition_batch) doesn't already guarantee this — it has to be
-      # checked for real, against every item, here. Each including class calls this
-      # itself (no shared instance survives between a .build_transitions call and the
-      # later .bulk_create call for the same batch), so the check and the query below
-      # both happen once per call, not once per batch overall.
+      # checked for real, against every item, here. #assert_uniform_adapter! is called
+      # once per BulkCreate#call, so the check and the query below both happen once per
+      # call, not once per batch overall.
       module UniformAdapter
         private
 

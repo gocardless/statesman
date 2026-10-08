@@ -173,6 +173,35 @@ describe Statesman::BulkTransition do
       end
     end
 
+    describe "duplicate object validation" do
+      it "rejects a batch with the same object wrapped in two separate machines" do
+        object = model_class.new
+        items = [item_for(machine_class.new(object)), item_for(machine_class.new(object))]
+
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing)
+        end.to raise_error(ArgumentError, /does not support duplicate objects/)
+      end
+
+      it "catches a duplicate even when it's split across two in_batches_of chunks" do
+        object = model_class.new
+        items = [item_for(machine_class.new(object)), item_for(machine_class.new(model_class.new)),
+                 item_for(machine_class.new(object))]
+
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing, in_batches_of: 1)
+        end.to raise_error(ArgumentError, /does not support duplicate objects/)
+      end
+
+      it "accepts a batch with no duplicates" do
+        items = build_items(2)
+
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing)
+        end.to_not raise_error
+      end
+    end
+
     describe "a Machine subclass" do
       let(:sub_class) do
         Class.new(machine_class) do

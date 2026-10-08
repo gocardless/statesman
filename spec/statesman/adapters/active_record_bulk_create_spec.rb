@@ -202,13 +202,24 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         expect(result.failed.map(&:object)).to eq([model_a])
       end
 
-      it "tags the race as a conflict" do
+      it "tags the race as a conflict, with a TransitionConflictError" do
         expect(result.failed.first.reason).to eq(:conflict)
+        expect(result.failed.first.error).to be_a(Statesman::TransitionConflictError)
       end
 
       it "leaves model_a's history exactly as the racer wrote it, untouched by our attempt" do
         result
         expect(model_a.reload.my_active_record_model_transitions.order(:sort_key).map(&:to_state)).to eq(%w[x z])
+      end
+
+      context "with on_failure: :raise" do
+        subject(:result) { described_class.bulk_create(items, from: "x", to: "y", on_failure: :raise) }
+
+        it "raises instead of collecting the failure, but still leaves model_b's transition " \
+           "committed (the chunk had already committed by the time this is checked)" do
+          expect { result }.to raise_error(Statesman::TransitionConflictError)
+          expect(model_b.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["y"])
+        end
       end
     end
 
