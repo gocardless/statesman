@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-describe Statesman::BulkTransition, :active_record do
+describe Statesman::BulkTransition::V1, :active_record do
   before(:all) do
     # The shared MyActiveRecordModel fixture is wired via the older
     # `include ActiveRecordQueries[...]` form, which doesn't define `.transition_class`.
@@ -134,7 +134,7 @@ describe Statesman::BulkTransition, :active_record do
 
       expect do
         bulk.call!([id], attributes_to_copy: ["not_a_real_column"])
-      end.to raise_error(Statesman::BulkTransition::ValidationError, /not_a_real_column/)
+      end.to raise_error(Statesman::BulkTransition::V1::ValidationError, /not_a_real_column/)
     end
 
     it "raises InvalidTransitionError for a from/to pair the machine doesn't allow" do
@@ -256,7 +256,7 @@ describe Statesman::BulkTransition, :active_record do
 
       expect do
         bulk.call!([id], attributes_for_callback: ["not_a_real_column"])
-      end.to raise_error(Statesman::BulkTransition::ValidationError, /not_a_real_column/)
+      end.to raise_error(Statesman::BulkTransition::V1::ValidationError, /not_a_real_column/)
     end
   end
 
