@@ -29,6 +29,11 @@ describe Statesman::BulkTransition::V1, :active_record do
   # the one thing that should run everywhere else instead.
   if postgres?
     before do
+      # Other specs redefine MyActiveRecordModel.transition_class without restoring it, so
+      # pin it here to stay independent of spec ordering.
+      allow(MyActiveRecordModel).to receive(:transition_class).
+        and_return(MyActiveRecordModelTransition)
+
       prepare_model_table
       prepare_transitions_table
 
