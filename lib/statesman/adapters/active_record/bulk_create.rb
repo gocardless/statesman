@@ -41,6 +41,14 @@ module Statesman
       #    hits a RecordNotUnique (the one remaining race window, between the re-read
       #    and the INSERT), retry the whole chunk outside this transaction.
       #
+      #    insert_all! always skips any ActiveRecord validations/callbacks declared
+      #    directly on the transition model — there's no save!-loop fallback for a
+      #    transition class that has them. Statesman's own guards/before/after/
+      #    after_commit are unaffected (they're dispatched here regardless, independent
+      #    of how the row gets written) — only validations/callbacks the transition
+      #    model itself declares (e.g. a `validates` or `before_save` on the transition
+      #    class) never run under bulk_create.
+      #
       # 4. #dispatch_after_callbacks — once the chunk's write has already committed,
       #    one isolated transaction per item (see
       #    Adapters::ActiveRecord#with_own_transaction), not the chunk's own: `after`
