@@ -7,34 +7,48 @@ module Statesman
   module Adapters
     class ActiveRecord
       # The real implementation behind Adapters::ActiveRecord.bulk_create — see that
-      # method for the full contract. `items` were already built (and had `before` run
-      # on them) by BulkTransition, via .build_transitions above — each entry's
-      # `most_recent_id` is that call's own snapshot-read token (nil for a no-history
-      # parent), reused here rather than re-read, since this method's own flip+recheck
-      # below is self-correcting regardless of whether that token is still current (see
-      # #flip_and_partition).
+      # method for the full contract. `items` is an Enumerable of { object:, adapter:,
+      # metadata: }, all sharing one bucket's `from`/`to` state; building each
+      # transition, before/after/after_commit dispatch, and persisting are all this
+      # one call's job — see the class comment on BulkTransition for why that's all
+      # here rather than split across several adapter methods an orchestrator calls in
+      # sequence.
       #
-      # One instance per call. #assert_uniform_adapter! derives transition_class/
-      # parent_model_class/foreign_key once, validating they're uniform across every
-      # item — see UniformAdapter.
+      # One instance per call, run in four phases:
       #
-      # Mechanics: flip most_recent false for the has-history survivors' old rows, then
-      # re-run the snapshot read for every survivor. An honest, unraced flip leaves no
-      # most_recent row for that parent until the insert that follows, so any parent the
-      # re-read still finds a row for has raced — exclude it as :conflict. This needs no
-      # RETURNING or locking: the flip UPDATE itself takes a row lock, so a concurrent
-      # writer on the same parent blocks until we commit or roll back. insert_all!
-      # persists the rest; if it still hits a RecordNotUnique (the one remaining race
-      # window, between the re-read and the INSERT), retry the whole chunk outside this
-      # transaction — see the rescue below.
+      # 1. #build_transitions — one batched read of every parent's current most_recent
+      #    row (sort_key, to_state), instead of one query per item the way
+      #    #build_transition alone would need. That same read is the only place `from`
+      #    staleness can be checked (a parent whose most recent to_state no longer
+      #    matches `from` has already moved on since this call's items were decided on)
+      #    — reported as reason: :conflict, before a transition is even built for it.
       #
-      # `after`/`after_commit` dispatch is no longer this class's concern — unlike the
-      # single-object write path, BulkTransition itself now dispatches after/after_commit
-      # once this call returns, uniformly for every adapter (see
-      # BulkTransition#dispatch_after_callbacks). That also means, unlike before, a bulk
-      # `after` raising no longer rolls back this chunk's write, and a bulk `after_commit`
-      # is no longer deferred to the real outermost transaction's commit via
-      # ActiveRecordAfterCommitWrap — it simply runs right after this method returns.
+      # 2. #run_before_callbacks — per item, via that item's own adapter#observer (the
+      #    owning Machine — see Machine#initialize), outside any transaction: nothing's
+      #    persisted yet, so there's nothing to protect by holding one open.
+      #
+      # 3. #write_chunk — one transaction for the whole surviving chunk: flip
+      #    most_recent, insert_all!, cached-state, and `after_commit` registration (see
+      #    Adapters::ActiveRecord#defer_until_committed) — deliberately decoupled from
+      #    whether `after` succeeds (see #dispatch_after_callbacks below). Mechanics:
+      #    flip most_recent false for the has-history survivors' old rows, then
+      #    re-read every survivor's parent to find out who raced — an honest, unraced
+      #    flip leaves no most_recent row for that parent until the insert that
+      #    follows, so any parent the re-read still finds a row for has raced, and is
+      #    excluded as :conflict. This needs no RETURNING or locking: the flip UPDATE
+      #    itself takes a row lock, so a concurrent writer on the same parent blocks
+      #    until we commit or roll back. insert_all! persists the rest; if it still
+      #    hits a RecordNotUnique (the one remaining race window, between the re-read
+      #    and the INSERT), retry the whole chunk outside this transaction.
+      #
+      # 4. #dispatch_after_callbacks — once the chunk's write has already committed,
+      #    one isolated transaction per item (see
+      #    Adapters::ActiveRecord#with_own_transaction), not the chunk's own: `after`
+      #    can be arbitrary, cascading application code (creating audit events,
+      #    cancelling related records) that may need to be atomic with *each other*,
+      #    but N items share one write — running `after` inside that same transaction
+      #    would mean one item's raise rolling back every other item's already-good
+      #    insert, and there's no way to undo just one row out of a batch write.
       class BulkCreate
         include UniformAdapter
 
@@ -50,28 +64,103 @@ module Statesman
         # true can populate them instead.
         TIMESTAMP_COLUMNS = %w[created_at created_on updated_at updated_on].freeze
 
-        def self.call(items)
-          new(items).call
+        def self.call(items, from:, to:, on_failure:, skip_before_callbacks:, skip_after_callbacks:,
+                      skip_after_commit_callbacks:)
+          new(items, from: from, to: to, on_failure: on_failure, skip_before_callbacks: skip_before_callbacks,
+                     skip_after_callbacks: skip_after_callbacks,
+                     skip_after_commit_callbacks: skip_after_commit_callbacks).call
         end
 
-        def initialize(items)
+        def initialize(items, from:, to:, on_failure:, skip_before_callbacks:, skip_after_callbacks:,
+                       skip_after_commit_callbacks:)
           @items = items
+          @from = from.to_s
+          @to = to.to_s
+          @on_failure = on_failure
+          @skip_before_callbacks = skip_before_callbacks
+          @skip_after_callbacks = skip_after_callbacks
+          @skip_after_commit_callbacks = skip_after_commit_callbacks
         end
 
         def call
           return BulkTransition::Result.new if items.empty?
 
           assert_uniform_adapter!
-          write_chunk(items)
+
+          entries, build_failed = build_transitions
+          raise build_failed.first.error if on_failure == :raise && build_failed.any?
+
+          ready, before_failed = run_before_callbacks(entries)
+          failed = build_failed + before_failed
+          return BulkTransition::Result.new(failed: failed) if ready.empty?
+
+          result = write_chunk(ready)
+          after_failed = dispatch_after_callbacks(ready, result)
+
+          BulkTransition::Result.new(successful: result.successful, failed: failed + result.failed + after_failed)
         end
 
         private
 
-        attr_reader :items
+        attr_reader :items, :from, :to, :on_failure, :skip_before_callbacks, :skip_after_callbacks,
+                    :skip_after_commit_callbacks
 
-        # Flip -> recheck -> insert -> hydrate -> cached-state, for one chunk, inside
-        # one transaction. Retries outside that transaction if the final insert still
-        # races — see the rescue below.
+        # ---- 1. BUILD ----
+
+        def build_transitions
+          parent_ids = items.map { |item| item[:object].id }
+          current_rows = most_recent_rows_for(parent_ids)
+
+          entries = []
+          failed = []
+          items.each { |item| build_one(item, current_rows, entries, failed) }
+          [entries, failed]
+        end
+
+        def build_one(item, current_rows, entries, failed)
+          row = current_rows[item[:object].id]
+
+          if row && row[:to_state] != from
+            failed << conflict_failure(item, row)
+          else
+            transition = item[:adapter].build_transition(from, to, item[:metadata])
+            transition.assign_attributes(sort_key: row ? row[:sort_key] + 10 : 10, most_recent: true)
+            entries << { object: item[:object], adapter: item[:adapter], transition: transition,
+                         most_recent_id: row && row[:id] }
+          end
+        rescue StandardError => e
+          failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :build_transition, error: e)
+        end
+
+        def conflict_failure(item, row)
+          error = Statesman::TransitionConflictError.new(
+            "#{item[:object].class} #{item[:object].id.inspect} is no longer in state " \
+            "#{from.inspect} (now #{row[:to_state].inspect})",
+          )
+          BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: error)
+        end
+
+        # ---- 2. BEFORE ----
+
+        def run_before_callbacks(entries)
+          return [entries, []] if skip_before_callbacks
+
+          ready = []
+          failed = []
+          entries.each do |entry|
+            entry[:adapter].observer.execute(:before, from, to, entry[:transition])
+            ready << entry
+          rescue StandardError => e
+            raise if on_failure == :raise
+
+            failed << BulkTransition::Result::FailedItem.new(object: entry[:object], reason: :before_callback,
+                                                             error: e)
+          end
+          [ready, failed]
+        end
+
+        # ---- 3. PERSIST (+ after_commit registration) ----
+
         def write_chunk(survivors, attempt: 1)
           return BulkTransition::Result.new if survivors.empty?
 
@@ -94,8 +183,8 @@ module Statesman
             # on Postgres a failed statement leaves the transaction unusable until it's
             # rolled back, which only happens once the error escapes `transaction do
             # ... end`. Retrying the whole chunk (not a pre-filtered subset) is
-            # deliberate: the retry's own flip + recheck re-discovers whoever just raced
-            # and excludes them, with no need to parse the exception.
+            # deliberate: the retry's own flip + recheck re-discovers whoever just
+            # raced and excludes them, with no need to parse the exception.
             retried = write_chunk(survivors, attempt: attempt + 1)
             successful.concat(retried.successful)
             failed.concat(retried.failed)
@@ -104,12 +193,13 @@ module Statesman
           BulkTransition::Result.new(successful: successful, failed: failed)
         end
 
-        # Flips most_recent for the has-history survivors' old rows, then re-reads every
-        # survivor's parent to find out who raced — see #flip_most_recent for why this
-        # needs no locking or RETURNING. `item[:most_recent_id]` is nil for a parent that
-        # had no history as of .build_transitions's own read — filtered out of the flip
-        # target list (there's no old row to flip) but still included in the re-read, so
-        # a brand-new racer that inserted *first* history for that parent is still caught.
+        # `item[:most_recent_id]` is nil for a parent that had no history as of
+        # #build_transitions's own read — filtered out of the flip target list (no old
+        # row to flip) but still included in the re-read, so a brand-new racer that
+        # inserted *first* history for that parent is still caught. Reused as-is even
+        # on a retry (see #write_chunk): a flip targeting an id that's no longer
+        # most_recent is just a no-op, and the re-read is what's authoritative either
+        # way, so a stale id here is harmless.
         def flip_and_partition(survivors)
           flip_ids = survivors.filter_map { |item| item[:most_recent_id] }
           flip_most_recent(flip_ids)
@@ -122,19 +212,30 @@ module Statesman
           [writable, failed]
         end
 
-        # Persists the survivors of #flip_and_partition: insert, then a batched
-        # cached-state write.
+        # Insert, batched cached-state write, then — still inside this chunk's open
+        # transaction — after_commit registration for every survivor, unconditionally
+        # (see Adapters::ActiveRecord#defer_until_committed's own docs for why this
+        # doesn't wait on #dispatch_after_callbacks).
         def persist_writable!(writable)
           insert_survivors!(writable)
           maintain_cached_current_state_batch(writable, writable.first[:transition].to_state)
+          register_after_commit(writable) unless skip_after_commit_callbacks
+        end
+
+        def register_after_commit(writable)
+          writable.each do |item|
+            item[:adapter].defer_until_committed do
+              item[:adapter].observer.execute(:after_commit, from, to, item[:transition])
+            end
+          end
         end
 
         # Flips most_recent false for the given (snapshot-read) ids. No RETURNING or
         # locking needed: the UPDATE itself takes a row lock on every id it matches, so
         # a concurrent writer on the same parent blocks until our transaction ends.
-        # Whether an id ends up false because we flipped it or a racer already had, it's
-        # false either way afterward — so race detection can't come from re-querying
-        # these ids; see #flip_and_partition's re-read instead.
+        # Whether an id ends up false because we flipped it or a racer already had,
+        # it's false either way afterward — so race detection can't come from
+        # re-querying these ids; see #flip_and_partition's re-read instead.
         def flip_most_recent(ids)
           return if ids.empty?
 
@@ -185,10 +286,10 @@ module Statesman
             to_h { |record| [record[foreign_key], record.attributes] }
         end
 
-        # Merges the recovered row onto the already-`before`-mutated attributes (not the
-        # recovered row alone, so a `before` callback's mutation survives), then rebuilds
-        # a persisted record via .instantiate — materializes a row without re-running
-        # validations/callbacks/save!.
+        # Merges the recovered row onto the already-`before`-mutated attributes (not
+        # the recovered row alone, so a `before` callback's mutation survives), then
+        # rebuilds a persisted record via .instantiate — materializes a row without
+        # re-running validations/callbacks/save!.
         def hydrate!(writable, rows_by_parent_id)
           writable.each do |item|
             row = rows_by_parent_id.fetch(item[:object].id)
@@ -197,8 +298,9 @@ module Statesman
           end
         end
 
-        # One UPDATE for every written parent, since the target state is homogeneous
-        # across the whole chunk.
+        # Batched generalization of a per-object cached-state write: one UPDATE for
+        # every written parent, since the target state is homogeneous across the
+        # whole chunk.
         def maintain_cached_current_state_batch(writable, to_state)
           return unless parent_model_class.respond_to?(:cached_state_column_name)
 
@@ -213,6 +315,41 @@ module Statesman
           attributes[:updated_at] = Time.current if parent_model_class.cached_current_state_touch_updated_at?
           parent_ids = writable.map { |item| item[:object].id }
           parent_model_class.where(id: parent_ids).update_all(attributes)
+        end
+
+        # ---- 4. AFTER ----
+
+        # Only dispatches to items the chunk write actually reported successful, so a
+        # raced/conflicted item never gets `after` called for it. Skips opening any
+        # transaction at all, for any item, when there's nothing to run — a machine
+        # with no `after` callbacks (or skip_after_callbacks: true) shouldn't pay for N
+        # empty transactions.
+        def dispatch_after_callbacks(ready, result)
+          return [] if skip_after_callbacks
+
+          successful_objects = result.successful.to_h { |object| [object, true] }
+          ready.
+            select { |entry| successful_objects.key?(entry[:object]) }.
+            filter_map { |entry| dispatch_after_callbacks_for(entry) }
+        end
+
+        # An `after` callback raising rolls back only this item's own isolated
+        # transaction (see Adapters::ActiveRecord#with_own_transaction) — the
+        # already-committed transition write is untouched regardless, so the object
+        # still ends up in Result#successful; this is recorded as an *additional*
+        # reason: :after_callback failure, not a replacement for it. on_failure: :raise
+        # still re-raises (after that one transaction has already rolled back) rather
+        # than collecting the failure, and — same as every other phase — stops
+        # dispatching `after` to any later item in this chunk.
+        def dispatch_after_callbacks_for(entry)
+          entry[:adapter].with_own_transaction do
+            entry[:adapter].observer.execute(:after, from, to, entry[:transition])
+          end
+          nil
+        rescue StandardError => e
+          raise if on_failure == :raise
+
+          BulkTransition::Result::FailedItem.new(object: entry[:object], reason: :after_callback, error: e)
         end
       end
     end

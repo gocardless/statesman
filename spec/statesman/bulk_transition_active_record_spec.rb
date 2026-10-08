@@ -128,19 +128,35 @@ describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable R
     end
   end
 
-  # BulkTransition dispatches after_commit itself, once .bulk_create returns (see
-  # BulkTransition#defer_after_commit_callbacks) — by then, Adapters::ActiveRecord's own
-  # bulk write transaction has already closed. If the caller also wraps the whole call
-  # in their own outer transaction, after_commit must still wait for *that* to commit,
-  # not fire the moment this adapter's own inner transaction happens to close. Both
-  # paths below share one real outer transaction with the single-object path, so this
-  # also demonstrates equivalence: the bulk path gets no worse (or better) a guarantee
-  # than #transition_to! already has.
+  # BulkTransition registers after_commit from inside Adapters::ActiveRecord::BulkCreate's
+  # own per-item hook (see BulkTransition#persist) — reached while this chunk's write
+  # transaction is still open — so it can register against whichever transaction is
+  # genuinely open at that moment: this chunk's own (the common case, with no
+  # caller-held transaction around the call) or an outer one the caller holds around
+  # the whole BulkTransition.call. Registering only once .bulk_create has already
+  # returned doesn't work: a real ActiveRecord transaction has nothing open to add a
+  # deferred callback to any more once it's closed — `connection.add_transaction_record`
+  # is a silent no-op outside any open transaction, so after_commit would simply never
+  # fire for the (default, no-wrapping-transaction) first spec below.
   describe "after_commit transactional integrity" do
     let(:after_commit_fired) { [] }
 
     before { machine_class.after_transition(after_commit: true) { |object, _transition| after_commit_fired << object } }
 
+    it "fires after_commit even with no enclosing transaction at all (the common case)" do
+      model = MyActiveRecordModel.create(current_state: "pending")
+
+      Statesman::BulkTransition.call(
+        [item_for(machine_class.new(model, transition_class: MyActiveRecordModelTransition))],
+        from_state: :pending, to_state: :processing,
+      )
+
+      expect(after_commit_fired).to eq([model])
+    end
+
+    # Both paths below share one real outer transaction with the single-object path, so
+    # this also demonstrates equivalence: the bulk path gets no worse (or better) a
+    # guarantee than #transition_to! already has.
     it "fires after_commit for neither path if the real outermost transaction rolls back" do
       model_looped = MyActiveRecordModel.create(current_state: "pending")
       model_bulked = MyActiveRecordModel.create(current_state: "pending")
@@ -173,6 +189,66 @@ describe "BulkTransition.call vs a loop of #transition_to!", # rubocop:disable R
       end
 
       expect(after_commit_fired).to contain_exactly(model_looped, model_bulked)
+    end
+  end
+
+  # `after` runs once per item in its own real transaction (see BulkTransition
+  # #dispatch_after_callbacks, Adapters::ActiveRecord#with_own_transaction) — not inside
+  # the chunk's own write transaction, since N items share one insert_all! there and a
+  # raise can't selectively undo just one of them. This is what that isolation buys: an
+  # `after` callback's own cascading writes (e.g. the Events::Store-style writes a real
+  # Machine's `after` suite tends to make) are atomic with each other per item, and a
+  # failure for one item never touches a sibling's `after`-triggered writes or either
+  # item's already-committed transition.
+  describe "per-item after isolation" do
+    subject(:result) do
+      Statesman::BulkTransition.call(
+        [model_a, model_b].map do |model|
+          item_for(machine_class.new(model, transition_class: MyActiveRecordModelTransition))
+        end,
+        from_state: :pending, to_state: :processing,
+      )
+    end
+
+    let(:model_a) { MyActiveRecordModel.create(current_state: "pending") }
+    let(:model_b) { MyActiveRecordModel.create(current_state: "pending") }
+
+    before do
+      model_a
+      model_b
+
+      machine_class.after_transition do |model, _transition|
+        # Stands in for a real `after` callback's own cascading DB write (e.g. writing
+        # an audit event) — a plain update_column on an otherwise-untouched column (not
+        # cached_current_state, which Adapters::ActiveRecord::BulkCreate itself already
+        # writes inside the chunk's own transaction when that feature is configured) so
+        # it's visible without re-running any Statesman machinery.
+        model.update_column(:current_state, "touched")
+        raise "boom" if model == model_a
+      end
+    end
+
+    it "rolls back the raising item's own after-triggered write along with its raise" do
+      result
+      expect(model_a.reload.current_state).to eq("pending")
+    end
+
+    it "leaves the other item's after-triggered write untouched, since they're isolated" do
+      result
+      expect(model_b.reload.current_state).to eq("touched")
+    end
+
+    it "still durably persists both transitions regardless — the chunk's write " \
+       "transaction already committed before either item's after even started" do
+      result
+      expect(model_a.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["processing"])
+      expect(model_b.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["processing"])
+    end
+
+    it "reports both objects as successful, with the raising one also tagged :after_callback" do
+      expect(result.successful).to contain_exactly(model_a, model_b)
+      expect(result.failed.map(&:object)).to eq([model_a])
+      expect(result.failed.first.reason).to eq(:after_callback)
     end
   end
 end
