@@ -390,6 +390,21 @@ describe Statesman::Machine do
     end
   end
 
+  describe ".adapter_class" do
+    it "defaults to the memory adapter, matching .new's own default transition_class" do
+      expect(machine.adapter_class).to eq(Statesman::Adapters::Memory)
+    end
+
+    it "resolves the memory adapter for MemoryTransition explicitly too" do
+      expect(machine.adapter_class(Statesman::Adapters::MemoryTransition)).to eq(Statesman::Adapters::Memory)
+    end
+
+    it "falls back to the configured storage adapter for any other transition_class" do
+      some_transition_class = Class.new
+      expect(machine.adapter_class(some_transition_class)).to eq(Statesman.storage_adapter)
+    end
+  end
+
   shared_examples "a callback store" do |assignment_method, callback_store|
     before do
       machine.class_eval do
@@ -849,6 +864,36 @@ describe Statesman::Machine do
           expect(guard_cb).to_not receive(:call)
           expect(can_transition_to?).to be_falsey
         end
+      end
+
+      context "with a terminal from state and an after_transition_failure callback defined" do
+        let(:failure_cb) { -> { true } }
+        let(:new_state) { :y }
+
+        before do
+          instance.transition_to!(:y)
+          machine.after_transition_failure(&failure_cb)
+        end
+
+        it "is a dry run: does not fire the failure callback as a side effect" do
+          expect(failure_cb).to_not receive(:call)
+          expect(can_transition_to?).to be_falsey
+        end
+      end
+    end
+
+    context "when the transition is valid but guarded, with an after_guard_failure callback defined" do
+      let(:guard_failure_cb) { -> { true } }
+      let(:new_state) { :y }
+
+      before do
+        machine.guard_transition(to: :y) { false }
+        machine.after_guard_failure(&guard_failure_cb)
+      end
+
+      it "is a dry run: does not fire the failure callback as a side effect" do
+        expect(guard_failure_cb).to_not receive(:call)
+        expect(can_transition_to?).to be_falsey
       end
     end
 

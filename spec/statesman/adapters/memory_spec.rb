@@ -48,6 +48,62 @@ describe Statesman::Adapters::Memory do
     end
   end
 
+  describe ".build_transitions" do
+    subject(:build_result) { described_class.build_transitions(items) }
+
+    let(:observer) { instance_double(Statesman::Machine, execute: nil) }
+    let(:object_a) { Object.new }
+    let(:object_b) { Object.new }
+    let(:adapter_a) do
+      described_class.new(Statesman::Adapters::MemoryTransition, object_a, observer)
+    end
+    let(:adapter_b) do
+      described_class.new(Statesman::Adapters::MemoryTransition, object_b, observer)
+    end
+    let(:items) do
+      [
+        { object: object_a, adapter: adapter_a, from: "x", to: "y", metadata: { "a" => 1 } },
+        { object: object_b, adapter: adapter_b, from: "x", to: "y", metadata: { "b" => 2 } },
+      ]
+    end
+
+    it "returns a built, unsaved transition entry for every item" do
+      entries, failed = build_result
+
+      expect(failed).to eq([])
+      expect(entries).to contain_exactly(
+        { object: object_a, adapter: adapter_a, transition: having_attributes(from_state: "x", to_state: "y",
+                                                                              metadata: { "a" => 1 }) },
+        { object: object_b, adapter: adapter_b, transition: having_attributes(from_state: "x", to_state: "y",
+                                                                              metadata: { "b" => 2 }) },
+      )
+    end
+
+    it "does not persist anything" do
+      build_result
+      expect(adapter_a.history).to eq([])
+      expect(adapter_b.history).to eq([])
+    end
+
+    context "when building an item's transition raises" do
+      let(:error) { StandardError.new("boom") }
+
+      before { allow(adapter_a).to receive(:build_transition).and_raise(error) }
+
+      it "still builds the other item" do
+        entries, = build_result
+        expect(entries.map { |entry| entry[:object] }).to eq([object_b])
+      end
+
+      it "tags the failure as :build_transition, with the original error" do
+        _, failed = build_result
+        expect(failed.map(&:object)).to eq([object_a])
+        expect(failed.first.reason).to eq(:build_transition)
+        expect(failed.first.error).to eq(error)
+      end
+    end
+  end
+
   describe ".bulk_create" do
     subject(:result) { described_class.bulk_create(items) }
 

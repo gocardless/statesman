@@ -18,7 +18,7 @@ describe Statesman::BulkTransition::Result::FailedItem do
   end
 
   describe "reason enumeration" do
-    %i[guard conflict invalid_current_state].each do |valid_reason|
+    %i[guard build_transition before_callback conflict after_callback].each do |valid_reason|
       context "when reason is #{valid_reason.inspect}" do
         let(:reason) { valid_reason }
 

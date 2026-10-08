@@ -163,6 +163,19 @@ module Statesman
         end
       end
 
+      # A pure function of `transition_class`, not of any instance — public (and the
+      # default here matches #initialize's own default) so a caller that already knows
+      # which transition_class it's building with, like Statesman::BulkTransition, can
+      # resolve the storage adapter class directly, with no object and no instance
+      # required.
+      def adapter_class(transition_class = Statesman::Adapters::MemoryTransition)
+        if transition_class == Statesman::Adapters::MemoryTransition
+          Adapters::Memory
+        else
+          Statesman.storage_adapter
+        end
+      end
+
       private
 
       def define_state_constant(state_name)
@@ -246,6 +259,11 @@ module Statesman
       end
     end
 
+    # Public so Statesman::BulkTransition can build a transition and check adapter
+    # uniformity directly off each machine, without this class needing to know anything
+    # about bulk writing itself.
+    attr_reader :storage_adapter
+
     def initialize(object,
                    options = {
                      transition_class: Statesman::Adapters::MemoryTransition,
@@ -253,7 +271,7 @@ module Statesman
                    })
       @object = object
       @transition_class = options[:transition_class]
-      @storage_adapter = adapter_class(@transition_class).new(
+      @storage_adapter = self.class.adapter_class(@transition_class).new(
         @transition_class, object, self, options
       )
 
@@ -342,14 +360,6 @@ module Statesman
     end
 
     private
-
-    def adapter_class(transition_class)
-      if transition_class == Statesman::Adapters::MemoryTransition
-        Adapters::Memory
-      else
-        Statesman.storage_adapter
-      end
-    end
 
     def successors_for(from)
       self.class.successors[from] || []
