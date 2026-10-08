@@ -184,6 +184,80 @@ describe Statesman::BulkTransition, :active_record do
       )
       expect(bulk.call!([])).to eq([])
     end
+
+    it "overrides metadata per-parent via metadata_per_id, falling back to the uniform metadata" do
+      overridden_id = create_model.id
+      default_id = create_model.id
+      bulk = described_class.new(
+        model_class: MyActiveRecordModel, machine_class: machine_class,
+        from: :initial, to: :succeeded
+      )
+
+      bulk.call!(
+        [overridden_id, default_id],
+        metadata: { "origin" => "gocardless" },
+        metadata_per_id: { overridden_id => { "origin" => "api" } },
+      )
+
+      overridden = MyActiveRecordModel.find(overridden_id).
+        my_active_record_model_transitions.order(:sort_key).last
+      default = MyActiveRecordModel.find(default_id).
+        my_active_record_model_transitions.order(:sort_key).last
+
+      expect(overridden.metadata).to eq({ "origin" => "api" })
+      expect(default.metadata).to eq({ "origin" => "gocardless" })
+    end
+
+    it "overrides a copied attribute per-parent via attributes_per_id" do
+      overridden_id = create_model(extra_data: "from-previous-row").id
+      default_id = create_model(extra_data: "from-previous-row").id
+      bulk = described_class.new(
+        model_class: MyActiveRecordModel, machine_class: machine_class,
+        from: :initial, to: :succeeded
+      )
+
+      bulk.call!(
+        [overridden_id, default_id],
+        attributes_to_copy: ["extra_data"],
+        attributes_per_id: { overridden_id => { "extra_data" => "looked-up-value" } },
+      )
+
+      overridden = MyActiveRecordModel.find(overridden_id).
+        my_active_record_model_transitions.order(:sort_key).last
+      default = MyActiveRecordModel.find(default_id).
+        my_active_record_model_transitions.order(:sort_key).last
+
+      expect(overridden.extra_data).to eq("looked-up-value")
+      expect(default.extra_data).to eq("from-previous-row")
+    end
+
+    it "yields only attributes_for_callback when given, instead of the attributes_to_copy default" do
+      id = create_model(extra_data: "keep-me").id
+      bulk = described_class.new(
+        model_class: MyActiveRecordModel, machine_class: machine_class,
+        from: :initial, to: :succeeded
+      )
+
+      yielded = nil
+      bulk.call!(
+        [id], attributes_to_copy: ["extra_data"],
+              attributes_for_callback: %w[my_active_record_model_id to_state metadata]
+      ) { |rows| yielded = rows }
+
+      expect(yielded.first.keys).to match_array(%w[my_active_record_model_id to_state metadata])
+    end
+
+    it "raises ValidationError for unknown attributes_for_callback columns" do
+      id = create_model.id
+      bulk = described_class.new(
+        model_class: MyActiveRecordModel, machine_class: machine_class,
+        from: :initial, to: :succeeded
+      )
+
+      expect do
+        bulk.call!([id], attributes_for_callback: ["not_a_real_column"])
+      end.to raise_error(Statesman::BulkTransition::ValidationError, /not_a_real_column/)
+    end
   end
 
   describe "cached_current_state integration" do

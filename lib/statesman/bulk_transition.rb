@@ -40,20 +40,36 @@ module Statesman
     # @param parent_ids [Array<String, Integer>] primary keys of the parents to
     #   transition. Parents not currently in `from` state are silently skipped - this
     #   is what makes the batch idempotent and safe to re-run.
-    # @param metadata [Hash] applied uniformly to every new transition row in the batch.
+    # @param metadata [Hash] applied uniformly to every new transition row in the batch,
+    #   unless overridden per-parent by metadata_per_id.
     # @param attributes_to_copy [Array<String, Symbol>] extra transition-row columns to
     #   carry forward from the flipped row onto the new one, beyond the parent FK and
     #   sort_key, which are always carried. No default: the caller must explicitly audit
     #   which mutable columns their own after_transition callbacks depend on.
+    # @param attributes_for_callback [Array<String, Symbol>, nil] which columns to
+    #   return/yield for each inserted row. Defaults to attributes_to_copy plus the
+    #   structural columns (parent FK, sort_key, to_state) when not given.
+    # @param metadata_per_id [Hash<String, Hash>, nil] per-parent metadata overrides,
+    #   merged onto (and taking precedence over) the uniform `metadata` for that parent
+    #   only. Parents absent from this hash just get the uniform `metadata`.
+    # @param attributes_per_id [Hash<String, Hash>, nil] per-parent overrides for
+    #   attributes_to_copy columns, merged onto (and taking precedence over) the value
+    #   carried forward from that parent's own flipped row - for a value that can't be
+    #   derived from the previous transition (e.g. a value looked up from an
+    #   association the caller already has loaded).
     # @yield [inserted_rows] optional, runs inside the same transaction after rows are
     #   flipped and inserted (and after the cached_current_state bulk update, if any).
     #   An exception here rolls back the entire batch - nothing is committed.
     # @return [Array] parent ids that were actually transitioned.
-    def call!(parent_ids, metadata: {}, attributes_to_copy: [])
+    def call!(
+      parent_ids, metadata: {}, attributes_to_copy: [], attributes_for_callback: nil,
+      metadata_per_id: nil, attributes_per_id: nil
+    )
       return [] if parent_ids.empty?
 
       attributes_to_copy = attributes_to_copy.map(&:to_s)
       validate_attribute_names!(attributes_to_copy)
+      validate_attribute_names!(attributes_for_callback.map(&:to_s)) if attributes_for_callback
 
       now = Time.current
       transitioned_ids = []
@@ -62,7 +78,10 @@ module Statesman
         flipped_rows = flip_most_recent!(parent_ids, now)
         next if flipped_rows.empty?
 
-        inserted_rows = insert_new_transitions!(flipped_rows, metadata, attributes_to_copy, now)
+        inserted_rows = insert_new_transitions!(
+          flipped_rows, metadata, attributes_to_copy, attributes_for_callback, now,
+          metadata_per_id, attributes_per_id
+        )
         transitioned_ids = inserted_rows.map { |row| row[parent_foreign_key] }
 
         update_cached_current_state!(transitioned_ids)
@@ -130,14 +149,21 @@ module Statesman
       transition_class.connection.exec_query(sql).to_a
     end
 
-    def insert_new_transitions!(flipped_rows, metadata, attributes_to_copy, now)
+    def insert_new_transitions!(
+      flipped_rows, metadata, attributes_to_copy, attributes_for_callback, now,
+      metadata_per_id, attributes_per_id
+    )
       carried_columns = ([parent_foreign_key, "sort_key"] + attributes_to_copy).uniq
       include_from_state = transition_class.has_attribute?(:from_state)
 
       rows = flipped_rows.map do |row|
-        new_row = row.slice(*carried_columns).merge(
+        id = row[parent_foreign_key]
+        row_metadata = merge_per_id(metadata, metadata_per_id, id)
+        row_overrides = merge_per_id({}, attributes_per_id, id)
+
+        new_row = row.slice(*carried_columns).merge(row_overrides).merge(
           "to_state" => to,
-          "metadata" => metadata,
+          "metadata" => row_metadata,
           "most_recent" => true,
           "sort_key" => row["sort_key"].to_i + SORT_KEY_INCREMENT,
           "created_at" => now,
@@ -147,7 +173,7 @@ module Statesman
         new_row
       end
 
-      returning_columns = (carried_columns + ["to_state"]).uniq
+      returning_columns = (attributes_for_callback&.map(&:to_s) || (carried_columns + ["to_state"])).uniq
       transition_class.insert_all(rows, returning: returning_columns).to_a
     rescue ActiveRecord::RecordNotUnique => e
       # One conflicting row aborts the whole batch - this is an accepted MVP trade-off,
@@ -155,6 +181,14 @@ module Statesman
       # this class) follows the flip-then-insert convention, so a collision here means
       # something outside that convention wrote a most_recent row directly.
       raise TransitionConflictError, e.message
+    end
+
+    # Merges a per-parent override hash (string-keyed by parent id) onto a base hash,
+    # for one parent only. The override, where present, wins key-by-key.
+    def merge_per_id(base, per_id, id)
+      return base if per_id.nil? || !per_id.key?(id)
+
+      base.merge(per_id.fetch(id))
     end
 
     def update_cached_current_state!(transitioned_ids)
