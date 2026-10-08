@@ -180,113 +180,117 @@ module Statesman
         self.class.updated_column_and_timestamp(transition_class)
       end
 
-      class << self
-        def parent_join_foreign_key(parent_model_class, association_name, transition_class)
-          association = parent_model_class.
-            reflect_on_all_associations(:has_many).
-            find { |r| r.name.to_s == association_name.to_s }
-          association_join_primary_key(association, transition_class)
-        end
+      def self.parent_join_foreign_key(parent_model_class, association_name, transition_class)
+        association = parent_model_class.
+          reflect_on_all_associations(:has_many).
+          find { |r| r.name.to_s == association_name.to_s }
+        association_join_primary_key(association, transition_class)
+      end
 
-        def most_recent_transitions(transition_class, foreign_key, parent_id, most_recent_id = nil)
-          table = transition_class.arel_table
-          scope = concrete_transitions_of_parent(transition_class, foreign_key, parent_id)
+      def self.most_recent_transitions(transition_class, foreign_key, parent_id, most_recent_id = nil)
+        table = transition_class.arel_table
+        scope = concrete_transitions_of_parent(transition_class, foreign_key, parent_id)
 
-          if most_recent_id
-            scope.and(table[:id].eq(most_recent_id).or(table[:most_recent].eq(true)))
-          else
-            scope.and(table[:most_recent].eq(true))
-          end
-        end
-
-        # Check whether the `most_recent` column allows null values. If it doesn't, set
-        # old records to `false`, otherwise, set them to `NULL`.
-        #
-        # Some conditioning here is required to support databases that don't support
-        # partial indexes. By doing the conditioning on the column, rather than Rails'
-        # opinion of whether the database supports partial indexes, we're robust to DBs
-        # later adding support for partial indexes.
-        def not_most_recent_value(transition_class, db_cast: true)
-          if transition_class.columns_hash["most_recent"].null == false
-            return db_cast ? db_false(transition_class) : false
-          end
-
-          db_cast ? db_null : nil
-        end
-
-        def updated_column_and_timestamp(transition_class)
-          # TODO: Once we've set expectations that transition classes should conform to
-          # the interface of Adapters::ActiveRecordTransition as a breaking change in the
-          # next major version, we can stop calling `#respond_to?` first and instead
-          # assume that there is a `.updated_timestamp_column` method we can call.
-          #
-          # At the moment, most transition classes will include the module, but not all,
-          # not least because it doesn't work with PostgreSQL JSON columns for metadata.
-          column = if transition_class.respond_to?(:updated_timestamp_column)
-                     transition_class.updated_timestamp_column
-                   else
-                     ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
-                   end
-
-          # No updated timestamp column, don't return anything
-          return nil if column.nil?
-
-          [column, default_timezone == :utc ? Time.now.utc : Time.now]
-        end
-
-        private
-
-        def association_join_primary_key(association, transition_class)
-          if association.respond_to?(:join_primary_key)
-            association.join_primary_key
-          elsif association.method(:join_keys).arity.zero?
-            # Support for Rails 5.1
-            association.join_keys.key
-          else
-            # Support for Rails < 5.1
-            association.join_keys(transition_class).key
-          end
-        end
-
-        # `parent_id` accepts either a single id (the single-object write path, via the
-        # instance wrapper above) or an Array of ids (bulk_create's batched reads/writes,
-        # scoped to many parents at once) — `Arel::Nodes::Node#in` vs `#eq` handles the
-        # distinction.
-        def concrete_transitions_of_parent(transition_class, foreign_key, parent_id)
-          if transition_sti?(transition_class)
-            transitions_of_parent(transition_class, foreign_key, parent_id).and(
-              transition_class.arel_table[transition_class.inheritance_column].eq(transition_class.name),
-            )
-          else
-            transitions_of_parent(transition_class, foreign_key, parent_id)
-          end
-        end
-
-        def transitions_of_parent(transition_class, foreign_key, parent_id)
-          column = transition_class.arel_table[foreign_key.to_sym]
-          parent_id.is_a?(Array) ? column.in(parent_id) : column.eq(parent_id)
-        end
-
-        def transition_sti?(transition_class)
-          transition_class.column_names.include?(transition_class.inheritance_column)
-        end
-
-        # Rails 7 deprecates ActiveRecord::Base.default_timezone in favour of
-        # ActiveRecord.default_timezone
-        def default_timezone
-          return ::ActiveRecord.default_timezone if ::ActiveRecord.respond_to?(:default_timezone)
-
-          ::ActiveRecord::Base.default_timezone
-        end
-
-        def db_false(transition_class)
-          transition_class.connection.quote(transition_class.connection.type_cast(false))
-        end
-
-        def db_null
-          Arel::Nodes::SqlLiteral.new("NULL")
+        if most_recent_id
+          scope.and(table[:id].eq(most_recent_id).or(table[:most_recent].eq(true)))
+        else
+          scope.and(table[:most_recent].eq(true))
         end
       end
+
+      # Check whether the `most_recent` column allows null values. If it doesn't, set
+      # old records to `false`, otherwise, set them to `NULL`.
+      #
+      # Some conditioning here is required to support databases that don't support
+      # partial indexes. By doing the conditioning on the column, rather than Rails'
+      # opinion of whether the database supports partial indexes, we're robust to DBs
+      # later adding support for partial indexes.
+      def self.not_most_recent_value(transition_class, db_cast: true)
+        if transition_class.columns_hash["most_recent"].null == false
+          return db_cast ? db_false(transition_class) : false
+        end
+
+        db_cast ? db_null : nil
+      end
+
+      def self.updated_column_and_timestamp(transition_class)
+        # TODO: Once we've set expectations that transition classes should conform to
+        # the interface of Adapters::ActiveRecordTransition as a breaking change in the
+        # next major version, we can stop calling `#respond_to?` first and instead
+        # assume that there is a `.updated_timestamp_column` method we can call.
+        #
+        # At the moment, most transition classes will include the module, but not all,
+        # not least because it doesn't work with PostgreSQL JSON columns for metadata.
+        column = if transition_class.respond_to?(:updated_timestamp_column)
+                   transition_class.updated_timestamp_column
+                 else
+                   ActiveRecordTransition::DEFAULT_UPDATED_TIMESTAMP_COLUMN
+                 end
+
+        # No updated timestamp column, don't return anything
+        return nil if column.nil?
+
+        [column, default_timezone == :utc ? Time.now.utc : Time.now]
+      end
+
+      def self.association_join_primary_key(association, transition_class)
+        if association.respond_to?(:join_primary_key)
+          association.join_primary_key
+        elsif association.method(:join_keys).arity.zero?
+          # Support for Rails 5.1
+          association.join_keys.key
+        else
+          # Support for Rails < 5.1
+          association.join_keys(transition_class).key
+        end
+      end
+
+      # `parent_id` accepts either a single id (the single-object write path, via the
+      # instance wrapper above) or an Array of ids (bulk_create's batched reads/writes,
+      # scoped to many parents at once) — `Arel::Nodes::Node#in` vs `#eq` handles the
+      # distinction.
+      def self.concrete_transitions_of_parent(transition_class, foreign_key, parent_id)
+        if transition_sti?(transition_class)
+          transitions_of_parent(transition_class, foreign_key, parent_id).and(
+            transition_class.arel_table[transition_class.inheritance_column].eq(transition_class.name),
+          )
+        else
+          transitions_of_parent(transition_class, foreign_key, parent_id)
+        end
+      end
+
+      def self.transitions_of_parent(transition_class, foreign_key, parent_id)
+        column = transition_class.arel_table[foreign_key.to_sym]
+        parent_id.is_a?(Array) ? column.in(parent_id) : column.eq(parent_id)
+      end
+
+      def self.transition_sti?(transition_class)
+        transition_class.column_names.include?(transition_class.inheritance_column)
+      end
+
+      # Rails 7 deprecates ActiveRecord::Base.default_timezone in favour of
+      # ActiveRecord.default_timezone
+      def self.default_timezone
+        return ::ActiveRecord.default_timezone if ::ActiveRecord.respond_to?(:default_timezone)
+
+        ::ActiveRecord::Base.default_timezone
+      end
+
+      def self.db_false(transition_class)
+        transition_class.connection.quote(transition_class.connection.type_cast(false))
+      end
+
+      def self.db_null
+        Arel::Nodes::SqlLiteral.new("NULL")
+      end
+
+      private_class_method :association_join_primary_key,
+                           :concrete_transitions_of_parent,
+                           :transitions_of_parent,
+                           :transition_sti?,
+                           :default_timezone,
+                           :db_false,
+                           :db_null
 
       private
 
