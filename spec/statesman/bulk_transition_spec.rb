@@ -1,266 +1,15 @@
 # frozen_string_literal: true
 
-# Unit-level: drives the private #write_batch method directly. See the ".call" describe
-# block below for end-to-end coverage of the public entry point.
+# Unit-level dispatch behavior (build/before/persist/after/after_commit, skip options,
+# on_failure, failure tagging) now lives entirely in each adapter's own .bulk_create —
+# see spec/statesman/adapters/memory_spec.rb and
+# spec/statesman/adapters/active_record_bulk_create_spec.rb. #write_batch itself is a
+# thin payload-builder/delegator with no interesting behavior of its own to unit-test
+# here; see the ".call" describe block below for end-to-end coverage of the public
+# entry point, including the equivalence-with-a-loop-of-#transition_to! claim.
 describe Statesman::BulkTransition do
   def item_for(machine, metadata: {})
     Statesman::BulkTransition::Item.new(machine: machine, metadata: metadata)
-  end
-
-  describe "#write_batch" do
-    subject(:result) { instance.send(:write_batch, items) }
-
-    # @machine_class/@adapter_class are normally set by #call; primed directly here so
-    # this spec can drive #write_batch in isolation.
-    let(:instance) do
-      described_class.new(from_state: "pending", to_state: "approved", metadata: { "k" => "v" },
-                          skip_before_callbacks: skip_before_callbacks,
-                          skip_after_callbacks: skip_after_callbacks,
-                          skip_after_commit_callbacks: skip_after_commit_callbacks,
-                          on_failure: on_failure).tap do |instance|
-        instance.instance_variable_set(:@machine_class, machine_class)
-        instance.instance_variable_set(:@adapter_class, Statesman::Adapters::Memory)
-      end
-    end
-    let(:machine_class) do
-      Class.new do
-        include Statesman::Machine
-
-        def self.name
-          "MyBulkStateMachine"
-        end
-
-        state :pending, initial: true
-        state :approved
-        transition from: :pending, to: :approved
-      end
-    end
-    let(:model_class) { Class.new { attr_accessor :current_state } }
-    let(:object_a) { model_class.new }
-    let(:object_b) { model_class.new }
-    let(:machine_a) { machine_class.new(object_a) }
-    let(:machine_b) { machine_class.new(object_b) }
-    let(:items) { [item_for(machine_a), item_for(machine_b)] }
-    let(:captured) { {} }
-    let(:calls) { [] }
-    let(:skip_before_callbacks) { false }
-    let(:skip_after_callbacks) { false }
-    let(:skip_after_commit_callbacks) { false }
-    let(:on_failure) { :collect }
-
-    before do
-      recorder = calls
-      store = captured
-      machine_class.before_transition { |object, _transition| recorder << [:before, object] }
-      machine_class.after_transition { |object, _transition| recorder << [:after, object] }
-      machine_class.after_transition { |object, transition| store[object] = transition }
-      machine_class.after_transition(after_commit: true) { |object, _transition| recorder << [:after_commit, object] }
-    end
-
-    context "with no items" do
-      let(:items) { [] }
-
-      it "returns an empty Result instead of raising" do
-        expect(result.successful).to eq([])
-        expect(result.failed).to eq([])
-        expect(result.success?).to be(true)
-      end
-    end
-
-    it "persists a transition for every object" do
-      result
-      expect(captured[object_a].to_state).to eq("approved")
-      expect(captured[object_b].to_state).to eq("approved")
-    end
-
-    it "returns every object as successful, with no failures" do
-      expect(result.successful).to eq([object_a, object_b])
-      expect(result.failed).to eq([])
-    end
-
-    it "applies the given metadata to every transition" do
-      result
-      expect(captured[object_a].metadata).to eq({ "k" => "v" })
-      expect(captured[object_b].metadata).to eq({ "k" => "v" })
-    end
-
-    context "when an item carries its own metadata" do
-      let(:items) { [item_for(machine_a, metadata: { "k" => "override", "extra" => 1 }), item_for(machine_b)] }
-
-      it "merges it over the shared metadata, item wins on key conflicts" do
-        result
-        expect(captured[object_a].metadata).to eq({ "k" => "override", "extra" => 1 })
-        expect(captured[object_b].metadata).to eq({ "k" => "v" })
-      end
-    end
-
-    it "runs before, then after, then after_commit, once per object" do
-      result
-      expect(calls).to eq(
-        [
-          [:before, object_a],
-          [:before, object_b],
-          [:after, object_a],
-          [:after_commit, object_a],
-          [:after, object_b],
-          [:after_commit, object_b],
-        ],
-      )
-    end
-
-    context "when a before callback raises for one item" do
-      before do
-        machine_class.before_transition { |object, _transition| raise StandardError, "boom" if object == object_a }
-      end
-
-      it "collects the failure and still persists the other item" do
-        expect(result.successful).to eq([object_b])
-        expect(result.failed.map(&:object)).to eq([object_a])
-      end
-
-      it "records the failure with reason :before_callback and the raised error" do
-        expect(result.failed.first.reason).to eq(:before_callback)
-        expect(result.failed.first.error.message).to eq("boom")
-      end
-
-      context "with on_failure: :raise" do
-        let(:on_failure) { :raise }
-
-        it "raises instead of collecting the failure" do
-          expect { result }.to raise_error(StandardError, "boom")
-        end
-      end
-    end
-
-    it "gives each item its own metadata object, so one item's before callback can't " \
-       "mutate another item's metadata" do
-      machine_class.before_transition { |object, transition| transition.metadata.delete("k") if object == object_a }
-
-      result
-
-      expect(captured[object_a].metadata).to eq({})
-      expect(captured[object_b].metadata).to eq({ "k" => "v" })
-    end
-
-    context "when one item fails to persist" do
-      before do
-        allow_any_instance_of(machine_class).to receive(:storage_adapter) do |machine|
-          real_adapter = machine.instance_variable_get(:@storage_adapter)
-          if machine.object == object_a
-            allow(real_adapter).to receive(:persist).and_raise(StandardError.new("boom"))
-          end
-          real_adapter
-        end
-      end
-
-      it "still persists the other item" do
-        expect(result.successful).to eq([object_b])
-      end
-
-      it "reports the failing item as a conflict" do
-        expect(result.failed.map(&:object)).to eq([object_a])
-        expect(result.failed.first.reason).to eq(:conflict)
-      end
-
-      it "dispatches after/after_commit for the surviving item only" do
-        result
-        expect(calls).to eq([[:before, object_a], [:before, object_b], [:after, object_b], [:after_commit, object_b]])
-      end
-    end
-
-    context "when building a transition raises for one item" do
-      before do
-        allow_any_instance_of(machine_class).to receive(:storage_adapter) do |machine|
-          real_adapter = machine.instance_variable_get(:@storage_adapter)
-          if machine.object == object_a
-            allow(real_adapter).to receive(:build_transition).and_raise(StandardError.new("boom"))
-          end
-          real_adapter
-        end
-      end
-
-      it "collects the failure and still persists the other item" do
-        expect(result.successful).to eq([object_b])
-        expect(result.failed.map(&:object)).to eq([object_a])
-      end
-
-      it "records the failure with reason :build_transition, not :before_callback" do
-        expect(result.failed.first.reason).to eq(:build_transition)
-        expect(result.failed.first.error.message).to eq("boom")
-      end
-
-      it "never runs before/after callbacks for the item whose build failed" do
-        result
-        expect(calls).to eq([[:before, object_b], [:after, object_b], [:after_commit, object_b]])
-      end
-    end
-
-    context "when an after callback raises for one item" do
-      before do
-        machine_class.after_transition { |object, _transition| raise StandardError, "boom" if object == object_a }
-      end
-
-      it "still reports the item as successful, since the transition did persist" do
-        expect(result.successful).to eq([object_a, object_b])
-      end
-
-      it "also records the failure, with reason :after_callback" do
-        expect(result.failed.map(&:object)).to eq([object_a])
-        expect(result.failed.first.reason).to eq(:after_callback)
-        expect(result.failed.first.error.message).to eq("boom")
-      end
-
-      it "still dispatches after/after_commit for the other item" do
-        result
-        expect(calls).to include([:after_commit, object_b])
-      end
-
-      context "with on_failure: :raise" do
-        let(:on_failure) { :raise }
-
-        it "raises instead of collecting the failure" do
-          expect { result }.to raise_error(StandardError, "boom")
-        end
-      end
-    end
-
-    context "with skip_before_callbacks: true" do
-      let(:skip_before_callbacks) { true }
-
-      it "skips only before" do
-        result
-        expect(calls.map(&:first)).to eq(%i[after after_commit after after_commit])
-      end
-    end
-
-    context "with skip_after_callbacks: true" do
-      let(:skip_after_callbacks) { true }
-
-      it "skips only after" do
-        result
-        expect(calls.map(&:first)).to eq(%i[before before after_commit after_commit])
-      end
-    end
-
-    context "with skip_after_commit_callbacks: true" do
-      let(:skip_after_commit_callbacks) { true }
-
-      it "skips only after_commit" do
-        result
-        expect(calls.map(&:first)).to eq(%i[before before after after])
-      end
-    end
-
-    context "with all three skip options set" do
-      let(:skip_before_callbacks) { true }
-      let(:skip_after_callbacks) { true }
-      let(:skip_after_commit_callbacks) { true }
-
-      it "fires no before/after/after_commit callbacks, but still persists" do
-        expect(result.successful).to eq([object_a, object_b])
-        expect(calls).to eq([])
-      end
-    end
   end
 
   # NOTE: the memory adapter's history is scoped to a single Machine instance's lifetime,
@@ -417,6 +166,35 @@ describe Statesman::BulkTransition do
 
       it "accepts a batch where every machine shares the same (non-default) adapter class" do
         items = build_items(2, transition_class: custom_transition_class)
+
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing)
+        end.to_not raise_error
+      end
+    end
+
+    describe "duplicate object validation" do
+      it "rejects a batch with the same object wrapped in two separate machines" do
+        object = model_class.new
+        items = [item_for(machine_class.new(object)), item_for(machine_class.new(object))]
+
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing)
+        end.to raise_error(ArgumentError, /does not support duplicate objects/)
+      end
+
+      it "catches a duplicate even when it's split across two in_batches_of chunks" do
+        object = model_class.new
+        items = [item_for(machine_class.new(object)), item_for(machine_class.new(model_class.new)),
+                 item_for(machine_class.new(object))]
+
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing, in_batches_of: 1)
+        end.to raise_error(ArgumentError, /does not support duplicate objects/)
+      end
+
+      it "accepts a batch with no duplicates" do
+        items = build_items(2)
 
         expect do
           described_class.call(items, from_state: :pending, to_state: :processing)
@@ -622,7 +400,7 @@ describe Statesman::BulkTransition do
         result = described_class.call(items, from_state: :pending, to_state: :processing,
                                              skip_after_callbacks: true)
 
-        expect(calls.map(&:first)).to eq(%i[before before after_commit after_commit])
+        expect(calls.map(&:first)).to eq(%i[before after_commit before after_commit])
         expect(result.successful).to match_array(objects)
       end
 
@@ -630,7 +408,7 @@ describe Statesman::BulkTransition do
         result = described_class.call(items, from_state: :pending, to_state: :processing,
                                              skip_after_commit_callbacks: true)
 
-        expect(calls.map(&:first)).to eq(%i[before before after after])
+        expect(calls.map(&:first)).to eq(%i[before after before after])
         expect(result.successful).to match_array(objects)
       end
 

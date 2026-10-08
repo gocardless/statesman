@@ -26,6 +26,21 @@ module Statesman
   # Doesn't chunk `items` unless `in_batches_of` is given. With on_failure: :raise, a
   # failure part-way through aborts remaining batches; already-persisted batches are not
   # rolled back.
+  #
+  # Guards are the one phase this class runs itself (#run_guards) — everything else
+  # (building each transition, before/after/after_commit dispatch, persisting) is
+  # entirely the adapter's job, via #write_batch's single call to adapter_class
+  # .bulk_create. That's not a layer this class is skipping: each item's own adapter
+  # instance already holds a reference to its own Machine (passed in as `observer` at
+  # construction — see Machine#initialize), the exact same reference the single-object
+  # write path already calls back through (`@observer.execute(:after, ...)`, etc.), so
+  # an adapter dispatches precisely the same callbacks, resolved precisely the same way,
+  # with no second callback-lookup implementation duplicated here. What genuinely is
+  # adapter-specific — whether `after_commit` needs deferring until a real transaction
+  # commits, whether `after` needs its own isolated transaction per item to avoid one
+  # item's failure undoing a shared batch write — is a decision only the adapter can
+  # make correctly, so it belongs there (see Adapters::ActiveRecord::BulkCreate),
+  # not here.
   class BulkTransition
     def self.call(items, from_state:, to_state:, in_batches_of: nil, metadata: {},
                   on_failure: :collect, skip_guards: false, skip_before_callbacks: false,
@@ -55,6 +70,7 @@ module Statesman
       @machine_class = extract_machine_class(items)
       @adapter_class = extract_adapter_class(items)
       @machine_class.validate_from_and_to_state(@from_state, @to_state)
+      validate_no_duplicate_objects(items)
 
       batches = in_batches_of ? items.each_slice(in_batches_of) : [items]
       results = batches.map { |batch| transition_batch(batch) }
@@ -81,6 +97,21 @@ module Statesman
       raise ArgumentError, "BulkTransition expects #{requirement}, got: #{classes.inspect}"
     end
 
+    # Checked across *all* items up front, before any batching (see #call), so a
+    # duplicate object split across two in_batches_of chunks is still caught — two
+    # items for the same object would otherwise reach the adapter as two rows with
+    # identical sort_key/most_recent during its own build phase, which (at least on an
+    # adapter with the uniqueness constraints Adapters::ActiveRecord relies on) either
+    # raises a raw, unhelpful database error or, with no such constraint, silently
+    # leaves inconsistent state. Always raises, regardless of on_failure: this is a
+    # caller bug — a fact about the call, not a per-object outcome.
+    def validate_no_duplicate_objects(items)
+      duplicate_objects = items.map { |item| item.machine.object }.tally.select { |_, count| count > 1 }.keys
+      return if duplicate_objects.empty?
+
+      raise ArgumentError, "BulkTransition does not support duplicate objects: #{duplicate_objects.inspect}"
+    end
+
     def transition_batch(items)
       if @skip_guards
         successful = items
@@ -97,7 +128,20 @@ module Statesman
     end
 
     # Always notifies after_guard_failure, unlike Machine#can_transition_to?'s dry-run
-    # check — every caller here is a real bulk attempt.
+    # check — every caller here is a real bulk attempt. Guards aren't a Machine#execute
+    # phase (there's no single-object adapter equivalent to delegate to), so this is the
+    # one piece of per-item dispatch logic that stays here rather than moving to the
+    # adapter.
+    #
+    # machine.last_transition is a query per item for any adapter that doesn't already
+    # have it cached (e.g. a freshly-built Adapters::ActiveRecord machine) — there's no
+    # batching seam here the way build_transitions has one on the write side. If any
+    # guard reads it and per-item queries here matter for your batch size, machines
+    # should be preloaded with their last transition before calling BulkTransition.call
+    # for maximum efficiency — there's no built-in seam for this yet, so today that
+    # means batch-fetching every parent's last transition yourself and populating each
+    # machine's adapter cache with it before this runs, rather than letting this method
+    # discover it one query at a time.
     def run_guards(items)
       applicable_guards = callbacks_for(:guards)
       return [items, []] if applicable_guards.empty?
@@ -131,86 +175,24 @@ module Statesman
       end
     end
 
+    # `payload` is each item's object/adapter/metadata — per-item metadata already
+    # merged over the shared `metadata:` passed to .call (item wins on key conflicts),
+    # merged fresh per item so one item's before callback mutating its own metadata
+    # can't affect another's. Everything past this point — building each transition,
+    # before/after/after_commit dispatch, persisting — is the adapter's job; see the
+    # class comment above for why.
     def write_batch(items)
       return Result.new if items.empty?
 
-      entries, build_failed = build_transitions(items)
-      raise build_failed.first.error if @on_failure == :raise && build_failed.any?
-
-      ready, before_failed = run_before_callbacks(entries)
-      failed = build_failed + before_failed
-
-      return Result.new(failed: failed) if ready.empty?
-
-      result = @adapter_class.bulk_create(ready)
-      after_failed = dispatch_after_callbacks(ready, result.failed)
-
-      Result.new(successful: result.successful, failed: failed + result.failed + after_failed)
-    end
-
-    # Delegates the actual building of each item's transition to the adapter class
-    # (see Adapters::Memory.build_transitions), rather than calling #build_transition on
-    # each machine's own adapter instance one at a time here. That seam lets an adapter
-    # batch away the per-object cost of building a transition (e.g. an ActiveRecord
-    # adapter could preload every parent's `last` transition in a single query instead of
-    # one query per item) without BulkTransition needing to know how.
-    def build_transitions(items)
       payload = items.map do |item|
         machine = item.machine
-        {
-          object: machine.object, adapter: machine.storage_adapter,
-          from: @from_state, to: @to_state, metadata: @metadata.merge(item.metadata)
-        }
+        { object: machine.object, adapter: machine.storage_adapter, metadata: @metadata.merge(item.metadata) }
       end
 
-      @adapter_class.build_transitions(payload)
-    end
-
-    def run_before_callbacks(entries)
-      before_callbacks = @skip_before_callbacks ? [] : callbacks_for(:before)
-      return [entries, []] if before_callbacks.empty?
-
-      ready = []
-      failed = []
-
-      entries.each do |entry|
-        before_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
-        ready << entry
-      rescue StandardError => e
-        raise if @on_failure == :raise
-
-        failed << Result::FailedItem.new(object: entry[:object], reason: :before_callback, error: e)
-      end
-
-      [ready, failed]
-    end
-
-    # An after/after_commit callback raising doesn't undo the write — the transition is
-    # already durably persisted by this point — so a failure here is recorded as
-    # reason: :after_callback in Result#failed *in addition to* the object staying in
-    # Result#successful, rather than moving it across. Each entry's callbacks are rescued
-    # individually so one entry's broken callback doesn't stop the rest of the batch from
-    # getting theirs.
-    def dispatch_after_callbacks(entries, failures)
-      return [] if @skip_after_callbacks && @skip_after_commit_callbacks
-
-      failed_objects = failures.to_h { |failure| [failure.object, true] }
-      after_callbacks = @skip_after_callbacks ? [] : callbacks_for(:after)
-      after_commit_callbacks = @skip_after_commit_callbacks ? [] : callbacks_for(:after_commit)
-
-      entries.
-        reject { |entry| failed_objects.key?(entry[:object]) }.
-        filter_map { |entry| dispatch_after_callbacks_for(entry, after_callbacks, after_commit_callbacks) }
-    end
-
-    def dispatch_after_callbacks_for(entry, after_callbacks, after_commit_callbacks)
-      after_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
-      after_commit_callbacks.each { |callback| callback.call(entry[:object], entry[:transition]) }
-      nil
-    rescue StandardError => e
-      raise if @on_failure == :raise
-
-      Result::FailedItem.new(object: entry[:object], reason: :after_callback, error: e)
+      @adapter_class.bulk_create(payload, from: @from_state, to: @to_state, on_failure: @on_failure,
+                                          skip_before_callbacks: @skip_before_callbacks,
+                                          skip_after_callbacks: @skip_after_callbacks,
+                                          skip_after_commit_callbacks: @skip_after_commit_callbacks)
     end
 
     def callbacks_for(phase)

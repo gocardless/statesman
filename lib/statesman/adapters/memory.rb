@@ -8,6 +8,7 @@ module Statesman
     class Memory
       attr_reader :transition_class
       attr_reader :parent_model
+      attr_reader :observer
 
       # We only accept mode as a parameter to maintain a consistent interface
       # with other adapters which require it.
@@ -19,62 +20,87 @@ module Statesman
       end
 
       # A single adapter instance is bound to one parent object (see #initialize), so
-      # bulk building/writing across many parents can't be instance methods here — they
-      # have to take each object's own adapter instead (see #build_transitions and
-      # #bulk_create below). Guard failures never reach either — that validation always
-      # happens upstream, in BulkTransition#run_guards, before an item gets this far.
+      # bulk writing across many parents can't be an instance method here — it has to
+      # take each object's own adapter instead. Guard failures never reach here — that
+      # validation always happens upstream, in BulkTransition#run_guards, before an item
+      # gets this far.
       #
-      # items: an Enumerable of { object:, adapter:, from:, to:, metadata: }, where
-      # `adapter` is that object's own Adapters::Memory instance. Building a transition
-      # has no side effects, so each item is rescued individually and a failure here
-      # (reason: :build_transition) doesn't stop the rest of the batch from being built.
+      # items: an Enumerable of { object:, adapter:, metadata: }, where `adapter` is
+      # that object's own Adapters::Memory instance. Runs build -> before -> persist ->
+      # after -> after_commit for every item in turn, each phase rescued individually
+      # (except where documented) so one item's failure doesn't stop or lose track of
+      # the rest.
       #
-      # This is the seam a smarter adapter can use to batch away the per-object cost of
-      # building a transition — e.g. an ActiveRecord adapter could preload every parent's
-      # `last` transition in a single query up front, instead of one query per item here.
-      # Memory's `last` is already an in-memory array lookup, so there's nothing to batch.
-      def self.build_transitions(items)
-        entries = []
-        failed = []
-
-        items.each do |item|
-          transition = item[:adapter].build_transition(item[:from], item[:to], item[:metadata])
-          entries << { object: item[:object], adapter: item[:adapter], transition: transition }
-        rescue StandardError => e
-          failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :build_transition, error: e)
-        end
-
-        [entries, failed]
-      end
-
-      # items: an Enumerable of { object:, adapter:, transition: }, where `transition`
-      # was already built via .build_transitions (and had `before` run on it, by the
-      # caller).
-      #
-      # Callback dispatch (before/after/after_commit) is deliberately left out at
-      # this stage — this method only persists. Statesman::BulkTransition is the
-      # orchestrator that invokes those per item once it knows that item is durably
-      # written (see BulkTransition#run_before_callbacks/#dispatch_after_callbacks).
-      #
-      # Persisting can still fail even once an item has been built (e.g. a write conflict
-      # on the real ActiveRecord adapter) — that kind of failure can only be observed at
-      # write time, not predicted in advance. Each item's persist is rescued individually
-      # so one item's failure doesn't stop or lose track of the rest: the failing item
-      # is recorded in Result#failed and every other item still gets persisted
-      # and recorded in Result#successful, keeping Result accurate either way.
-      def self.bulk_create(items)
+      # before/after/after_commit are dispatched via each item's own adapter#observer —
+      # the very same Machine instance the single-object #create above already calls
+      # back through — not a separate callback lookup reimplemented here. Memory has no
+      # real transactions, so unlike Adapters::ActiveRecord there's nothing to batch and
+      # nothing to isolate: after/after_commit just run immediately, right where
+      # they're dispatched.
+      def self.bulk_create(items, from:, to:, on_failure: :collect, skip_before_callbacks: false,
+                           skip_after_callbacks: false, skip_after_commit_callbacks: false)
+        from = from.to_s
+        to = to.to_s
         successful = []
         failed = []
 
         items.each do |item|
-          item[:adapter].persist(item[:transition])
-          successful << item[:object]
-        rescue StandardError => e
-          failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: e)
+          bulk_create_one(item, from, to, on_failure, skip_before_callbacks, skip_after_callbacks,
+                          skip_after_commit_callbacks, successful, failed)
         end
 
         BulkTransition::Result.new(successful: successful, failed: failed)
       end
+
+      def self.bulk_create_one(item, from, to, on_failure, skip_before_callbacks, skip_after_callbacks,
+                               skip_after_commit_callbacks, successful, failed)
+        transition = build_for_bulk(item, from, to, failed)
+        return unless transition
+        return if !skip_before_callbacks && !run_before_for_bulk(item, from, to, transition, on_failure, failed)
+        return unless persist_for_bulk(item, transition, successful, failed)
+
+        run_after_for_bulk(item, from, to, transition, on_failure, failed) unless skip_after_callbacks
+        item[:adapter].observer.execute(:after_commit, from, to, transition) unless skip_after_commit_callbacks
+      end
+      private_class_method :bulk_create_one
+
+      def self.build_for_bulk(item, from, to, failed)
+        item[:adapter].build_transition(from, to, item[:metadata])
+      rescue StandardError => e
+        failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :build_transition, error: e)
+        nil
+      end
+      private_class_method :build_for_bulk
+
+      def self.run_before_for_bulk(item, from, to, transition, on_failure, failed)
+        item[:adapter].observer.execute(:before, from, to, transition)
+        true
+      rescue StandardError => e
+        raise if on_failure == :raise
+
+        failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :before_callback, error: e)
+        false
+      end
+      private_class_method :run_before_for_bulk
+
+      def self.persist_for_bulk(item, transition, successful, failed)
+        item[:adapter].persist(transition)
+        successful << item[:object]
+        true
+      rescue StandardError => e
+        failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: e)
+        false
+      end
+      private_class_method :persist_for_bulk
+
+      def self.run_after_for_bulk(item, from, to, transition, on_failure, failed)
+        item[:adapter].observer.execute(:after, from, to, transition)
+      rescue StandardError => e
+        raise if on_failure == :raise
+
+        failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :after_callback, error: e)
+      end
+      private_class_method :run_after_for_bulk
 
       def create(from, to, metadata = {})
         from = from.to_s
