@@ -132,6 +132,24 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       end
     end
 
+    context "when the adapter already memoized the pre-write transition (H3)" do
+      let(:model) { MyActiveRecordModel.create(current_state: "x") }
+      let(:adapter) { adapter_for(model) }
+      let(:items) { [{ object: model, adapter: adapter, metadata: {} }] }
+
+      before do
+        # Simulates BulkTransition#run_guards reading `machine.last_transition` for
+        # every item before .bulk_create ever runs (to pass it to any applicable
+        # guard) — that read memoizes @last_transition on this same adapter instance.
+        adapter.last
+      end
+
+      it "resets the adapter's memoized last_transition so it reflects the write, not the stale pre-write read" do
+        result
+        expect(adapter.last.to_state).to eq("y")
+      end
+    end
+
     context "when a parent's current state no longer matches the requested from state (H2)" do
       let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
       let(:model_b) { MyActiveRecordModel.create(current_state: "x") }

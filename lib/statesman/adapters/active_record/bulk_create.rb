@@ -214,14 +214,28 @@ module Statesman
           [writable, failed]
         end
 
-        # Insert, batched cached-state write, then — still inside this chunk's open
-        # transaction — after_commit registration for every survivor, unconditionally
-        # (see Adapters::ActiveRecord#defer_until_committed's own docs for why this
-        # doesn't wait on #dispatch_after_callbacks).
+        # Insert, batched cached-state write, reset each adapter's memoized last
+        # transition (see #reset_adapter_caches!), then — still inside this chunk's
+        # open transaction — after_commit registration for every survivor,
+        # unconditionally (see Adapters::ActiveRecord#defer_until_committed's own docs
+        # for why this doesn't wait on #dispatch_after_callbacks).
         def persist_writable!(writable)
           insert_survivors!(writable)
           maintain_cached_current_state_batch(writable, writable.first[:transition].to_state)
+          reset_adapter_caches!(writable)
           register_after_commit(writable) unless skip_after_commit_callbacks
+        end
+
+        # BulkTransition#run_guards reads `machine.last_transition` for every item
+        # before this ever runs (to pass it to any applicable guard) — on
+        # Adapters::ActiveRecord that memoizes @last_transition the moment it's first
+        # read (see #last). Left alone, a machine that already read its state once
+        # (true of every guarded bulk transition) would keep reporting that stale,
+        # pre-write transition for the rest of its lifetime, even though the row it's
+        # backed by was just updated here. #reset clears that memoized value so the
+        # next #current_state/#last_transition call re-queries instead.
+        def reset_adapter_caches!(writable)
+          writable.each { |item| item[:adapter].reset }
         end
 
         def register_after_commit(writable)
