@@ -9,41 +9,18 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
 
     prepare_sti_model_table
     prepare_sti_transitions_table
-
-    Statesman.configure do
-      # described_class isn't reachable here — Statesman.configure instance_evals this
-      # block against a Statesman::Config instance, not the example group.
-      storage_adapter(Statesman::Adapters::ActiveRecord) # rubocop:disable RSpec/DescribedClass
-    end
   end
 
-  after { Statesman.configure { storage_adapter(Statesman::Adapters::Memory) } }
-
-  let(:machine_class) do
-    Class.new do
-      include Statesman::Machine
-
-      def self.name
-        "MyArBulkStateMachine"
-      end
-
-      state :x, initial: true
-      state :y
-      transition from: :x, to: :y
-    end
-  end
+  let(:observer) { instance_double(Statesman::Machine, execute: nil) }
+  let(:no_op) { ->(_item) {} }
 
   def adapter_for(model, transition_class: MyActiveRecordModelTransition, association_name: nil)
-    machine_class.new(model, { transition_class: transition_class, association_name: association_name }.compact).
-      storage_adapter
+    described_class.new(transition_class, model, observer, { association_name: association_name }.compact)
   end
 
-  # The payload shape .bulk_create takes: object/adapter/metadata, not yet built —
-  # building, before/after/after_commit dispatch, and persisting are all .bulk_create's
-  # own job now (see Adapters::ActiveRecord::BulkCreate).
-  def item_for(model, metadata: {}, transition_class: MyActiveRecordModelTransition, association_name: nil)
-    { object: model, adapter: adapter_for(model, transition_class: transition_class,
-                                                 association_name: association_name), metadata: metadata }
+  def item_for(model, from, to, metadata: {}, transition_class: MyActiveRecordModelTransition, association_name: nil)
+    adapter = adapter_for(model, transition_class: transition_class, association_name: association_name)
+    { object: model, adapter: adapter, transition: adapter.build_transition(from, to, metadata) }
   end
 
   describe "#build_transition" do
@@ -59,6 +36,7 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     its(:sort_key) { is_expected.to be_nil }
 
     it "does not persist or fire any callbacks" do
+      expect(observer).to_not receive(:execute)
       expect { transition }.to_not change(MyActiveRecordModelTransition, :count)
     end
 
@@ -75,19 +53,19 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     end
   end
 
-  # Unit-level SQL mechanics (sort_key batching, conflicts, races, cached-state,
-  # uniform-adapter checks) — drives .bulk_create directly. End-to-end equivalence with
-  # a loop of #transition_to!, and before/after/after_commit's full transactional
-  # behaviour (including per-item after isolation and after_commit timing), are covered
-  # in spec/statesman/bulk_transition_active_record_spec.rb, through the real
-  # Machine/BulkTransition/Adapters::ActiveRecord stack together.
   describe ".bulk_create" do
-    subject(:result) { described_class.bulk_create(items, from: "x", to: "y") }
+    subject(:result) do
+      described_class.bulk_create(items, from: from, after: after, after_commit: after_commit)
+    end
+
+    let(:from) { "x" }
+    let(:after) { no_op }
+    let(:after_commit) { no_op }
 
     context "with parents that have no prior history" do
       let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
       let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
-      let(:items) { [item_for(model_a), item_for(model_b)] }
+      let(:items) { [item_for(model_a, "x", "y"), item_for(model_b, "x", "y")] }
 
       it "reports every object as successful, with no failures" do
         expect(result.successful).to eq([model_a, model_b])
@@ -108,14 +86,47 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       end
 
       it "applies the given metadata" do
-        described_class.bulk_create([item_for(model_a, metadata: { "k" => "v" })], from: "x", to: "y")
+        items.each { |item| item[:transition].assign_attributes(metadata: { "k" => "v" }) }
+        result
         expect(model_a.reload.my_active_record_model_transitions.first.metadata).to eq({ "k" => "v" })
+      end
+
+      context "with recording after/after_commit callables" do
+        let(:calls) { [] }
+        let(:after) { ->(item) { calls << [:after, item[:object], item[:transition].persisted?] } }
+        let(:after_commit) { ->(item) { calls << [:after_commit, item[:object], item[:transition].persisted?] } }
+
+        it "invokes after per item inside the transaction, then after_commit per item once it commits" do
+          result
+
+          # after_commit is registered on the connection (not called synchronously), so
+          # Rails fires every registered after_commit together once the transaction
+          # actually commits — after every item's `after` has already run, not
+          # interleaved with them the way Adapters::Memory's immediate calls are.
+          expect(calls).to eq(
+            [
+              [:after, model_a, true],
+              [:after, model_b, true],
+              [:after_commit, model_a, true],
+              [:after_commit, model_b, true],
+            ],
+          )
+        end
+      end
+
+      context "when after raises" do
+        let(:after) { ->(item) { raise "boom" if item[:object] == model_b } }
+
+        it "rolls back the whole chunk — no row is persisted for any survivor" do
+          expect { result }.to raise_error("boom")
+          expect(MyActiveRecordModelTransition.count).to eq(0)
+        end
       end
     end
 
     context "with a parent that already has history" do
       let(:model) { MyActiveRecordModel.create(current_state: "x") }
-      let(:items) { [item_for(model)] }
+      let(:items) { [item_for(model, "x", "y")] }
 
       before { adapter_for(model).create("w", "x") }
 
@@ -135,12 +146,12 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     context "when the adapter already memoized the pre-write transition (H3)" do
       let(:model) { MyActiveRecordModel.create(current_state: "x") }
       let(:adapter) { adapter_for(model) }
-      let(:items) { [{ object: model, adapter: adapter, metadata: {} }] }
+      let(:items) { [{ object: model, adapter: adapter, transition: adapter.build_transition("x", "y", {}) }] }
 
       before do
-        # Simulates BulkTransition#run_guards reading `machine.last_transition` for
-        # every item before .bulk_create ever runs (to pass it to any applicable
-        # guard) — that read memoizes @last_transition on this same adapter instance.
+        # Simulates BulkTransition.transition_batch grouping machines by
+        # `machine.current_state` before #persist ever calls bulk_create — that read
+        # memoizes @last_transition on this same adapter instance.
         adapter.last
       end
 
@@ -153,49 +164,30 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     context "when a parent's current state no longer matches the requested from state (H2)" do
       let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
       let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
-      let(:items) { [item_for(model_a), item_for(model_b)] }
+      let(:items) { [item_for(model_a, "x", "y"), item_for(model_b, "x", "y")] }
 
       before do
-        # model_a has already moved on to "z" by the time .bulk_create is asked to
-        # transition it from "x" — a stale read upstream of BulkTransition itself.
+        # model_a has already moved on to "z" by the time bulk_create is asked to
+        # transition it from "x" — a stale read upstream in Machine.validate_bulk_transition.
         adapter_for(model_a).create("x", "z")
       end
 
       it "reports the stale parent as a conflict and still transitions the rest" do
         expect(result.successful).to eq([model_b])
         expect(result.failed.map(&:object)).to eq([model_a])
-      end
-
-      it "tags the failure as a conflict, with a TransitionConflictError" do
         expect(result.failed.first.reason).to eq(:conflict)
-        expect(result.failed.first.error).to be_a(Statesman::TransitionConflictError)
       end
 
-      it "never touches a row for the stale parent" do
+      it "never inserts a row with the stale from_state" do
         result
         expect(model_a.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["z"])
       end
     end
 
-    context "when building an item's transition raises" do
+    context "when a parent is raced between the snapshot read and the flip/insert (H1)" do
       let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
       let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
-      let(:items) { [item_for(model_a), item_for(model_b)] }
-      let(:error) { StandardError.new("boom") }
-
-      before { allow_any_instance_of(described_class).to receive(:build_transition).and_raise(error) }
-
-      it "tags the failure as :build_transition, with the original error, for every item" do
-        expect(result.failed.map(&:object)).to contain_exactly(model_a, model_b)
-        expect(result.failed.map(&:reason).uniq).to eq([:build_transition])
-        expect(result.failed.map(&:error).uniq).to eq([error])
-      end
-    end
-
-    context "when a parent is raced between the build phase's read and the flip/insert (H1)" do
-      let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
-      let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
-      let(:items) { [item_for(model_a), item_for(model_b)] }
+      let(:items) { [item_for(model_a, "x", "y"), item_for(model_b, "x", "y")] }
 
       before do
         adapter_for(model_a).create("w", "x")
@@ -206,9 +198,8 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
             rows = original.call(*args)
             unless raced
               raced = true
-              # A concurrent single transition lands for model_a right after the build
-              # phase's own snapshot read, before the write phase's flip/recheck —
-              # exactly the race window that recheck protects.
+              # A concurrent single transition lands for model_a right after the snapshot read,
+              # before our flip/recheck — exactly the race window this call protects.
               adapter_for(model_a).create("x", "z")
             end
             rows
@@ -220,30 +211,19 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         expect(result.failed.map(&:object)).to eq([model_a])
       end
 
-      it "tags the race as a conflict, with a TransitionConflictError" do
+      it "tags the race as a conflict" do
         expect(result.failed.first.reason).to eq(:conflict)
-        expect(result.failed.first.error).to be_a(Statesman::TransitionConflictError)
       end
 
       it "leaves model_a's history exactly as the racer wrote it, untouched by our attempt" do
         result
         expect(model_a.reload.my_active_record_model_transitions.order(:sort_key).map(&:to_state)).to eq(%w[x z])
       end
-
-      context "with on_failure: :raise" do
-        subject(:result) { described_class.bulk_create(items, from: "x", to: "y", on_failure: :raise) }
-
-        it "raises instead of collecting the failure, but still leaves model_b's transition " \
-           "committed (the chunk had already committed by the time this is checked)" do
-          expect { result }.to raise_error(Statesman::TransitionConflictError)
-          expect(model_b.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["y"])
-        end
-      end
     end
 
     context "when a brand-new parent is raced between the snapshot read and the insert" do
       let(:model) { MyActiveRecordModel.create(current_state: "x") }
-      let(:items) { [item_for(model)] }
+      let(:items) { [item_for(model, "x", "y")] }
 
       before do
         raced = false
@@ -273,7 +253,7 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     context "when insert_all! itself hits the final residual race window" do
       let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
       let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
-      let(:items) { [item_for(model_a), item_for(model_b)] }
+      let(:items) { [item_for(model_a, "x", "y"), item_for(model_b, "x", "y")] }
 
       # A genuinely independent concurrent writer can't be simulated deterministically on
       # a single shared connection: a "racer" call nested inside our own open transaction
@@ -283,10 +263,6 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       # Instead, this drives the same two observable events a real race would cause: (1)
       # insert_all! raises RecordNotUnique once, (2) the *retry's own* recheck finds the
       # raced parent — exactly what a real race landing in that window would produce.
-      #
-      # attempt == 3: call 1 is the build phase's own snapshot read; call 2 is
-      # #flip_and_partition's recheck on write_chunk's first attempt; the retry
-      # (write_chunk attempt 2) is call 3.
       before do
         attempt = 0
         allow_any_instance_of(described_class::BulkCreate).to receive(:most_recent_rows_for).
@@ -318,12 +294,81 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         expect(model_b.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["y"])
         expect(model_a.reload.my_active_record_model_transitions).to be_empty
       end
+    end
 
-      it "gives up and raises after MAX_INSERT_ATTEMPTS consecutive conflicts" do
+    context "when the race persists past every retry attempt (no partial recovery)" do
+      let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
+      let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
+      let(:items) { [item_for(model_a, "x", "y"), item_for(model_b, "x", "y")] }
+
+      before do
         allow_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!).
           and_raise(ActiveRecord::RecordNotUnique, "persistent")
+      end
 
-        expect { result }.to raise_error(ActiveRecord::RecordNotUnique)
+      it "gives up, with on_failure: :collect (the default), and surfaces the whole chunk as :conflict " \
+         "rather than raising" do
+        expect(result.successful).to eq([])
+        expect(result.failed.map(&:object)).to contain_exactly(model_a, model_b)
+        expect(result.failed.map(&:reason)).to all(eq(:conflict))
+      end
+
+      it "leaves no trace of either parent's attempted transition" do
+        result
+        expect(model_a.reload.my_active_record_model_transitions).to be_empty
+        expect(model_b.reload.my_active_record_model_transitions).to be_empty
+      end
+
+      context "with on_failure: :raise" do
+        subject(:result) do
+          described_class.bulk_create(items, from: from, after: after, after_commit: after_commit,
+                                             on_failure: :raise)
+        end
+
+        it "raises BulkTransitionConflictError, wrapping the original RecordNotUnique as #cause" do
+          expect { result }.to raise_error(Statesman::BulkTransitionConflictError) do |error|
+            expect(error.cause).to be_a(ActiveRecord::RecordNotUnique)
+          end
+        end
+      end
+
+      context "with a smaller conflict_retry_attempts" do
+        subject(:result) do
+          described_class.bulk_create(items, from: from, after: after, after_commit: after_commit,
+                                             conflict_retry_attempts: 1)
+        end
+
+        it "gives up after the first attempt instead of retrying up to the default bound" do
+          expect(result.successful).to eq([])
+          expect(result.failed.map(&:object)).to contain_exactly(model_a, model_b)
+        end
+
+        it "leaves no trace of either parent's attempted transition" do
+          result
+          expect(model_a.reload.my_active_record_model_transitions).to be_empty
+          expect(model_b.reload.my_active_record_model_transitions).to be_empty
+        end
+      end
+    end
+
+    context "after_commit transactional integrity" do
+      let(:model) { MyActiveRecordModel.create(current_state: "x") }
+      let(:items) { [item_for(model, "x", "y")] }
+      let(:after_commit_fired) { [] }
+      let(:after_commit) { ->(item) { after_commit_fired << item[:object] } }
+
+      it "does not fire after_commit if the real outermost transaction rolls back" do
+        expect do
+          ActiveRecord::Base.transaction do
+            result
+            raise ActiveRecord::Rollback
+          end
+        end.to_not change(after_commit_fired, :count)
+      end
+
+      it "fires after_commit once the real outermost transaction commits" do
+        ActiveRecord::Base.transaction { result }
+        expect(after_commit_fired).to eq([model])
       end
     end
 
@@ -332,9 +377,9 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       let(:sti_model) { StiActiveRecordModel.create }
       let(:items) do
         [
-          item_for(model),
-          item_for(sti_model, transition_class: StiAActiveRecordModelTransition,
-                              association_name: :sti_a_active_record_model_transitions),
+          item_for(model, "x", "y"),
+          item_for(sti_model, "x", "y", transition_class: StiAActiveRecordModelTransition,
+                                        association_name: :sti_a_active_record_model_transitions),
         ]
       end
 
@@ -350,7 +395,7 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       # resolve the same transition_class/association, isolating this one check.
       let(:other_model_class) { Class.new(MyActiveRecordModel) }
       let(:model_b) { other_model_class.create(current_state: "x") }
-      let(:items) { [item_for(model_a), item_for(model_b)] }
+      let(:items) { [item_for(model_a, "x", "y"), item_for(model_b, "x", "y")] }
 
       it "raises instead of silently resolving the wrong foreign key for some items" do
         expect { result }.to raise_error(ArgumentError, /same.*parent model class/)
@@ -362,12 +407,12 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
       let(:items) do
         [
-          item_for(model_a),
+          item_for(model_a, "x", "y"),
           # :transitions is MyActiveRecordModel's own alias for the same association
           # (`alias_method :transitions, :my_active_record_model_transitions`) — a real,
           # callable method under a different name, so #build_transition still succeeds
           # and only the association_name *value* actually diverges.
-          item_for(model_b, association_name: :transitions),
+          item_for(model_b, "x", "y", association_name: :transitions),
         ]
       end
 
@@ -383,36 +428,6 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         expect(result.successful).to eq([])
         expect(result.failed).to eq([])
         expect(result.success?).to be(true)
-      end
-    end
-
-    # Basic dispatch wiring — see spec/statesman/bulk_transition_active_record_spec.rb
-    # for the full transactional-behaviour coverage (per-item after isolation,
-    # after_commit timing).
-    describe "before/after/after_commit dispatch" do
-      let(:model) { MyActiveRecordModel.create(current_state: "x") }
-      let(:items) { [item_for(model)] }
-      let(:calls) { [] }
-
-      before do
-        recorder = calls
-        machine_class.before_transition { |object, _transition| recorder << [:before, object] }
-        machine_class.after_transition { |object, _transition| recorder << [:after, object] }
-        machine_class.after_transition(after_commit: true) { |object, _transition| recorder << [:after_commit, object] }
-      end
-
-      # after_commit is registered during the chunk's own write (decoupled from
-      # `after` — see BulkCreate's docs), so for a single, unwrapped call it fires
-      # before `after`, which only runs once that write has already committed.
-      it "runs before, then persists (registering after_commit), then after" do
-        result
-        expect(calls).to eq([[:before, model], [:after_commit, model], [:after, model]])
-      end
-
-      it "respects skip_before_callbacks/skip_after_callbacks/skip_after_commit_callbacks" do
-        described_class.bulk_create(items, from: "x", to: "y", skip_before_callbacks: true,
-                                           skip_after_callbacks: true, skip_after_commit_callbacks: true)
-        expect(calls).to eq([])
       end
     end
   end

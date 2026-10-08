@@ -19,17 +19,16 @@ module Statesman
       end
 
       # Batched write path behind Statesman::BulkTransition.call — see BulkCreate for
-      # the full contract and mechanics, including why building, before/after/
-      # after_commit dispatch, and persisting are all this one call's job rather than
-      # split across several adapter methods the orchestrator calls in sequence.
-      # `items` is an Enumerable of { object:, adapter:, metadata: }, all sharing one
-      # bucket's `from`/`to` state.
-      def self.bulk_create(items, from:, to:, on_failure: :collect, skip_before_callbacks: false,
-                           skip_after_callbacks: false, skip_after_commit_callbacks: false)
-        BulkCreate.call(items, from: from, to: to, on_failure: on_failure,
-                               skip_before_callbacks: skip_before_callbacks,
-                               skip_after_callbacks: skip_after_callbacks,
-                               skip_after_commit_callbacks: skip_after_commit_callbacks)
+      # the full contract and mechanics. `items` is an Enumerable of { object:,
+      # adapter:, transition:, machine: }, all sharing one bucket's `from` state;
+      # `transition` was already built (and had `before` run on it) by the orchestrator.
+      # `on_failure:`/`conflict_retry_attempts:` govern what BulkCreate does once its
+      # internal RecordNotUnique retry is exhausted — see BulkTransition.
+      def self.bulk_create(items, from:, after:, after_commit:, on_failure: :collect,
+                           conflict_retry_attempts: BulkCreate::MAX_INSERT_ATTEMPTS)
+        BulkCreate.call(items, from: from, after: after, after_commit: after_commit,
+                               on_failure: on_failure,
+                               conflict_retry_attempts: conflict_retry_attempts)
       end
 
       def initialize(transition_class, parent_model, observer, options = {})
@@ -49,7 +48,7 @@ module Statesman
           options[:association_name] || @transition_class.table_name
       end
 
-      attr_reader :transition_class, :transition_table, :parent_model, :association_name, :observer
+      attr_reader :transition_class, :transition_table, :parent_model, :association_name
 
       def create(from, to, metadata = {})
         create_transition(from.to_s, to.to_s, metadata)
@@ -108,45 +107,6 @@ module Statesman
         end
       end
 
-      # Runs the given block only once genuinely committed, via the same
-      # ActiveRecordAfterCommitWrap/connection.add_transaction_record machinery
-      # #add_after_commit_callback below already uses for the single-object write path —
-      # this just exposes it as a public seam. Used by Adapters::ActiveRecord::BulkCreate
-      # from inside its own chunk write transaction (the only point one is guaranteed
-      # open), so a bulk `after_commit` callback gets the same guarantee the
-      # single-object path already has: it only fires once the real, outermost
-      # transaction commits — this chunk's own if nothing wraps the call, or an outer
-      # one the caller holds around the whole BulkTransition.call.
-      #
-      # Deliberately decoupled from whether this item's own `after` callbacks (see
-      # #with_own_transaction) succeed — by design, for bulk, `after_commit`'s guarantee
-      # is "the transition itself is durable", not "and every cascading `after` side
-      # effect also succeeded". Making the latter true would mean either holding this
-      # chunk's write transaction open across every item's `after` suite (bad — see
-      # BulkCreate), or serializing after_commit's firing behind N separate outcomes,
-      # neither of which this method has any way to know about from here.
-      def defer_until_committed(&block)
-        transition_class.connection.add_transaction_record(
-          ActiveRecordAfterCommitWrap.new(transition_class.connection, &block),
-        )
-      end
-
-      # Runs the given block in its own transaction, isolated from whichever other
-      # items share this chunk's write (see Adapters::ActiveRecord::BulkCreate
-      # #dispatch_after_callbacks_for). Used for one item's `after` callbacks
-      # specifically: they can be arbitrary, cascading application writes (e.g.
-      # creating audit events, cancelling related records) that a caller reasonably
-      # wants atomic with *each other*, without risking a raise mid-chunk rolling back
-      # every other item's already-good insert — impossible if `after` ran inside the
-      # chunk's own shared transaction instead, and unacceptably slow if the chunk's
-      # transaction stayed open for every item's `after` suite one after another.
-      # requires_new: true so this is always a real, independently committable/
-      # rollback-able unit, whether or not the caller already has an outer transaction
-      # open.
-      def with_own_transaction(&block)
-        transition_class.transaction(requires_new: true, &block)
-      end
-
       def reset
         if instance_variable_defined?(:@last_transition)
           remove_instance_variable(:@last_transition)
@@ -160,10 +120,10 @@ module Statesman
       # transition_class/parent_model_class/association_name/parent_id — none of it
       # depends on *this* adapter's specific parent_model identity. BulkCreate calls the
       # class methods directly with its own validated, uniform-across-the-batch values
-      # (see UniformAdapter) instead of going through any one item's adapter instance;
-      # these instance wrappers exist only for the single-object write path below
-      # (`unique_indexes`, `update_most_recents`, etc.), which already has an adapter
-      # instance sitting around and has no need to reach past it.
+      # (see BulkCreate#assert_uniform_adapter!) instead of going through any one item's
+      # adapter instance; these instance wrappers exist only for the single-object write
+      # path below (`unique_indexes`, `update_most_recents`, etc.), which already has an
+      # adapter instance sitting around and has no need to reach past it.
       def parent_join_foreign_key
         self.class.parent_join_foreign_key(parent_model.class, @association_name, transition_class)
       end
@@ -369,7 +329,11 @@ module Statesman
       end
 
       def add_after_commit_callback(from, to, transition)
-        defer_until_committed { @observer.execute(:after_commit, from, to, transition) }
+        transition_class.connection.add_transaction_record(
+          ActiveRecordAfterCommitWrap.new(transition_class.connection) do
+            @observer.execute(:after_commit, from, to, transition)
+          end,
+        )
       end
 
       def transitions_for_parent

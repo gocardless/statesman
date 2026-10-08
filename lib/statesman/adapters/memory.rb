@@ -8,7 +8,6 @@ module Statesman
     class Memory
       attr_reader :transition_class
       attr_reader :parent_model
-      attr_reader :observer
 
       # We only accept mode as a parameter to maintain a consistent interface
       # with other adapters which require it.
@@ -21,86 +20,54 @@ module Statesman
 
       # A single adapter instance is bound to one parent object (see #initialize), so
       # bulk writing across many parents can't be an instance method here — it has to
-      # take each object's own adapter instead. Guard failures never reach here — that
-      # validation always happens upstream, in BulkTransition#run_guards, before an item
-      # gets this far.
+      # take each object's own already-built transition and adapter instead.
       #
-      # items: an Enumerable of { object:, adapter:, metadata: }, where `adapter` is
-      # that object's own Adapters::Memory instance. Runs build -> before -> persist ->
-      # after -> after_commit for every item in turn, each phase rescued individually
-      # (except where documented) so one item's failure doesn't stop or lose track of
-      # the rest.
+      # items: an Enumerable of { object:, adapter:, transition: }, where `adapter` is
+      # that object's own Adapters::Memory instance and `transition` was already built
+      # via #build_transition (and had `before` run on it, by the caller). Guard/
+      # successor failures never reach here — that validation always happens upstream,
+      # in Machine.validate_bulk_transition, before an item is built at all.
       #
-      # before/after/after_commit are dispatched via each item's own adapter#observer —
-      # the very same Machine instance the single-object #create above already calls
-      # back through — not a separate callback lookup reimplemented here. Memory has no
-      # real transactions, so unlike Adapters::ActiveRecord there's nothing to batch and
-      # nothing to isolate: after/after_commit just run immediately, right where
-      # they're dispatched.
-      def self.bulk_create(items, from:, to:, on_failure: :collect, skip_before_callbacks: false,
-                           skip_after_callbacks: false, skip_after_commit_callbacks: false)
-        from = from.to_s
-        to = to.to_s
+      # `after`/`after_commit` are per-item callables built by Statesman::BulkTransition
+      # (the orchestrator), invoked here rather than by the orchestrator itself, once an
+      # item is known to be durably written (see BulkTransition#persist). This adapter has
+      # no real transaction, so unlike Adapters::ActiveRecord it just calls both
+      # immediately, in order, right after persisting — `from` isn't needed here (it's
+      # already baked into the built transition) but is accepted for interface parity.
+      #
+      # Persisting can still fail even once an item has passed upstream guard/
+      # successor validation (e.g. a write conflict on the real ActiveRecord
+      # adapter) — that kind of failure can only be observed at write time, not
+      # predicted in advance. Each item's persist is rescued individually so one
+      # item's failure doesn't stop or lose track of the rest: the failing item
+      # is recorded in Result#failed and every other item still gets persisted
+      # and recorded in Result#successful, keeping Result accurate either way. A raise
+      # from `after`/`after_commit` themselves is deliberately not rescued here, matching
+      # today's behaviour.
+      #
+      # `on_failure:` and `conflict_retry_attempts:` are accepted (and ignored) purely
+      # for interface parity with Adapters::ActiveRecord — this adapter has no chunked
+      # RecordNotUnique retry to bound or to govern the exhaustion behaviour of, so
+      # there's nothing for either option to do here; every failure is already reported
+      # per-item.
+      def self.bulk_create(items, from:, after:, after_commit:, on_failure: :collect, # rubocop:disable Lint/UnusedMethodArgument
+                           conflict_retry_attempts: nil) # rubocop:disable Lint/UnusedMethodArgument
         successful = []
         failed = []
 
         items.each do |item|
-          bulk_create_one(item, from, to, on_failure, skip_before_callbacks, skip_after_callbacks,
-                          skip_after_commit_callbacks, successful, failed)
+          item[:adapter].persist(item[:transition])
+        rescue StandardError => e
+          failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: e)
+          next
+        else
+          successful << item[:object]
+          after.call(item)
+          after_commit.call(item)
         end
 
         BulkTransition::Result.new(successful: successful, failed: failed)
       end
-
-      def self.bulk_create_one(item, from, to, on_failure, skip_before_callbacks, skip_after_callbacks,
-                               skip_after_commit_callbacks, successful, failed)
-        transition = build_for_bulk(item, from, to, failed)
-        return unless transition
-        return if !skip_before_callbacks && !run_before_for_bulk(item, from, to, transition, on_failure, failed)
-        return unless persist_for_bulk(item, transition, successful, failed)
-
-        run_after_for_bulk(item, from, to, transition, on_failure, failed) unless skip_after_callbacks
-        item[:adapter].observer.execute(:after_commit, from, to, transition) unless skip_after_commit_callbacks
-      end
-      private_class_method :bulk_create_one
-
-      def self.build_for_bulk(item, from, to, failed)
-        item[:adapter].build_transition(from, to, item[:metadata])
-      rescue StandardError => e
-        failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :build_transition, error: e)
-        nil
-      end
-      private_class_method :build_for_bulk
-
-      def self.run_before_for_bulk(item, from, to, transition, on_failure, failed)
-        item[:adapter].observer.execute(:before, from, to, transition)
-        true
-      rescue StandardError => e
-        raise if on_failure == :raise
-
-        failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :before_callback, error: e)
-        false
-      end
-      private_class_method :run_before_for_bulk
-
-      def self.persist_for_bulk(item, transition, successful, failed)
-        item[:adapter].persist(transition)
-        successful << item[:object]
-        true
-      rescue StandardError => e
-        failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: e)
-        false
-      end
-      private_class_method :persist_for_bulk
-
-      def self.run_after_for_bulk(item, from, to, transition, on_failure, failed)
-        item[:adapter].observer.execute(:after, from, to, transition)
-      rescue StandardError => e
-        raise if on_failure == :raise
-
-        failed << BulkTransition::Result::FailedItem.new(object: item[:object], reason: :after_callback, error: e)
-      end
-      private_class_method :run_after_for_bulk
 
       def create(from, to, metadata = {})
         from = from.to_s
