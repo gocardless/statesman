@@ -3,11 +3,14 @@
 require "spec_helper"
 
 describe Statesman::BulkTransition::V1, :active_record do
-  before(:all) do
+  before do
     # The shared MyActiveRecordModel fixture is wired via the older
     # `include ActiveRecordQueries[...]` form, which doesn't define `.transition_class`.
     # BulkTransition relies on the newer `configure_state_machine` convention (the same
-    # one `configure_cached_current_state` requires), so configure it here once.
+    # one `configure_cached_current_state` requires), so configure it here once. This
+    # runs regardless of adapter: the non-Postgres context below also needs
+    # `model_class.transition_class` to resolve, since V1#initialize reads it before
+    # it gets a chance to raise UnsupportedAdapterError.
     unless MyActiveRecordModel.respond_to?(:transition_class)
       MyActiveRecordModel.extend(Statesman::Adapters::TypeSafeActiveRecordQueries)
       MyActiveRecordModel.configure_state_machine(
@@ -19,6 +22,24 @@ describe Statesman::BulkTransition::V1, :active_record do
       MyActiveRecordModel.include(Statesman::Adapters::ConfigureCachedCurrentState)
       MyActiveRecordModel.configure_cached_current_state
     end
+
+    next unless postgres?
+
+    prepare_model_table
+    prepare_transitions_table
+
+    # Other specs redefine MyActiveRecordModel.transition_class without restoring it, so
+    # pin it here to stay independent of spec ordering.
+    allow(MyActiveRecordModel).to receive(:transition_class).
+      and_return(MyActiveRecordModelTransition)
+
+    # Add a free business column (not one of AR's "magic" created_on/updated_on/etc.
+    # timestamp columns, which insert_all auto-populates regardless of row content) so
+    # attributes_to_copy has something meaningful to carry forward in this spec.
+    ActiveRecord::Base.connection.execute(
+      "ALTER TABLE my_active_record_model_transitions ADD COLUMN extra_data text",
+    )
+    MyActiveRecordModelTransition.reset_column_information
   end
 
   # V1 is explicitly Postgres-only (see UnsupportedAdapterError in the class itself).
@@ -28,24 +49,6 @@ describe Statesman::BulkTransition::V1, :active_record do
   # this gem's own specs). The "on a non-Postgres adapter" context after this `if` is
   # the one thing that should run everywhere else instead.
   if postgres?
-    before do
-      prepare_model_table
-      prepare_transitions_table
-
-      # Other specs redefine MyActiveRecordModel.transition_class without restoring it, so
-      # pin it here to stay independent of spec ordering.
-      allow(MyActiveRecordModel).to receive(:transition_class).
-        and_return(MyActiveRecordModelTransition)
-
-      # Add a free business column (not one of AR's "magic" created_on/updated_on/etc.
-      # timestamp columns, which insert_all auto-populates regardless of row content) so
-      # attributes_to_copy has something meaningful to carry forward in this spec.
-      ActiveRecord::Base.connection.execute(
-        "ALTER TABLE my_active_record_model_transitions ADD COLUMN extra_data text",
-      )
-      MyActiveRecordModelTransition.reset_column_information
-    end
-
     let(:machine_class) { MyStateMachine }
 
     def create_model(initial_state: "initial", extra_data: nil)
@@ -55,6 +58,10 @@ describe Statesman::BulkTransition::V1, :active_record do
         extra_data: extra_data
       )
       model
+    end
+
+    def last_transition_for(id)
+      MyActiveRecordModel.find(id).my_active_record_model_transitions.order(:sort_key).last
     end
 
     describe "#call!" do
@@ -69,6 +76,15 @@ describe Statesman::BulkTransition::V1, :active_record do
         transitioned = bulk.call!(in_initial + [in_succeeded], metadata: { "foo" => "bar" })
 
         expect(transitioned).to match_array(in_initial)
+      end
+
+      it "applies the metadata and most_recent flag to each transitioned parent" do
+        in_initial = Array.new(3) { create_model.id }
+        bulk = described_class.new(
+          model_class: MyActiveRecordModel, machine_class: machine_class,
+          from: :initial, to: :succeeded
+        )
+        bulk.call!(in_initial, metadata: { "foo" => "bar" })
 
         MyActiveRecordModel.where(id: in_initial).each do |model|
           last = model.my_active_record_model_transitions.order(:sort_key).last
@@ -76,11 +92,17 @@ describe Statesman::BulkTransition::V1, :active_record do
           expect(last.most_recent).to be(true)
           expect(last.metadata).to eq({ "foo" => "bar" })
         end
+      end
 
-        # untouched - was already in `succeeded`, not `initial`
-        still = MyActiveRecordModel.find(in_succeeded).
-          my_active_record_model_transitions.order(:sort_key).last
-        expect(still.sort_key).to eq(10)
+      it "leaves parents not currently in the from state untouched" do
+        in_succeeded = create_model(initial_state: "succeeded").id
+        bulk = described_class.new(
+          model_class: MyActiveRecordModel, machine_class: machine_class,
+          from: :initial, to: :succeeded
+        )
+        bulk.call!([in_succeeded], metadata: { "foo" => "bar" })
+
+        expect(last_transition_for(in_succeeded).sort_key).to eq(10)
       end
 
       it "is idempotent - re-running skips parents no longer in the from state" do
@@ -119,9 +141,7 @@ describe Statesman::BulkTransition::V1, :active_record do
         )
         bulk.call!([id], attributes_to_copy: ["extra_data"])
 
-        last = MyActiveRecordModel.find(id).
-          my_active_record_model_transitions.order(:sort_key).last
-        expect(last.extra_data).to eq("keep-me")
+        expect(last_transition_for(id).extra_data).to eq("keep-me")
       end
 
       it "does not carry forward attributes that weren't requested" do
@@ -132,9 +152,7 @@ describe Statesman::BulkTransition::V1, :active_record do
         )
         bulk.call!([id]) # no attributes_to_copy
 
-        last = MyActiveRecordModel.find(id).
-          my_active_record_model_transitions.order(:sort_key).last
-        expect(last.extra_data).to be_nil
+        expect(last_transition_for(id).extra_data).to be_nil
       end
 
       it "raises ValidationError for unknown attributes_to_copy columns" do
@@ -169,8 +187,7 @@ describe Statesman::BulkTransition::V1, :active_record do
           bulk.call!([id]) { |_rows| raise "boom" }
         end.to raise_error("boom")
 
-        last = MyActiveRecordModel.find(id).
-          my_active_record_model_transitions.order(:sort_key).last
+        last = last_transition_for(id)
         expect(last.to_state).to eq("initial")
         expect(last.most_recent).to be(true)
       end
@@ -211,13 +228,8 @@ describe Statesman::BulkTransition::V1, :active_record do
           metadata_per_id: { overridden_id => { "origin" => "api" } },
         )
 
-        overridden = MyActiveRecordModel.find(overridden_id).
-          my_active_record_model_transitions.order(:sort_key).last
-        default = MyActiveRecordModel.find(default_id).
-          my_active_record_model_transitions.order(:sort_key).last
-
-        expect(overridden.metadata).to eq({ "origin" => "api" })
-        expect(default.metadata).to eq({ "origin" => "gocardless" })
+        expect(last_transition_for(overridden_id).metadata).to eq({ "origin" => "api" })
+        expect(last_transition_for(default_id).metadata).to eq({ "origin" => "gocardless" })
       end
 
       it "overrides a copied attribute per-parent via attributes_per_id" do
@@ -234,13 +246,8 @@ describe Statesman::BulkTransition::V1, :active_record do
           attributes_per_id: { overridden_id => { "extra_data" => "looked-up-value" } },
         )
 
-        overridden = MyActiveRecordModel.find(overridden_id).
-          my_active_record_model_transitions.order(:sort_key).last
-        default = MyActiveRecordModel.find(default_id).
-          my_active_record_model_transitions.order(:sort_key).last
-
-        expect(overridden.extra_data).to eq("looked-up-value")
-        expect(default.extra_data).to eq("from-previous-row")
+        expect(last_transition_for(overridden_id).extra_data).to eq("looked-up-value")
+        expect(last_transition_for(default_id).extra_data).to eq("from-previous-row")
       end
 
       it "yields only attributes_for_callback when given, instead of the attributes_to_copy default" do
@@ -289,7 +296,7 @@ describe Statesman::BulkTransition::V1, :active_record do
   end
 
   context "on a non-PostgreSQL adapter" do
-    before { skip "only relevant on non-Postgres adapters" if postgres? }
+    before { skip "only relevant on non-Postgres adapters" if postgres? } # rubocop:disable RSpec/Pending
 
     it "raises UnsupportedAdapterError instead of silently producing wrong SQL" do
       expect do
