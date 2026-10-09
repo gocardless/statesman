@@ -60,10 +60,12 @@ module Statesman
       class BulkCreate
         include UniformAdapter
 
-        # Bounds the RecordNotUnique retry in #write_chunk — see the rescue there. Each
-        # retry's own pre-insert recheck should always have excluded the previous
-        # attempt's racer, so more than a couple of attempts means something is
-        # persistently wrong rather than an ordinary transient race.
+        # Default bound on the RecordNotUnique retry in #write_chunk — see the rescue
+        # there. Each retry's own pre-insert recheck should always have excluded the
+        # previous attempt's racer, so more than a couple of attempts means something is
+        # persistently wrong rather than an ordinary transient race. Callers can override
+        # this via the `conflict_retry_attempts:` option threaded down from
+        # BulkTransition.call.
         MAX_INSERT_ATTEMPTS = 3
 
         # Rails recognises both the modern (created_at/updated_at) and legacy
@@ -73,14 +75,15 @@ module Statesman
         TIMESTAMP_COLUMNS = %w[created_at created_on updated_at updated_on].freeze
 
         def self.call(items, from:, to:, on_failure:, skip_before_callbacks:, skip_after_callbacks:,
-                      skip_after_commit_callbacks:)
+                      skip_after_commit_callbacks:, conflict_retry_attempts: MAX_INSERT_ATTEMPTS)
           new(items, from: from, to: to, on_failure: on_failure, skip_before_callbacks: skip_before_callbacks,
                      skip_after_callbacks: skip_after_callbacks,
-                     skip_after_commit_callbacks: skip_after_commit_callbacks).call
+                     skip_after_commit_callbacks: skip_after_commit_callbacks,
+                     conflict_retry_attempts: conflict_retry_attempts).call
         end
 
         def initialize(items, from:, to:, on_failure:, skip_before_callbacks:, skip_after_callbacks:,
-                       skip_after_commit_callbacks:)
+                       skip_after_commit_callbacks:, conflict_retry_attempts: MAX_INSERT_ATTEMPTS)
           @items = items
           @from = from.to_s
           @to = to.to_s
@@ -88,6 +91,7 @@ module Statesman
           @skip_before_callbacks = skip_before_callbacks
           @skip_after_callbacks = skip_after_callbacks
           @skip_after_commit_callbacks = skip_after_commit_callbacks
+          @conflict_retry_attempts = conflict_retry_attempts
         end
 
         def call
@@ -113,7 +117,7 @@ module Statesman
         private
 
         attr_reader :items, :from, :to, :on_failure, :skip_before_callbacks, :skip_after_callbacks,
-                    :skip_after_commit_callbacks
+                    :skip_after_commit_callbacks, :conflict_retry_attempts
 
         # ---- 1. BUILD ----
 
@@ -187,17 +191,31 @@ module Statesman
               successful.concat(writable.map { |item| item[:object] })
             end
           rescue ::ActiveRecord::RecordNotUnique
-            raise if attempt >= MAX_INSERT_ATTEMPTS
-
             # Rescued outside the transaction block, not around insert_all! within it:
             # on Postgres a failed statement leaves the transaction unusable until it's
             # rolled back, which only happens once the error escapes `transaction do
             # ... end`. Retrying the whole chunk (not a pre-filtered subset) is
             # deliberate: the retry's own flip + recheck re-discovers whoever just
             # raced and excludes them, with no need to parse the exception.
-            retried = write_chunk(survivors, attempt: attempt + 1)
-            successful.concat(retried.successful)
-            failed.concat(retried.failed)
+            if attempt < conflict_retry_attempts
+              retried = write_chunk(survivors, attempt: attempt + 1)
+              successful.concat(retried.successful)
+              failed.concat(retried.failed)
+            elsif on_failure == :raise
+              # `raise` with no explicit cause, inside this rescue, automatically sets
+              # #cause to the RecordNotUnique being handled.
+              raise Statesman::BulkTransitionConflictError,
+                    "exceeded #{conflict_retry_attempts} conflict retry attempt(s) persisting " \
+                    "#{survivors.size} item(s)"
+            else
+              # on_failure: :collect (default): give up retrying and surface every
+              # survivor still in this chunk as a :conflict, rather than raising the raw
+              # AR error. We can't tell from RecordNotUnique alone which specific parent(s)
+              # caused the final race, so the whole exhausted chunk is reported as conflicted.
+              failed.concat(survivors.map do |item|
+                BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict)
+              end)
+            end
           end
 
           BulkTransition::Result.new(successful: successful, failed: failed)

@@ -25,11 +25,13 @@ module Statesman
       # `items` is an Enumerable of { object:, adapter:, metadata: }, all sharing one
       # bucket's `from`/`to` state.
       def self.bulk_create(items, from:, to:, on_failure: :collect, skip_before_callbacks: false,
-                           skip_after_callbacks: false, skip_after_commit_callbacks: false)
+                           skip_after_callbacks: false, skip_after_commit_callbacks: false,
+                           conflict_retry_attempts: BulkCreate::MAX_INSERT_ATTEMPTS)
         BulkCreate.call(items, from: from, to: to, on_failure: on_failure,
                                skip_before_callbacks: skip_before_callbacks,
                                skip_after_callbacks: skip_after_callbacks,
-                               skip_after_commit_callbacks: skip_after_commit_callbacks)
+                               skip_after_commit_callbacks: skip_after_commit_callbacks,
+                               conflict_retry_attempts: conflict_retry_attempts)
       end
 
       def initialize(transition_class, parent_model, observer, options = {})

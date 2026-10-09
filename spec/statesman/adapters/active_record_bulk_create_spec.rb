@@ -318,12 +318,52 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         expect(model_b.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["y"])
         expect(model_a.reload.my_active_record_model_transitions).to be_empty
       end
+    end
 
-      it "gives up and raises after MAX_INSERT_ATTEMPTS consecutive conflicts" do
+    context "once retries are exhausted (insert_all! persistently raises RecordNotUnique)" do
+      let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
+      let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
+      let(:items) { [item_for(model_a), item_for(model_b)] }
+
+      before do
         allow_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!).
           and_raise(ActiveRecord::RecordNotUnique, "persistent")
+      end
 
-        expect { result }.to raise_error(ActiveRecord::RecordNotUnique)
+      it "surfaces every item still in the chunk as :conflict, without raising, " \
+         "by default (on_failure: :collect)" do
+        expect(result.successful).to eq([])
+        expect(result.failed.map(&:object)).to contain_exactly(model_a, model_b)
+        expect(result.failed.map(&:reason)).to all(eq(:conflict))
+      end
+
+      context "with on_failure: :raise" do
+        subject(:result) { described_class.bulk_create(items, from: "x", to: "y", on_failure: :raise) }
+
+        it "raises BulkTransitionConflictError, wrapping the original RecordNotUnique as #cause" do
+          expect { result }.to raise_error(Statesman::BulkTransitionConflictError) do |error|
+            expect(error.cause).to be_a(ActiveRecord::RecordNotUnique)
+          end
+        end
+      end
+
+      context "with a custom conflict_retry_attempts" do
+        subject(:result) { described_class.bulk_create(items, from: "x", to: "y", conflict_retry_attempts: 1) }
+
+        let(:attempt_count) { { value: 0 } }
+
+        before do
+          counter = attempt_count
+          allow_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!) do
+            counter[:value] += 1
+            raise ActiveRecord::RecordNotUnique, "persistent"
+          end
+        end
+
+        it "gives up after exactly that many attempts, not the default MAX_INSERT_ATTEMPTS" do
+          expect(result.failed.map(&:reason)).to all(eq(:conflict))
+          expect(attempt_count[:value]).to eq(1)
+        end
       end
     end
 

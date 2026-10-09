@@ -261,6 +261,37 @@ describe Statesman::BulkTransition do
       end
     end
 
+    describe "conflict_retry_attempts" do
+      let(:items) { build_items(2) }
+
+      it "defaults to 3, matching Adapters::ActiveRecord::BulkCreate::MAX_INSERT_ATTEMPTS" do
+        expect(Statesman::Adapters::Memory).to receive(:bulk_create).
+          with(anything, hash_including(conflict_retry_attempts: 3)).and_call_original
+
+        described_class.call(items, from_state: :pending, to_state: :processing)
+      end
+
+      it "forwards a custom value through to adapter_class.bulk_create" do
+        expect(Statesman::Adapters::Memory).to receive(:bulk_create).
+          with(anything, hash_including(conflict_retry_attempts: 7)).and_call_original
+
+        described_class.call(items, from_state: :pending, to_state: :processing, conflict_retry_attempts: 7)
+      end
+
+      it "raises immediately for a non-positive value, regardless of on_failure" do
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing,
+                                      conflict_retry_attempts: 0, on_failure: :collect)
+        end.to raise_error(ArgumentError, /conflict_retry_attempts/)
+      end
+
+      it "raises immediately for a non-integer value" do
+        expect do
+          described_class.call(items, from_state: :pending, to_state: :processing, conflict_retry_attempts: "3")
+        end.to raise_error(ArgumentError, /conflict_retry_attempts/)
+      end
+    end
+
     describe "successor validation" do
       subject(:call) do
         described_class.call(

@@ -41,6 +41,16 @@ describe "Exceptions" do
     end
   end
 
+  describe "BulkTransitionConflictError" do
+    subject(:error) { Statesman::BulkTransitionConflictError.new }
+
+    its(:message) { is_expected.to eq("Statesman::BulkTransitionConflictError") }
+
+    its "string matches its message" do
+      expect(error.to_s).to eq(error.message)
+    end
+  end
+
   describe "MissingTransitionAssociation" do
     subject(:error) { Statesman::MissingTransitionAssociation.new }
 
