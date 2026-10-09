@@ -67,6 +67,7 @@ module Statesman
 
           define_in_state(base, query_builder)
           define_not_in_state(base, query_builder)
+          define_bulk_transition_to!(base)
 
           define_method(:reload) do |*a|
             instance = super(*a)
@@ -92,8 +93,15 @@ module Statesman
           base.define_singleton_method(:in_state) do |*states|
             states = states.flatten
 
-            joins(most_recent_transition_join).
+            relation = joins(most_recent_transition_join).
               where(query_builder.states_where(states), states)
+
+            # Tags the relation with the state(s) it was built from, purely so a chained
+            # .bulk_transition_to! can read back what .in_state was called with (see
+            # #define_bulk_transition_to!) — Rails relations don't expose that otherwise.
+            # No effect on this relation's own query/results.
+            from_states = states.map(&:to_s)
+            relation.extending(Module.new { define_method(:bulk_transition_from_states) { from_states } })
           end
         end
 
@@ -104,6 +112,73 @@ module Statesman
             joins(most_recent_transition_join).
               where("NOT (#{query_builder.states_where(states)})", states)
           end
+        end
+
+        # Model.in_state(:x).bulk_transition_to!(:y, ...) — reached via Rails' usual
+        # relation-delegates-unknown-method-back-to-class mechanism (`scoping`), so inside
+        # this method `self` is the model class and `current_scope` is the exact tagged
+        # relation .in_state returned (see #define_in_state). Reuses
+        # Statesman::BulkTransition.call/Adapters::ActiveRecord::BulkCreate entirely for the
+        # actual write — this is pure composition on top, no new write mechanics.
+        #
+        # machine_method: defaults to the established #state_machine convention (every
+        # fixture in spec/support/active_record.rb and the README's own example define one)
+        # rather than requiring new include-time configuration; override it for a model with
+        # more than one state machine (e.g. #state_machine_a/#state_machine_b).
+        def define_bulk_transition_to!(base)
+          class_methods = self
+
+          base.define_singleton_method(:bulk_transition_to!) do |new_state, batch_size: 100,
+                                                                 machine_method: :state_machine,
+                                                                 **bulk_transition_options|
+            class_methods.send(:validate_bulk_transition_to!, batch_size: batch_size,
+                                                              machine_method: machine_method, base: self)
+
+            scope = current_scope
+            from_state = class_methods.send(:bulk_transition_from_state, scope)
+            primary_key_name = primary_key
+            ids = scope.pluck(primary_key_name)
+
+            results = ids.each_slice(batch_size).map do |id_batch|
+              # unscoped, not current_scope re-applied: a row that left the in_state scope
+              # between the snapshot read above and this chunk's hydration must still be
+              # included here, so BulkCreate's existing staleness check (built in WU3)
+              # reports it as :conflict instead of it silently vanishing from the batch
+              # unreported.
+              items = unscoped.where(primary_key_name => id_batch).map do |record|
+                Statesman::BulkTransition::Item.new(machine: record.send(machine_method))
+              end
+              Statesman::BulkTransition.call(items, from_state: from_state, to_state: new_state,
+                                                    **bulk_transition_options)
+            end
+
+            Statesman::BulkTransition::Result.new(
+              successful: results.flat_map(&:successful),
+              failed: results.flat_map(&:failed),
+            )
+          end
+        end
+
+        def validate_bulk_transition_to!(batch_size:, machine_method:, base:)
+          unless batch_size.is_a?(Integer) && batch_size.positive?
+            raise ArgumentError, "batch_size must be a positive integer, got: #{batch_size.inspect}"
+          end
+
+          return if base.method_defined?(machine_method) || base.private_method_defined?(machine_method)
+
+          raise NotImplementedError, "#{base} must define a ##{machine_method} method returning its " \
+                                     "Statesman::Machine instance to use .bulk_transition_to!"
+        end
+
+        # scope is current_scope at the point .bulk_transition_to! was called — see
+        # #define_in_state for how it comes to carry bulk_transition_from_states at all.
+        def bulk_transition_from_state(scope)
+          unless scope.respond_to?(:bulk_transition_from_states) && scope.bulk_transition_from_states.one?
+            raise ArgumentError, "bulk_transition_to! must be called on a relation built via " \
+                                 "in_state(:a_single_state)"
+          end
+
+          scope.bulk_transition_from_states.first
         end
       end
 
