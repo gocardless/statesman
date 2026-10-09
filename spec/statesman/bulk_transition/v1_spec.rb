@@ -206,6 +206,19 @@ describe Statesman::BulkTransition::V1, :active_record do
         expect(yielded.first["to_state"]).to eq("succeeded")
       end
 
+      it "invokes a callback object's #call via normal method dispatch, not bare yield" do
+        id = create_model.id
+        bulk = described_class.new(
+          model_class: MyActiveRecordModel, machine_class: machine_class,
+          from: :initial, to: :succeeded
+        )
+        callback = ->(_rows) {}
+
+        expect(callback).to receive(:call).once.and_call_original
+
+        bulk.call!([id], &callback)
+      end
+
       it "returns an empty array and does nothing for an empty id list" do
         bulk = described_class.new(
           model_class: MyActiveRecordModel, machine_class: machine_class,

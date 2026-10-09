@@ -62,13 +62,14 @@ module Statesman
       #   carried forward from that parent's own flipped row - for a value that can't be
       #   derived from the previous transition (e.g. a value looked up from an
       #   association the caller already has loaded).
-      # @yield [inserted_rows] optional, runs inside the same transaction after rows are
-      #   flipped and inserted (and after the cached_current_state bulk update, if any).
-      #   An exception here rolls back the entire batch - nothing is committed.
+      # @param block [Proc, nil] optional, called with the inserted rows inside the same
+      #   transaction, after rows are flipped and inserted (and after the
+      #   cached_current_state bulk update, if any). An exception here rolls back the
+      #   entire batch - nothing is committed.
       # @return [Array] parent ids that were actually transitioned.
       def call!(
         parent_ids, metadata: {}, attributes_to_copy: [], attributes_for_callback: nil,
-        metadata_per_id: nil, attributes_per_id: nil
+        metadata_per_id: nil, attributes_per_id: nil, &block
       )
         return [] if parent_ids.empty?
 
@@ -91,7 +92,7 @@ module Statesman
 
           update_cached_current_state!(transitioned_ids)
 
-          yield(inserted_rows) if block_given?
+          block&.call(inserted_rows)
         end
 
         transitioned_ids
