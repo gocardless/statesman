@@ -146,6 +146,14 @@ describe Statesman::Adapters::ActiveRecordQueries, :active_record do
         expect(expected.map { |m| m.reload.state_machine.current_state }).to all(eq("succeeded"))
       end
 
+      it "composes with an arbitrary scope chained before in_state" do
+        result = MyActiveRecordModel.where(id: initial_state_model.id).
+          in_state(:initial).bulk_transition_to!(:succeeded)
+
+        expect(result.successful).to contain_exactly(initial_state_model)
+        expect(returned_to_initial_model.reload.state_machine.current_state).to eq("initial")
+      end
+
       it "processes every matching row across multiple chunks, with no skips or duplicates" do
         result = MyActiveRecordModel.in_state(:initial).bulk_transition_to!(:succeeded, batch_size: 1)
 
