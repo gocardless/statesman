@@ -182,13 +182,16 @@ module Statesman
           failed = []
 
           begin
-            transition_class.transaction(requires_new: true) do
+            # Assigned from the block's return value, so nothing is recorded unless the
+            # transaction actually completes: a RecordNotUnique from persist_writable!
+            # rolls it back, and the retry would otherwise re-add the same raced items
+            # to `failed`.
+            successful, failed = transition_class.transaction(requires_new: true) do
               writable, raced = flip_and_partition(survivors)
-              failed.concat(raced)
-              next if writable.empty?
+              next [[], raced] if writable.empty?
 
               persist_writable!(writable)
-              successful.concat(writable.map { |item| item[:object] })
+              [writable.map { |item| item[:object] }, raced]
             end
           rescue ::ActiveRecord::RecordNotUnique
             # Rescued outside the transaction block, not around insert_all! within it:
@@ -259,9 +262,13 @@ module Statesman
         # (true of every guarded bulk transition) would keep reporting that stale,
         # pre-write transition for the rest of its lifetime, even though the row it's
         # backed by was just updated here. #reset clears that memoized value so the
-        # next #current_state/#last_transition call re-queries instead.
+        # next #current_state/#last_transition call re-queries instead. The same goes for
+        # a parent's already-loaded history association, which insert_all! bypasses.
         def reset_adapter_caches!(writable)
-          writable.each { |item| item[:adapter].reset }
+          writable.each do |item|
+            item[:adapter].reset
+            item[:object].public_send(item[:adapter].association_name).reset
+          end
         end
 
         def register_after_commit(writable)

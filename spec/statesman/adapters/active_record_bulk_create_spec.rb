@@ -62,6 +62,15 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       expect { transition }.to_not change(MyActiveRecordModelTransition, :count)
     end
 
+    it "does not attach the transition to the parent's association" do
+      transition
+      expect(model.my_active_record_model_transitions.target).to be_empty
+    end
+
+    it "sets the parent's foreign key" do
+      expect(transition.my_active_record_model_id).to eq(model.id)
+    end
+
     context "for an STI transition class" do
       subject(:transition) do
         adapter_for(model, transition_class: StiAActiveRecordModelTransition,
@@ -110,6 +119,17 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
       it "applies the given metadata" do
         described_class.bulk_create([item_for(model_a, metadata: { "k" => "v" })], from: "x", to: "y")
         expect(model_a.reload.my_active_record_model_transitions.first.metadata).to eq({ "k" => "v" })
+      end
+
+      it "doesn't insert a duplicate transition when the parent is saved afterwards" do
+        result
+        expect { model_a.save! }.to_not change(MyActiveRecordModelTransition, :count)
+      end
+
+      it "reflects the new transition in a history loaded before the write" do
+        expect(model_a.my_active_record_model_transitions.to_a).to eq([])
+        result
+        expect(model_a.my_active_record_model_transitions.map(&:to_state)).to eq(["y"])
       end
     end
 
@@ -317,6 +337,40 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         result
         expect(model_b.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["y"])
         expect(model_a.reload.my_active_record_model_transitions).to be_empty
+      end
+    end
+
+    context "when a parent raced on an attempt that then rolled back on RecordNotUnique" do
+      let(:model_a) { MyActiveRecordModel.create(current_state: "x") }
+      let(:model_b) { MyActiveRecordModel.create(current_state: "x") }
+      let(:items) { [item_for(model_a), item_for(model_b)] }
+
+      # model_a is found raced by the first attempt's recheck (call 2) *and* the retry's
+      # (call 3); the first attempt then rolls back when insert_all! raises. The raced
+      # parent must still be reported once, not once per attempt.
+      before do
+        attempt = 0
+        allow_any_instance_of(described_class::BulkCreate).to receive(:most_recent_rows_for).
+          and_wrap_original do |original, parent_ids|
+            attempt += 1
+            rows = original.call(parent_ids)
+            attempt >= 2 ? rows.merge(model_a.id => { id: -1, sort_key: 999, to_state: "x" }) : rows
+          end
+
+        raised = false
+        allow_any_instance_of(described_class::BulkCreate).to receive(:insert_survivors!).
+          and_wrap_original do |original, *args|
+            unless raised
+              raised = true
+              raise ActiveRecord::RecordNotUnique, "simulated race"
+            end
+            original.call(*args)
+          end
+      end
+
+      it "lists the raced parent in failed exactly once" do
+        expect(result.failed.map(&:object)).to eq([model_a])
+        expect(result.successful).to eq([model_b])
       end
     end
 
