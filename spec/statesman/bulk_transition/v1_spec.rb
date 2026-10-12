@@ -155,6 +155,44 @@ describe Statesman::BulkTransition::V1, :active_record do
         expect(last_transition_for(id).extra_data).to be_nil
       end
 
+      describe "flip query RETURNING clause" do
+        def flip_sql_for(bulk, id, **options)
+          statements = []
+          subscriber = ->(*, payload) do
+            statements << payload[:sql] if /\AUPDATE\s+"?my_active_record_model_transitions/i.match?(payload[:sql])
+          end
+          ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+            bulk.call!([id], **options)
+          end
+          statements.find { |sql| sql.include?("most_recent = FALSE") || sql.include?("most_recent = false") }
+        end
+
+        let(:bulk) do
+          described_class.new(
+            model_class: MyActiveRecordModel, machine_class: machine_class,
+            from: :initial, to: :succeeded
+          )
+        end
+
+        it "returns only the carried columns, not *" do
+          id = create_model(extra_data: "x").id
+          sql = flip_sql_for(bulk, id, attributes_to_copy: ["extra_data"])
+          returning = sql[/RETURNING (.*)\z/m, 1]
+
+          expect(sql).to_not include("RETURNING *")
+          expect(returning.split(", ")).to contain_exactly(
+            '"my_active_record_model_id"', '"sort_key"', '"extra_data"'
+          )
+        end
+
+        it "does not return columns that were not requested" do
+          id = create_model(extra_data: "x").id
+          sql = flip_sql_for(bulk, id, attributes_to_copy: [])
+
+          expect(sql[/RETURNING (.*)\z/m, 1]).to_not include("extra_data")
+        end
+      end
+
       it "raises ValidationError for unknown attributes_to_copy columns" do
         id = create_model.id
         bulk = described_class.new(

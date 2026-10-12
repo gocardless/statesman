@@ -81,7 +81,7 @@ module Statesman
         transitioned_ids = []
 
         ActiveRecord::Base.transaction(requires_new: true) do
-          flipped_rows = flip_most_recent!(parent_ids, now)
+          flipped_rows = flip_most_recent!(parent_ids, now, attributes_to_copy)
           next if flipped_rows.empty?
 
           inserted_rows = insert_new_transitions!(
@@ -136,9 +136,14 @@ module Statesman
       # between this statement starting and acquiring its row lock causes the WHERE
       # clause to re-evaluate against the latest committed row on wake - so that parent
       # is silently excluded here, never corrupted.
-      def flip_most_recent!(parent_ids, now)
+      def flip_most_recent!(parent_ids, now, attributes_to_copy)
         quoted_table = transition_class.quoted_table_name
         quoted_fk = transition_class.connection.quote_column_name(parent_foreign_key)
+        # Not `RETURNING *`: only the carried columns are used afterwards, and a wider
+        # result set is costly on large batches.
+        returning = carried_columns(attributes_to_copy).
+          map { |column| transition_class.connection.quote_column_name(column) }.
+          join(", ")
 
         sql = transition_class.sanitize_sql_array([
           <<~SQL.squish,
@@ -147,7 +152,7 @@ module Statesman
             WHERE to_state = ?
               AND most_recent = true
               AND #{quoted_fk} IN (?)
-            RETURNING *
+            RETURNING #{returning}
           SQL
           now, from, parent_ids
         ])
@@ -155,11 +160,15 @@ module Statesman
         transition_class.connection.exec_query(sql).to_a
       end
 
+      def carried_columns(attributes_to_copy)
+        ([parent_foreign_key, "sort_key"] + attributes_to_copy).uniq
+      end
+
       def insert_new_transitions!(
         flipped_rows, metadata, attributes_to_copy, attributes_for_callback, now,
         metadata_per_id, attributes_per_id
       )
-        carried_columns = ([parent_foreign_key, "sort_key"] + attributes_to_copy).uniq
+        carried = carried_columns(attributes_to_copy)
         include_from_state = transition_class.has_attribute?(:from_state)
 
         rows = flipped_rows.map do |row|
@@ -167,7 +176,7 @@ module Statesman
           row_metadata = merge_per_id(metadata, metadata_per_id, id)
           row_overrides = merge_per_id({}, attributes_per_id, id)
 
-          new_row = row.slice(*carried_columns).merge(row_overrides).merge(
+          new_row = row.slice(*carried).merge(row_overrides).merge(
             "to_state" => to,
             "metadata" => row_metadata,
             "most_recent" => true,
@@ -179,7 +188,7 @@ module Statesman
           new_row
         end
 
-        returning_columns = (attributes_for_callback&.map(&:to_s) || (carried_columns + ["to_state"])).uniq
+        returning_columns = (attributes_for_callback&.map(&:to_s) || (carried + ["to_state"])).uniq
         transition_class.insert_all(rows, returning: returning_columns).to_a
       rescue ActiveRecord::RecordNotUnique => e
         # One conflicting row aborts the whole batch - this is an accepted V1 trade-off,
