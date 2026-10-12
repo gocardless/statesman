@@ -241,6 +241,11 @@ describe Statesman::Adapters::ActiveRecordQueries, :active_record do
           to raise_error(ArgumentError, /in_state/)
       end
 
+      it "raises when in_state is chained twice, rather than using the last state as from_state" do
+        expect { MyActiveRecordModel.in_state(:initial).in_state(:failed).bulk_transition_to!(:succeeded) }.
+          to raise_error(ArgumentError, /in_state/)
+      end
+
       context "when the model doesn't define #state_machine" do
         before do
           stub_const("ModelWithoutStateMachine", Class.new(ActiveRecord::Base) do

@@ -107,9 +107,13 @@ module Statesman
           return BulkTransition::Result.new(failed: failed) if ready.empty?
 
           result = write_chunk(ready)
-          raise result.failed.first.error if on_failure == :raise && result.failed.any?
 
+          # Dispatched before a :raise below, not after: the chunk's other survivors have
+          # already committed (and their after_commit already fired, see #write_chunk), so
+          # skipping their `after` would leave the two callback phases inconsistent for
+          # rows that are durably written.
           after_failed = dispatch_after_callbacks(ready, result)
+          raise result.failed.first.error if on_failure == :raise && result.failed.any?
 
           BulkTransition::Result.new(successful: result.successful, failed: failed + result.failed + after_failed)
         end
@@ -193,7 +197,7 @@ module Statesman
               persist_writable!(writable)
               [writable.map { |item| item[:object] }, raced]
             end
-          rescue ::ActiveRecord::RecordNotUnique
+          rescue ::ActiveRecord::RecordNotUnique => e
             # Rescued outside the transaction block, not around insert_all! within it:
             # on Postgres a failed statement leaves the transaction unusable until it's
             # rolled back, which only happens once the error escapes `transaction do
@@ -214,14 +218,23 @@ module Statesman
               # on_failure: :collect (default): give up retrying and surface every
               # survivor still in this chunk as a :conflict, rather than raising the raw
               # AR error. We can't tell from RecordNotUnique alone which specific parent(s)
-              # caused the final race, so the whole exhausted chunk is reported as conflicted.
-              failed.concat(survivors.map do |item|
-                BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict)
-              end)
+              # caused the final race, so the whole exhausted chunk is reported as conflicted
+              # — the error says as much, so a caller reading #error isn't told a specific
+              # parent was at fault when it may only have been collateral.
+              failed.concat(survivors.map { |item| exhausted_retries_failure(item, e) })
             end
           end
 
           BulkTransition::Result.new(successful: successful, failed: failed)
+        end
+
+        def exhausted_retries_failure(item, cause)
+          error = Statesman::TransitionConflictError.new(
+            "#{item[:object].class} #{item[:object].id.inspect} was not transitioned: its chunk " \
+            "kept hitting a unique-constraint conflict after #{conflict_retry_attempts} attempt(s) " \
+            "(#{cause.message}); this item may not itself be the one that conflicted",
+          )
+          BulkTransition::Result::FailedItem.new(object: item[:object], reason: :conflict, error: error)
         end
 
         # `item[:most_recent_id]` is nil for a parent that had no history as of

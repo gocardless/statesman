@@ -99,8 +99,15 @@ module Statesman
             # Tags the relation with the state(s) it was built from, purely so a chained
             # .bulk_transition_to! can read back what .in_state was called with (see
             # #define_bulk_transition_to!) — Rails relations don't expose that otherwise.
-            # No effect on this relation's own query/results.
-            from_states = states.map(&:to_s)
+            # No effect on this relation's own query/results. Accumulates across chained
+            # in_state calls (their SQL conditions are ANDed, so the relation is only
+            # satisfiable by a row in every one of those states) rather than keeping just
+            # the last call's, so .bulk_transition_to! sees more than one state and
+            # raises instead of silently treating the last one as `from`.
+            previous_scope = current_scope
+            previous_states =
+              previous_scope.respond_to?(:bulk_transition_from_states) ? previous_scope.bulk_transition_from_states : []
+            from_states = previous_states + states.map(&:to_s)
             relation.extending(Module.new { define_method(:bulk_transition_from_states) { from_states } })
           end
         end

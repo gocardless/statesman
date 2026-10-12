@@ -258,6 +258,15 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
           expect { result }.to raise_error(Statesman::TransitionConflictError)
           expect(model_b.reload.my_active_record_model_transitions.pluck(:to_state)).to eq(["y"])
         end
+
+        it "still runs `after` for the survivors that committed, so their callbacks stay consistent" do
+          after_calls = []
+          # x -> y only: the simulated racer's own x -> z write also fires `after`.
+          machine_class.after_transition(from: :x, to: :y) { |object, _transition| after_calls << object }
+
+          expect { result }.to raise_error(Statesman::TransitionConflictError)
+          expect(after_calls).to eq([model_b])
+        end
       end
     end
 
@@ -389,6 +398,11 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
         expect(result.successful).to eq([])
         expect(result.failed.map(&:object)).to contain_exactly(model_a, model_b)
         expect(result.failed.map(&:reason)).to all(eq(:conflict))
+      end
+
+      it "gives each failure a TransitionConflictError describing the exhausted retries" do
+        expect(result.failed.map(&:error)).to all(be_a(Statesman::TransitionConflictError))
+        expect(result.failed.first.error.message).to match(/3 attempt\(s\).*persistent/)
       end
 
       context "with on_failure: :raise" do
