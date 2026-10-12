@@ -87,7 +87,13 @@ module Statesman
         }
         attributes[:from_state] = from.to_s if @transition_class.has_attribute?(:from_state)
 
-        transitions_for_parent.build(attributes)
+        # Deliberately not `transitions_for_parent.build` (nor `.scope.new`, which an
+        # AssociationRelation routes back through `build`): that would add the record to
+        # the parent's association target. bulk_create persists it with insert_all! and
+        # swaps in a separate hydrated instance, so an attached unsaved original would be
+        # autosaved again by a later `parent.save`. The scope's create attributes still
+        # supply the parent's foreign key.
+        @transition_class.new(transitions_for_parent.scope_for_create.merge(attributes))
       end
 
       def history(force_reload: false)
