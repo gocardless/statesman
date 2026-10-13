@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Statesman
-  # Bulk, race-safe state transitions for ActiveRecord + PostgreSQL.
+  # Bulk, race-safe state transitions for ActiveRecord (PostgreSQL, MySQL, SQLite).
   #
   # Statesman's Machine#transition_to! handles one parent at a time: a flip UPDATE on
   # the current `most_recent` transition, an INSERT for the new one, and (if the model
@@ -9,7 +9,8 @@ module Statesman
   # each inside its own transaction, with guards/callbacks firing per record.
   #
   # BulkTransition performs the same mechanical write for many parents in a single
-  # transaction: one `UPDATE ... RETURNING` to flip+lock the old rows, one `insert_all` for the new
+  # transaction: one `UPDATE ... RETURNING` to flip+lock the old rows (on adapters without
+  # RETURNING: a `SELECT ... FOR UPDATE` then an `UPDATE`), one `insert_all!` for the new
   # ones, and one bulk cached_current_state UPDATE if configured. This trades
   # per-record guards/callbacks/AR-validations for an order-of-magnitude fewer round
   # trips on large batches.
@@ -18,16 +19,20 @@ module Statesman
   # validations/callbacks on the transition model. Callers that need equivalent side
   # effects must reproduce them, set-based, in the block passed to #call!.
   #
-  # Assumptions (documented, not enforced beyond the Postgres check): the transition
-  # table's `most_recent` column is NOT NULL (no mixed null/false "not current" rows),
-  # and it is not an STI transition table.
+  # Like the single-transition path, "not current" is written as NULL when the
+  # `most_recent` column is nullable (databases without partial indexes, e.g. MySQL, need
+  # this for the unique (parent, most_recent) index) and false otherwise. On MySQL the
+  # new rows are inserted "not current" and then marked current in a separate UPDATE, to
+  # avoid the next-key locks an INSERT of `most_recent = true` takes (see
+  # Statesman::Adapters::ActiveRecord#create_transition).
+  #
+  # Assumption (documented, not enforced): the transition table is not an STI table.
   #
   # A later version may add guard/callback execution (falling back to a plain per-item
-  # #transition_to! loop where needed) and broader adapter support - this is the proven,
+  # #transition_to! loop where needed) - this is the proven,
   # independent mechanical core that such a version would sit on top of.
   class BulkTransition
     class ValidationError < StandardError; end
-    class UnsupportedAdapterError < StandardError; end
 
     SORT_KEY_INCREMENT = 10
 
@@ -38,7 +43,6 @@ module Statesman
       @transition_class = model_class.transition_class
 
       machine_class.validate_from_and_to_state(@from, @to)
-      assert_postgres!
     end
 
     # @param parent_ids [Array<String, Integer>] primary keys of the parents to
@@ -101,12 +105,21 @@ module Statesman
 
     attr_reader :model_class, :from, :to, :transition_class
 
-    def assert_postgres!
-      adapter = transition_class.connection.adapter_name
-      return if adapter.casecmp("postgresql").zero?
+    # PostgreSQL can flip and return rows in one `UPDATE ... RETURNING` statement and
+    # recover inserted rows from `INSERT ... RETURNING`. Other adapters (MySQL, SQLite)
+    # take a portable path built from `SELECT ... FOR UPDATE` + `UPDATE` by primary key.
+    def mysql_gaplock_protection?
+      Statesman.mysql_gaplock_protection?(transition_class.connection)
+    end
 
-      raise UnsupportedAdapterError,
-            "Statesman::BulkTransition only supports PostgreSQL today (got #{adapter})"
+    # Matches the single-transition path: NULL when the column is nullable (needed for a
+    # unique (parent, most_recent) index on databases without partial indexes), else false.
+    def not_most_recent_value
+      transition_class.columns_hash["most_recent"].null == false ? false : nil
+    end
+
+    def returning_supported?
+      transition_class.connection.adapter_name.casecmp("postgresql").zero?
     end
 
     def validate_attribute_names!(attributes_to_copy)
@@ -129,13 +142,21 @@ module Statesman
       @parent_primary_key ||= parent_reflection.active_record_primary_key
     end
 
-    # Flips the `from`-state transitions to most_recent: false, returning the flipped
+    # Flips the `from`-state transitions to not-most-recent, returning the flipped
     # rows (including their pre-flip sort_key) via RETURNING. Under Postgres Read
     # Committed, a concurrent writer that commits a transition on one of these parents
     # between this statement starting and acquiring its row lock causes the WHERE
     # clause to re-evaluate against the latest committed row on wake - so that parent
     # is silently excluded here, never corrupted.
     def flip_most_recent!(parent_ids, now, attributes_to_copy)
+      if returning_supported?
+        flip_with_returning!(parent_ids, now, attributes_to_copy)
+      else
+        flip_with_lock!(parent_ids, now, attributes_to_copy)
+      end
+    end
+
+    def flip_with_returning!(parent_ids, now, attributes_to_copy)
       quoted_table = transition_class.quoted_table_name
       quoted_fk = transition_class.connection.quote_column_name(parent_foreign_key)
       # Not `RETURNING *`: only the carried columns are used afterwards, and a wider
@@ -147,16 +168,36 @@ module Statesman
       sql = transition_class.sanitize_sql_array([
         <<~SQL.squish,
           UPDATE #{quoted_table}
-          SET most_recent = false, updated_at = ?
+          SET most_recent = ?, updated_at = ?
           WHERE to_state = ?
-            AND most_recent = true
+            AND most_recent = ?
             AND #{quoted_fk} IN (?)
           RETURNING #{returning}
         SQL
-        now, from, parent_ids
+        not_most_recent_value, now, from, true, parent_ids
       ])
 
       transition_class.connection.exec_query(sql).to_a
+    end
+
+    # Portable equivalent of the above: lock the matching rows, then flip them by primary
+    # key. The locking read always sees the latest committed row (MySQL REPEATABLE READ
+    # included), so a parent that a concurrent writer already moved on is excluded. SQLite
+    # has no row locks, but serialises writers at the database level.
+    def flip_with_lock!(parent_ids, now, attributes_to_copy)
+      columns = carried_columns(attributes_to_copy)
+      primary_key = transition_class.primary_key
+
+      locked = transition_class.
+        where(to_state: from, most_recent: true, parent_foreign_key => parent_ids).
+        lock.
+        pluck(primary_key, *columns)
+      return [] if locked.empty?
+
+      transition_class.where(primary_key => locked.map(&:first)).
+        update_all(most_recent: not_most_recent_value, updated_at: now)
+
+      locked.map { |_pk, *values| columns.zip(values).to_h }
     end
 
     def carried_columns(attributes_to_copy)
@@ -178,7 +219,7 @@ module Statesman
         new_row = row.slice(*carried).merge(row_overrides).merge(
           "to_state" => to,
           "metadata" => row_metadata,
-          "most_recent" => true,
+          "most_recent" => mysql_gaplock_protection? ? not_most_recent_value : true,
           "sort_key" => row["sort_key"].to_i + SORT_KEY_INCREMENT,
           "created_at" => now,
           "updated_at" => now,
@@ -188,13 +229,47 @@ module Statesman
       end
 
       returning_columns = (attributes_for_callback&.map(&:to_s) || (carried + ["to_state"])).uniq
-      transition_class.insert_all(rows, returning: returning_columns).to_a
+      insert_rows!(rows, returning_columns)
     rescue ActiveRecord::RecordNotUnique => e
       # One conflicting row aborts the whole batch - this is an accepted trade-off,
       # not a silent gap: every real writer (Statesman's own single-transition path, and
       # this class) follows the flip-then-insert convention, so a collision here means
       # something outside that convention wrote a most_recent row directly.
       raise TransitionConflictError, e.message
+    end
+
+    def insert_rows!(rows, returning_columns)
+      return transition_class.insert_all!(rows, returning: returning_columns).to_a if returning_supported?
+
+      transition_class.insert_all!(rows)
+      inserted = fetch_inserted_rows(rows, returning_columns)
+      mark_most_recent!(inserted.map { |pk, _row| pk }) if mysql_gaplock_protection?
+      inserted.map { |_pk, row| row }
+    end
+
+    # Reads back the rows just inserted, as [primary key, row] pairs. They're identified
+    # by (parent, sort_key): the unique index Statesman requires on those columns makes
+    # that pair unambiguous, whatever state the rows are in.
+    def fetch_inserted_rows(inserted, columns)
+      sort_keys = inserted.map { |row| row["sort_key"] }.uniq
+      expected = inserted.to_set { |row| [row[parent_foreign_key], row["sort_key"]] }
+      primary_key = transition_class.primary_key
+
+      transition_class.
+        where(parent_foreign_key => inserted.map { |row| row[parent_foreign_key] }, sort_key: sort_keys).
+        pluck(primary_key, parent_foreign_key, "sort_key", *columns).
+        filter_map do |pk, fk, sort_key, *values|
+          next unless expected.include?([fk, sort_key])
+
+          [pk, columns.zip(values).to_h]
+        end
+    end
+
+    # Second half of the MySQL gap-lock protection: the old rows were already flipped, so
+    # this only ever sets one row per parent to true and cannot trip the unique index.
+    def mark_most_recent!(primary_keys)
+      transition_class.where(transition_class.primary_key => primary_keys).
+        update_all(most_recent: true)
     end
 
     # Merges a per-parent override hash (string-keyed by parent id) onto a base hash,
