@@ -39,6 +39,13 @@ describe Statesman::BulkTransition, :active_record do
 
   let(:machine_class) { MyStateMachine }
 
+  # How a non-current row's most_recent is stored: NULL when the column is nullable
+  # (needed for the unique index on databases without partial indexes, e.g. MySQL),
+  # false otherwise - same as the single-transition path.
+  def not_most_recent_value
+    MyActiveRecordModelTransition.columns_hash["most_recent"].null ? nil : false
+  end
+
   def create_model(initial_state: "initial", extra_data: nil)
     model = MyActiveRecordModel.create!
     model.my_active_record_model_transitions.create!(
@@ -70,10 +77,9 @@ describe Statesman::BulkTransition, :active_record do
       ok = create_model.id
       conflicted = create_model.id
       # An out-of-band row occupying the sort_key the new transition would take.
-      not_current = MyActiveRecordModelTransition.columns_hash["most_recent"].null ? nil : false
       MyActiveRecordModelTransition.create!(
         my_active_record_model_id: conflicted, to_state: "failed", sort_key: 20,
-        most_recent: not_current, metadata: {}
+        most_recent: not_most_recent_value, metadata: {}
       )
       bulk = described_class.new(
         model_class: MyActiveRecordModel, machine_class: machine_class,
@@ -94,12 +100,9 @@ describe Statesman::BulkTransition, :active_record do
       )
       bulk.call!(ids)
 
-      # NULL when the column is nullable (needed for the unique index on databases
-      # without partial indexes, e.g. MySQL), false otherwise.
-      expected = MyActiveRecordModelTransition.columns_hash["most_recent"].null ? nil : false
       old_rows = MyActiveRecordModelTransition.where(my_active_record_model_id: ids, to_state: "initial")
 
-      expect(old_rows.map(&:most_recent)).to all(eq(expected))
+      expect(old_rows.map(&:most_recent)).to all(eq(not_most_recent_value))
       expect(MyActiveRecordModelTransition.where(my_active_record_model_id: ids, most_recent: true).count).
         to eq(ids.size)
     end
@@ -155,7 +158,7 @@ describe Statesman::BulkTransition, :active_record do
 
       transitions = MyActiveRecordModel.find(id).
         my_active_record_model_transitions.order(:sort_key)
-      expect(transitions.map(&:most_recent)).to eq([false, true])
+      expect(transitions.map(&:most_recent)).to eq([not_most_recent_value, true])
       expect(transitions.map(&:sort_key)).to eq([10, 20])
     end
 
