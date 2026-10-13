@@ -244,7 +244,7 @@ module Statesman
     end
 
     def insert_rows!(rows, returning_columns)
-      return transition_class.insert_all!(rows, returning: returning_columns.to_a).to_a if returning_supported?
+      return transition_class.insert_all!(rows, returning: returning_columns).to_a if returning_supported?
 
       transition_class.insert_all!(rows)
       inserted = fetch_inserted_rows(rows, returning_columns)
