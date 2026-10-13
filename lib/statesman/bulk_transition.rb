@@ -76,9 +76,10 @@ module Statesman
     )
       return [] if parent_ids.empty?
 
-      attributes_to_copy = attributes_to_copy.map(&:to_s)
+      attributes_to_copy = attributes_to_copy.to_set(&:to_s)
+      attributes_for_callback = attributes_for_callback&.to_set(&:to_s)
       validate_attribute_names!(attributes_to_copy)
-      validate_attribute_names!(attributes_for_callback.map(&:to_s)) if attributes_for_callback
+      validate_attribute_names!(attributes_for_callback) if attributes_for_callback
 
       now = Time.current
       transitioned_ids = []
@@ -201,7 +202,7 @@ module Statesman
     end
 
     def carried_columns(attributes_to_copy)
-      ([parent_foreign_key, "sort_key"] + attributes_to_copy).uniq
+      Set[parent_foreign_key, "sort_key"] | attributes_to_copy
     end
 
     def insert_new_transitions!(
@@ -228,7 +229,7 @@ module Statesman
         new_row
       end
 
-      returning_columns = (attributes_for_callback&.map(&:to_s) || (carried + ["to_state"])).uniq
+      returning_columns = attributes_for_callback || (carried | ["to_state"])
       insert_rows!(rows, returning_columns)
     rescue ActiveRecord::RecordNotUnique => e
       # One conflicting row aborts the whole batch - this is an accepted trade-off,
@@ -239,7 +240,7 @@ module Statesman
     end
 
     def insert_rows!(rows, returning_columns)
-      return transition_class.insert_all!(rows, returning: returning_columns).to_a if returning_supported?
+      return transition_class.insert_all!(rows, returning: returning_columns.to_a).to_a if returning_supported?
 
       transition_class.insert_all!(rows)
       inserted = fetch_inserted_rows(rows, returning_columns)
