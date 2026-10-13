@@ -158,27 +158,31 @@ module Statesman
     end
 
     def flip_with_returning!(parent_ids, now, attributes_to_copy)
-      quoted_table = transition_class.quoted_table_name
-      quoted_fk = transition_class.connection.quote_column_name(parent_foreign_key)
       # Not `RETURNING *`: only the carried columns are used afterwards, and a wider
       # result set is costly on large batches.
       returning = carried_columns(attributes_to_copy).
         map { |column| transition_class.connection.quote_column_name(column) }.
         join(", ")
 
-      sql = transition_class.sanitize_sql_array([
-        <<~SQL.squish,
-          UPDATE #{quoted_table}
-          SET most_recent = ?, updated_at = ?
-          WHERE to_state = ?
-            AND most_recent = ?
-            AND #{quoted_fk} IN (?)
-          RETURNING #{returning}
-        SQL
-        not_most_recent_value, now, from, true, parent_ids
-      ])
+      # Arel has no RETURNING support, so that one clause is appended to the compiled
+      # statement; everything else (quoting, binds, IN list) is built by Arel.
+      sql = "#{flip_update_manager(parent_ids, now).to_sql} RETURNING #{returning}"
 
       transition_class.connection.exec_query(sql).to_a
+    end
+
+    def flip_update_manager(parent_ids, now)
+      table = transition_class.arel_table
+
+      Arel::UpdateManager.new.tap do |update|
+        update.table(table)
+        update.set([[table[:most_recent], not_most_recent_value], [table[:updated_at], now]])
+        update.where(
+          table[:to_state].eq(from).
+            and(table[:most_recent].eq(true)).
+            and(table[parent_foreign_key].in(parent_ids)),
+        )
+      end
     end
 
     # Portable equivalent of the above: lock the matching rows, then flip them by primary

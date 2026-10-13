@@ -190,7 +190,7 @@ describe Statesman::BulkTransition, :active_record do
         ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
           bulk.call!([id], **options)
         end
-        statements.find { |sql| sql.include?("most_recent = FALSE") || sql.include?("most_recent = false") }
+        statements.find { |sql| sql.include?(" RETURNING ") }
       end
 
       let(:bulk) do
