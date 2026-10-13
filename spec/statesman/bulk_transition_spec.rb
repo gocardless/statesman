@@ -2,14 +2,14 @@
 
 require "spec_helper"
 
-describe Statesman::BulkTransition::V1, :active_record do
+describe Statesman::BulkTransition, :active_record do
   before do
     # The shared MyActiveRecordModel fixture is wired via the older
     # `include ActiveRecordQueries[...]` form, which doesn't define `.transition_class`.
     # BulkTransition relies on the newer `configure_state_machine` convention (the same
     # one `configure_cached_current_state` requires), so configure it here once. This
     # runs regardless of adapter: the non-Postgres context below also needs
-    # `model_class.transition_class` to resolve, since V1#initialize reads it before
+    # `model_class.transition_class` to resolve, since BulkTransition#initialize reads it before
     # it gets a chance to raise UnsupportedAdapterError.
     unless MyActiveRecordModel.respond_to?(:transition_class)
       MyActiveRecordModel.extend(Statesman::Adapters::TypeSafeActiveRecordQueries)
@@ -42,7 +42,7 @@ describe Statesman::BulkTransition::V1, :active_record do
     MyActiveRecordModelTransition.reset_column_information
   end
 
-  # V1 is explicitly Postgres-only (see UnsupportedAdapterError in the class itself).
+  # BulkTransition is explicitly Postgres-only (see UnsupportedAdapterError in the class itself).
   # CI runs this whole suite three times - sqlite (default), postgres, mysql - so the
   # Postgres-specific examples below are only defined at all when running under
   # Postgres (checked at file-load time, same as postgres?/mysql?/sqlite? elsewhere in
@@ -202,7 +202,7 @@ describe Statesman::BulkTransition::V1, :active_record do
 
         expect do
           bulk.call!([id], attributes_to_copy: ["not_a_real_column"])
-        end.to raise_error(Statesman::BulkTransition::V1::ValidationError, /not_a_real_column/)
+        end.to raise_error(Statesman::BulkTransition::ValidationError, /not_a_real_column/)
       end
 
       it "raises InvalidTransitionError for a from/to pair the machine doesn't allow" do
@@ -326,7 +326,7 @@ describe Statesman::BulkTransition::V1, :active_record do
 
         expect do
           bulk.call!([id], attributes_for_callback: ["not_a_real_column"])
-        end.to raise_error(Statesman::BulkTransition::V1::ValidationError, /not_a_real_column/)
+        end.to raise_error(Statesman::BulkTransition::ValidationError, /not_a_real_column/)
       end
     end
 
