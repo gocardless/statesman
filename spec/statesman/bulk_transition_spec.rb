@@ -261,7 +261,37 @@ describe Statesman::BulkTransition, :active_record do
       expect(last.most_recent).to be(true)
     end
 
-    it "yields the inserted rows to the block" do
+    it "matches per-parent overrides by the string form of the id" do
+      id = create_model(extra_data: "from-previous-row").id
+      bulk = described_class.new(
+        model_class: MyActiveRecordModel, machine_class: machine_class,
+        from: :initial, to: :succeeded
+      )
+
+      bulk.call!(
+        [id],
+        metadata_per_id: { id.to_s => { "origin" => "api" } },
+        attributes_to_copy: ["extra_data"],
+        attributes_per_id: { id.to_s => { extra_data: "looked-up-value" } },
+      )
+
+      expect(last_transition_for(id).metadata).to eq({ "origin" => "api" })
+      expect(last_transition_for(id).extra_data).to eq("looked-up-value")
+    end
+
+    it "raises ValidationError for attributes_per_id columns not in attributes_to_copy" do
+      id = create_model.id
+      bulk = described_class.new(
+        model_class: MyActiveRecordModel, machine_class: machine_class,
+        from: :initial, to: :succeeded
+      )
+
+      expect do
+        bulk.call!([id], attributes_per_id: { id => { "extra_data" => "x" } })
+      end.to raise_error(Statesman::BulkTransition::ValidationError, /extra_data/)
+    end
+
+    it "yields a relation over the inserted transitions to the block" do
       id = create_model.id
       bulk = described_class.new(
         model_class: MyActiveRecordModel, machine_class: machine_class,
@@ -269,10 +299,9 @@ describe Statesman::BulkTransition, :active_record do
       )
 
       yielded = nil
-      bulk.call!([id]) { |rows| yielded = rows }
+      bulk.call!([id]) { |transitions| yielded = transitions.pluck(:my_active_record_model_id, :to_state) }
 
-      expect(yielded.length).to eq(1)
-      expect(yielded.first["to_state"]).to eq("succeeded")
+      expect(yielded).to eq([[id, "succeeded"]])
     end
 
     it "invokes a callback object's #call via normal method dispatch, not bare yield" do
@@ -332,32 +361,17 @@ describe Statesman::BulkTransition, :active_record do
       expect(last_transition_for(default_id).extra_data).to eq("from-previous-row")
     end
 
-    it "yields only attributes_for_callback when given, instead of the attributes_to_copy default" do
-      id = create_model(extra_data: "keep-me").id
-      bulk = described_class.new(
-        model_class: MyActiveRecordModel, machine_class: machine_class,
-        from: :initial, to: :succeeded
-      )
-
-      yielded = nil
-      bulk.call!(
-        [id], attributes_to_copy: ["extra_data"],
-              attributes_for_callback: %w[my_active_record_model_id to_state metadata]
-      ) { |rows| yielded = rows }
-
-      expect(yielded.first.keys).to match_array(%w[my_active_record_model_id to_state metadata])
-    end
-
-    it "raises ValidationError for unknown attributes_for_callback columns" do
+    it "yields only the new transitions, with their final most_recent state" do
       id = create_model.id
       bulk = described_class.new(
         model_class: MyActiveRecordModel, machine_class: machine_class,
         from: :initial, to: :succeeded
       )
 
-      expect do
-        bulk.call!([id], attributes_for_callback: ["not_a_real_column"])
-      end.to raise_error(Statesman::BulkTransition::ValidationError, /not_a_real_column/)
+      yielded = nil
+      bulk.call!([id]) { |transitions| yielded = transitions.pluck(:to_state, :most_recent) }
+
+      expect(yielded).to eq([["succeeded", true]])
     end
   end
 

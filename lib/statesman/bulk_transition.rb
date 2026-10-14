@@ -54,32 +54,33 @@ module Statesman
     #   carry forward from the flipped row onto the new one, beyond the parent FK and
     #   sort_key, which are always carried. No default: the caller must explicitly audit
     #   which mutable columns their own after_transition callbacks depend on.
-    # @param attributes_for_callback [Array<String, Symbol>, nil] which columns to
-    #   return/yield for each inserted row. Defaults to attributes_to_copy plus the
-    #   structural columns (parent FK, sort_key, to_state) when not given.
-    # @param metadata_per_id [Hash<String, Hash>, nil] per-parent metadata overrides,
-    #   merged onto (and taking precedence over) the uniform `metadata` for that parent
-    #   only. Parents absent from this hash just get the uniform `metadata`.
-    # @param attributes_per_id [Hash<String, Hash>, nil] per-parent overrides for
-    #   attributes_to_copy columns, merged onto (and taking precedence over) the value
+    # @param metadata_per_id [Hash{String, Integer => Hash}, nil] per-parent metadata
+    #   overrides, keyed by parent id (matched by its string form, so 1 and "1" are the
+    #   same parent), merged onto (and taking precedence over) the uniform `metadata` for
+    #   that parent only. Parents absent from this hash just get the uniform `metadata`.
+    # @param attributes_per_id [Hash{String, Integer => Hash}, nil] per-parent overrides,
+    #   keyed like metadata_per_id, for attributes_to_copy columns only (anything else
+    #   raises ValidationError), merged onto (and taking precedence over) the value
     #   carried forward from that parent's own flipped row - for a value that can't be
     #   derived from the previous transition (e.g. a value looked up from an
     #   association the caller already has loaded).
-    # @param block [Proc, nil] optional, called with the inserted rows inside the same
-    #   transaction, after rows are flipped and inserted (and after the
-    #   cached_current_state bulk update, if any). An exception here rolls back the
-    #   entire batch - nothing is committed.
+    # @param block [Proc, nil] optional, called with an ActiveRecord::Relation over the
+    #   newly inserted transitions, inside the same transaction, after rows are flipped
+    #   and inserted (and after the cached_current_state bulk update, if any). The
+    #   relation is lazy: the block decides what to read (e.g. `pluck`) or write. An
+    #   exception here rolls back the entire batch - nothing is committed.
     # @return [Array] parent ids that were actually transitioned.
     def call!(
-      parent_ids, metadata: {}, attributes_to_copy: [], attributes_for_callback: nil,
+      parent_ids, metadata: {}, attributes_to_copy: [],
       metadata_per_id: nil, attributes_per_id: nil, &block
     )
       return [] if parent_ids.empty?
 
       attributes_to_copy = attributes_to_copy.to_set(&:to_s)
-      attributes_for_callback = attributes_for_callback&.to_set(&:to_s)
       validate_attribute_names!(attributes_to_copy)
-      validate_attribute_names!(attributes_for_callback) if attributes_for_callback
+      metadata_per_id = normalize_per_id(metadata_per_id)
+      attributes_per_id = normalize_per_id(attributes_per_id)
+      validate_attributes_per_id!(attributes_per_id, attributes_to_copy)
 
       now = Time.current
       transitioned_ids = []
@@ -88,15 +89,14 @@ module Statesman
         flipped_rows = flip_most_recent!(parent_ids, now, attributes_to_copy)
         next if flipped_rows.empty?
 
-        inserted_rows = insert_new_transitions!(
-          flipped_rows, metadata, attributes_to_copy, attributes_for_callback, now,
-          metadata_per_id, attributes_per_id
-        )
-        transitioned_ids = inserted_rows.map { |row| row[parent_foreign_key] }
+        primary_keys, transitioned_ids = insert_new_transitions!(
+          flipped_rows, metadata, attributes_to_copy, now, metadata_per_id, attributes_per_id
+        ).transpose
+        inserted = transition_class.where(transition_class.primary_key => primary_keys)
 
         update_cached_current_state!(transitioned_ids)
 
-        block&.call(inserted_rows)
+        block&.call(inserted)
       end
 
       transitioned_ids
@@ -106,9 +106,6 @@ module Statesman
 
     attr_reader :model_class, :from, :to, :transition_class
 
-    # PostgreSQL can flip and return rows in one `UPDATE ... RETURNING` statement and
-    # recover inserted rows from `INSERT ... RETURNING`. Other adapters (MySQL, SQLite)
-    # take a portable path built from `SELECT ... FOR UPDATE` + `UPDATE` by primary key.
     def mysql_gaplock_protection?
       Statesman.mysql_gaplock_protection?(transition_class.connection)
     end
@@ -119,6 +116,9 @@ module Statesman
       transition_class.columns_hash["most_recent"].null == false ? false : nil
     end
 
+    # PostgreSQL can flip and return rows in one `UPDATE ... RETURNING` statement and
+    # recover inserted keys from `INSERT ... RETURNING`. Other adapters (MySQL, SQLite)
+    # take a portable path built from `SELECT ... FOR UPDATE` + `UPDATE` by primary key.
     def returning_supported?
       transition_class.connection.adapter_name.casecmp("postgresql").zero?
     end
@@ -128,6 +128,24 @@ module Statesman
       return if unknown.empty?
 
       raise ValidationError, "Unknown #{transition_class.name} column(s): #{unknown.join(', ')}"
+    end
+
+    # Overrides are matched against ids read back from the database, whose type (Integer,
+    # String UUID) the caller needn't know - so both sides are compared as strings. Inner
+    # keys become strings too, because the rows being inserted are string-keyed.
+    def normalize_per_id(per_id)
+      per_id&.to_h { |id, overrides| [id.to_s, overrides.transform_keys(&:to_s)] }
+    end
+
+    # Every row in one insert_all! must have the same keys, and an override for a column
+    # that isn't carried forward would add a key to only some rows.
+    def validate_attributes_per_id!(attributes_per_id, attributes_to_copy)
+      return if attributes_per_id.nil?
+
+      unknown = attributes_per_id.values.flat_map(&:keys).to_set - attributes_to_copy
+      return if unknown.empty?
+
+      raise ValidationError, "attributes_per_id column(s) not in attributes_to_copy: #{unknown.to_a.join(', ')}"
     end
 
     def parent_reflection
@@ -210,11 +228,11 @@ module Statesman
     end
 
     def insert_new_transitions!(
-      flipped_rows, metadata, attributes_to_copy, attributes_for_callback, now,
-      metadata_per_id, attributes_per_id
+      flipped_rows, metadata, attributes_to_copy, now, metadata_per_id, attributes_per_id
     )
       carried = carried_columns(attributes_to_copy)
       include_from_state = transition_class.has_attribute?(:from_state)
+      most_recent = mysql_gaplock_protection? ? not_most_recent_value : true
 
       rows = flipped_rows.map do |row|
         id = row[parent_foreign_key]
@@ -224,7 +242,7 @@ module Statesman
         new_row = row.slice(*carried).merge(row_overrides).merge(
           "to_state" => to,
           "metadata" => row_metadata,
-          "most_recent" => mysql_gaplock_protection? ? not_most_recent_value : true,
+          "most_recent" => most_recent,
           "sort_key" => row["sort_key"].to_i + SORT_KEY_INCREMENT,
           "created_at" => now,
           "updated_at" => now,
@@ -233,8 +251,7 @@ module Statesman
         new_row
       end
 
-      returning_columns = attributes_for_callback || (carried | ["to_state"])
-      insert_rows!(rows, returning_columns)
+      insert_rows!(rows)
     rescue ActiveRecord::RecordNotUnique => e
       # One conflicting row aborts the whole batch - this is an accepted trade-off,
       # not a silent gap: every real writer (Statesman's own single-transition path, and
@@ -243,31 +260,36 @@ module Statesman
       raise TransitionConflictError, e.message
     end
 
-    def insert_rows!(rows, returning_columns)
-      return transition_class.insert_all!(rows, returning: returning_columns).to_a if returning_supported?
-
-      transition_class.insert_all!(rows)
-      inserted = fetch_inserted_rows(rows, returning_columns)
-      mark_most_recent!(inserted.map { |pk, _row| pk }) if mysql_gaplock_protection?
-      inserted.map { |_pk, row| row }
+    # Inserts the rows and returns [primary key, parent foreign key] pairs for them, so the
+    # caller can both build a relation and know which parents moved without another query.
+    # Under MySQL gap-lock protection the rows are also marked most recent here, so
+    # whatever reads them afterwards sees the final state.
+    def insert_rows!(rows)
+      inserted = insert_and_fetch_keys!(rows)
+      mark_most_recent!(inserted.map(&:first)) if mysql_gaplock_protection?
+      inserted
     end
 
-    # Reads back the rows just inserted, as [primary key, row] pairs. They're identified
-    # by (parent, sort_key): the unique index Statesman requires on those columns makes
-    # that pair unambiguous, whatever state the rows are in.
-    def fetch_inserted_rows(inserted, columns)
+    def insert_and_fetch_keys!(rows)
+      if returning_supported?
+        return transition_class.insert_all!(rows, returning: [transition_class.primary_key, parent_foreign_key]).rows
+      end
+
+      transition_class.insert_all!(rows)
+      fetch_inserted_keys(rows)
+    end
+
+    # Finds the rows just inserted by (parent, sort_key): the unique index Statesman
+    # requires on those columns makes that pair unambiguous, whatever state the rows are in.
+    def fetch_inserted_keys(inserted)
       sort_keys = inserted.map { |row| row["sort_key"] }.uniq
       expected = inserted.to_set { |row| [row[parent_foreign_key], row["sort_key"]] }
-      primary_key = transition_class.primary_key
 
       transition_class.
         where(parent_foreign_key => inserted.map { |row| row[parent_foreign_key] }, sort_key: sort_keys).
-        pluck(primary_key, parent_foreign_key, "sort_key", *columns).
-        filter_map do |pk, fk, sort_key, *values|
-          next unless expected.include?([fk, sort_key])
-
-          [pk, columns.zip(values).to_h]
-        end
+        pluck(transition_class.primary_key, parent_foreign_key, "sort_key").
+        select { |_pk, fk, sort_key| expected.include?([fk, sort_key]) }.
+        map { |pk, fk, _sort_key| [pk, fk] }
     end
 
     # Second half of the MySQL gap-lock protection: the old rows were already flipped, so
@@ -277,12 +299,12 @@ module Statesman
         update_all(most_recent: true)
     end
 
-    # Merges a per-parent override hash (string-keyed by parent id) onto a base hash,
-    # for one parent only. The override, where present, wins key-by-key.
+    # Merges a per-parent override hash (see normalize_per_id) onto a base hash, for one
+    # parent only. The override, where present, wins key-by-key.
     def merge_per_id(base, per_id, id)
-      return base if per_id.nil? || !per_id.key?(id)
+      return base if per_id.nil? || !per_id.key?(id.to_s)
 
-      base.merge(per_id.fetch(id))
+      base.merge(per_id.fetch(id.to_s))
     end
 
     def update_cached_current_state!(transitioned_ids)
