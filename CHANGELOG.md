@@ -5,6 +5,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- `Statesman::BulkTransition`, which transitions many parents from one state to another in a single transaction with a fixed number of queries (a flip of the current `most_recent` rows, one `insert_all!`, and one cached-current-state update if configured). Works with the `ActiveRecord` adapter on PostgreSQL, MySQL (including `mysql_gaplock_protection`) and SQLite. Like `transition_to!`, it flips the previous transition and updates the cached current state, but it does not run guards, `before`/`after` callbacks or `ActiveRecord` validations/callbacks on the transition model. Supports per-parent overrides via `metadata_per_id` and `attributes_per_id`, and an optional block that is called inside the transaction with a lazy `ActiveRecord::Relation` over the newly inserted transitions. Parents not in the `from` state are skipped, so a batch is safe to re-run. Assumes a non-STI transition table and a single-column parent primary key.
+
 ## v13.3.0 4th August 2026
 
 ### Added
