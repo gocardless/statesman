@@ -674,6 +674,66 @@ returning the configured column, for generic tooling that needs to introspect
 or repair the cached column (e.g. a cache-repair rake task working across
 several models).
 
+## Bulk transitions
+
+`Statesman::BulkTransition` moves many parents from one state to another in a
+single transaction, with a fixed number of queries however many parents there
+are, instead of the several queries per record that `transition_to!` costs. It
+works with the `ActiveRecord` adapter on PostgreSQL, MySQL and SQLite.
+
+```ruby
+bulk = Statesman::BulkTransition.new(
+  model_class: Order,
+  machine_class: OrderStateMachine,
+  from: :pending,
+  to: :confirmed,
+)
+
+transitioned_ids = bulk.call!(order_ids, metadata: { source: "import" })
+```
+
+`call!` returns the ids of the parents that were actually transitioned. Parents
+that aren't currently in the `from` state are silently skipped, so a batch is
+safe to re-run.
+
+It performs the same mechanical write as `transition_to!` — flipping the
+current `most_recent` transition, inserting the new one, and updating the
+parent's cached current state if you've called `configure_cached_current_state`
+— but it deliberately **does not run** the machine's guards, its
+`before_transition`/`after_transition` callbacks, or any validations and
+callbacks on the transition model. If you need equivalent side effects,
+reproduce them in the block (below).
+
+Options:
+
+- `metadata:` — applied to every new transition. `metadata_per_id:` overrides it
+  for individual parents, keyed by parent id (`1` and `"1"` match the same
+  parent).
+- `attributes_to_copy:` — extra transition columns to carry forward from the
+  previous transition onto the new one. The parent foreign key and `sort_key`
+  are always carried. There's no default, so you have to choose explicitly.
+  `attributes_per_id:` overrides those carried values for individual parents,
+  and may only name columns listed in `attributes_to_copy` (anything else raises
+  `Statesman::BulkTransition::ValidationError`).
+
+If you pass a block, it is called inside the same transaction with an
+`ActiveRecord::Relation` over the newly inserted transitions. The relation is
+lazy, so the block decides what to read or write:
+
+```ruby
+bulk.call!(order_ids) do |transitions|
+  rows = transitions.pluck(:order_id, :to_state)
+  AuditLog.insert_all(rows.map { |id, state| { order_id: id, state: state } })
+end
+```
+
+An exception raised in the block rolls the entire batch back. If a row
+conflicts with the unique index on the transition table, `call!` raises
+`Statesman::TransitionConflictError` and nothing is committed.
+
+Two assumptions to be aware of: the transition table must not be an STI table,
+and the parent must have a single-column primary key.
+
 ## Frequently Asked Questions
 
 ### Storing the state on the model object
