@@ -41,6 +41,16 @@ describe Statesman::ActiveRecordTransitionGenerator, type: :generator do
     end
   end
 
+  describe "when the parent model can't be loaded" do
+    subject(:migration) { file("db/migrate/20250101000000_create_waffle_transitions.rb") }
+
+    before { run_generator %w[Waffle WaffleTransition] }
+
+    it "creates the migration using the default connection" do
+      expect(migration).to contain("name: \"index_waffle_transitions_parent_most_recent\"")
+    end
+  end
+
   describe "properly adds class names" do
     subject { file("app/models/yummy/bacon_transition.rb") }
 
