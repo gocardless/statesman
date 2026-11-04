@@ -60,7 +60,16 @@ module Statesman
     end
 
     def database_supports_partial_indexes?
-      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(parent.constantize)
+      Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(parent_connection_model)
+    end
+
+    # The parent model may not be loadable yet, for example when it refers to the
+    # transition class that this generator is about to create. Fall back to the
+    # default connection in that case.
+    def parent_connection_model
+      parent.constantize
+    rescue NameError
+      ActiveRecord::Base
     end
 
     def metadata_default_value

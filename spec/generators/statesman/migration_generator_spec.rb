@@ -16,6 +16,16 @@ describe Statesman::MigrationGenerator, type: :generator do
     let(:migration_name) { "db/migrate/20250101000000_add_statesman_to_yummy_bacon_transitions.rb" }
   end
 
+  describe "when the parent model can't be loaded" do
+    subject(:migration) { file("db/migrate/20250101000000_add_statesman_to_waffle_transitions.rb") }
+
+    before { run_generator %w[Waffle WaffleTransition] }
+
+    it "creates the migration using the default connection" do
+      expect(migration).to contain("name: \"index_waffle_transitions_parent_most_recent\"")
+    end
+  end
+
   describe "the model contains the correct words" do
     subject(:migration) do
       file(
