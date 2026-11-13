@@ -368,6 +368,40 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     end
   end
 
+  context "when the parent association uses a custom foreign key" do
+    before do
+      CreateCustomForeignKeyActiveRecordModelMigration.migrate(:up)
+      CreateCustomForeignKeyActiveRecordModelTransitionMigration.migrate(:up)
+    end
+
+    let(:model) { CustomForeignKeyActiveRecordModel.create }
+    let(:adapter) do
+      described_class.new(CustomForeignKeyActiveRecordModelTransition, model, observer)
+    end
+
+    it "stores the parent's id in the foreign key column" do
+      expect(adapter.create(:x, :y).owner_id).to eq(model.id)
+    end
+
+    it "updates the previous transition's most_recent flag" do
+      previous_transition = adapter.create(:x, :y)
+
+      expect { adapter.create(:y, :z) }.
+        to change { previous_transition.reload.most_recent }.
+        from(true).to be_falsey
+    end
+
+    it "raises a TransitionConflictError when there is a race" do
+      adapter2 = adapter.dup
+      adapter2.create(:x, :y)
+      adapter.last
+      adapter2.create(:y, :z)
+
+      expect { adapter.create(:y, :z) }.
+        to raise_exception(Statesman::TransitionConflictError)
+    end
+  end
+
   describe "#last" do
     let(:transition_class) { MyActiveRecordModelTransition }
     let(:adapter) { described_class.new(transition_class, model, observer) }

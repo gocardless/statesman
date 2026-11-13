@@ -82,6 +82,8 @@ RSpec.configure do |config|
       other_active_record_model_transitions
       sti_active_record_models
       sti_active_record_model_transitions
+      custom_foreign_key_active_record_models
+      custom_foreign_key_active_record_model_transitions
     ]
     tables.each do |table_name|
       sql = "DROP TABLE IF EXISTS #{table_name};"

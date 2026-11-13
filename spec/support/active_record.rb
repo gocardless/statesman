@@ -416,6 +416,73 @@ class CreateStiActiveRecordModelTransitionMigration < MIGRATION_CLASS
   end
 end
 
+class CustomForeignKeyActiveRecordModel < ActiveRecord::Base
+  has_many :custom_foreign_key_active_record_model_transitions,
+           foreign_key: :owner_id,
+           autosave: false
+
+  def metadata
+    super || {}
+  end
+end
+
+class CustomForeignKeyActiveRecordModelTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
+  belongs_to :custom_foreign_key_active_record_model, foreign_key: :owner_id
+end
+
+class CreateCustomForeignKeyActiveRecordModelMigration < MIGRATION_CLASS
+  def change
+    create_table :custom_foreign_key_active_record_models do |t|
+      t.timestamps null: false
+    end
+  end
+end
+
+class CreateCustomForeignKeyActiveRecordModelTransitionMigration < MIGRATION_CLASS
+  def change
+    create_table :custom_foreign_key_active_record_model_transitions do |t|
+      t.string  :from_state
+      t.string  :to_state
+      t.integer :owner_id
+      t.integer :sort_key
+
+      # MySQL doesn't allow default values on text fields
+      if ActiveRecord::Base.connection.adapter_name == "Mysql2"
+        t.text :metadata
+      else
+        t.text :metadata, default: "{}"
+      end
+
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
+        t.boolean :most_recent, default: true, null: false
+      else
+        t.boolean :most_recent, default: true
+      end
+
+      t.timestamps null: false
+    end
+
+    add_index :custom_foreign_key_active_record_model_transitions,
+              %i[owner_id sort_key],
+              unique: true, name: "custom_foreign_key_sort_key_index"
+
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
+      add_index :custom_foreign_key_active_record_model_transitions,
+                %i[owner_id most_recent],
+                unique: true,
+                where: "most_recent",
+                name: "index_custom_foreign_key_transitions_parent_latest"
+    else
+      add_index :custom_foreign_key_active_record_model_transitions,
+                %i[owner_id most_recent],
+                unique: true,
+                name: "index_custom_foreign_key_transitions_parent_latest"
+    end
+  end
+end
+
 def postgres?
   ActiveRecord::Base.connection.adapter_name.match?(/postgres/i)
 end
