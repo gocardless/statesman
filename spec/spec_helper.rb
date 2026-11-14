@@ -74,6 +74,8 @@ RSpec.configure do |config|
   # need to worry about applying these actions to both.
   config.before(:each, :active_record) do
     tables = %w[
+      composite_key_active_record_models
+      composite_key_active_record_model_transitions
       my_active_record_models
       my_active_record_model_transitions
       my_namespace_my_active_record_models

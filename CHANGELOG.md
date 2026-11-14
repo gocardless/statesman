@@ -5,6 +5,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- The `ActiveRecord` adapter and the `in_state`/`not_in_state` scopes now work when the parent's `has_many` uses a composite `foreign_key:` (Rails 7.2+). The adapter used to raise `NoMethodError` on the first transition, and the scopes built invalid SQL. `BulkTransition` still needs a single-column key, and now raises `ValidationError` up front instead of failing partway through.
+
 ## v13.4.0 14th October 2026
 
 ### Added

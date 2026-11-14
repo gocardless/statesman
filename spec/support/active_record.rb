@@ -428,3 +428,79 @@ end
 def sqlite?
   ActiveRecord::Base.connection.adapter_name.match?(/sqlite/i)
 end
+
+# A parent with a composite primary key, so neither tenant_id nor number identifies
+# a parent on its own, and transitions that point at it with a composite foreign key.
+class CompositeKeyActiveRecordModelTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
+  belongs_to :composite_key_active_record_model,
+             foreign_key: %i[tenant_id parent_number]
+end
+
+class CompositeKeyActiveRecordModel < ActiveRecord::Base
+  self.primary_key = %i[tenant_id number]
+
+  has_many :composite_key_active_record_model_transitions,
+           foreign_key: %i[tenant_id parent_number],
+           autosave: false
+
+  extend Statesman::Adapters::TypeSafeActiveRecordQueries
+
+  configure_state_machine transition_class: CompositeKeyActiveRecordModelTransition,
+                          initial_state: :initial
+end
+
+class CreateCompositeKeyActiveRecordModelMigration < MIGRATION_CLASS
+  def change
+    create_table :composite_key_active_record_models, primary_key: %i[tenant_id number] do |t|
+      t.integer :tenant_id, null: false
+      t.integer :number, null: false
+      t.timestamps null: false
+    end
+  end
+end
+
+class CreateCompositeKeyActiveRecordModelTransitionMigration < MIGRATION_CLASS
+  def change
+    create_table :composite_key_active_record_model_transitions do |t|
+      t.string  :from_state
+      t.string  :to_state
+      t.integer :tenant_id
+      t.integer :parent_number
+      t.integer :sort_key
+
+      # MySQL doesn't allow default values on text fields
+      if ActiveRecord::Base.connection.adapter_name == "Mysql2"
+        t.text :metadata
+      else
+        t.text :metadata, default: "{}"
+      end
+
+      if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
+        t.boolean :most_recent, default: true, null: false
+      else
+        t.boolean :most_recent, default: true
+      end
+
+      t.timestamps null: false
+    end
+
+    add_index :composite_key_active_record_model_transitions,
+              %i[tenant_id parent_number sort_key],
+              unique: true, name: "composite_key_sort_key_index"
+
+    if Statesman::Adapters::ActiveRecord.database_supports_partial_indexes?(ActiveRecord::Base)
+      add_index :composite_key_active_record_model_transitions,
+                %i[tenant_id parent_number most_recent],
+                unique: true,
+                where: "most_recent",
+                name: "index_composite_key_transitions_parent_latest"
+    else
+      add_index :composite_key_active_record_model_transitions,
+                %i[tenant_id parent_number most_recent],
+                unique: true,
+                name: "index_composite_key_transitions_parent_latest"
+    end
+  end
+end

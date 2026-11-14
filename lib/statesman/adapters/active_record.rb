@@ -211,7 +211,11 @@ module Statesman
       end
 
       def transitions_of_parent
-        transition_table[parent_join_foreign_key.to_sym].eq(parent_model.id)
+        # A composite foreign key pairs with a composite primary key, whose id is an
+        # array of the parent's key values in the same order.
+        parent_join_foreign_keys.zip(Array(parent_model.id)).
+          map { |foreign_key, value| transition_table[foreign_key.to_sym].eq(value) }.
+          reduce(:and)
       end
 
       # Generates update_all Arel values that will touch the updated timestamp (if valid
@@ -295,8 +299,8 @@ module Statesman
 
             # We care about the columns used in the index, but not necessarily
             # the order, which is why we sort both sides of the comparison here
-            index.columns.sort == [parent_join_foreign_key, "sort_key"].sort ||
-              index.columns.sort == [parent_join_foreign_key, "most_recent"].sort
+            index.columns.sort == [*parent_join_foreign_keys, "sort_key"].sort ||
+              index.columns.sort == [*parent_join_foreign_keys, "most_recent"].sort
           end
       end
 
@@ -310,8 +314,10 @@ module Statesman
           find { |r| r.name.to_s == @association_name.to_s }
       end
 
-      def parent_join_foreign_key
-        association_join_primary_key(parent_association)
+      # The transition columns that point at the parent. More than one when the
+      # association uses a composite foreign key.
+      def parent_join_foreign_keys
+        Array(association_join_primary_key(parent_association)).map(&:to_s)
       end
 
       def association_join_primary_key(association)

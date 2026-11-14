@@ -76,6 +76,7 @@ module Statesman
     )
       return [] if parent_ids.empty?
 
+      validate_single_column_keys!
       attributes_to_copy = attributes_to_copy.to_set(&:to_s)
       validate_attribute_names!(attributes_to_copy)
       metadata_per_id = normalize_per_id(metadata_per_id)
@@ -121,6 +122,16 @@ module Statesman
     # take a portable path built from `SELECT ... FOR UPDATE` + `UPDATE` by primary key.
     def returning_supported?
       transition_class.connection.adapter_name.casecmp("postgresql").zero?
+    end
+
+    # Parents are identified by a single id throughout (parent_ids, the per-id hashes and
+    # the return value), so a composite key has no meaningful value to match on.
+    def validate_single_column_keys!
+      return unless parent_foreign_key.is_a?(Array) || parent_primary_key.is_a?(Array)
+
+      raise ValidationError,
+            "#{model_class.name} uses a composite key for #{transition_class.name}, " \
+            "which BulkTransition does not support"
     end
 
     def validate_attribute_names!(attributes_to_copy)

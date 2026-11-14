@@ -266,4 +266,37 @@ describe Statesman::Adapters::ActiveRecordQueries, :active_record do
       end
     end
   end
+
+  context "with a composite foreign key" do
+    before do
+      CreateCompositeKeyActiveRecordModelMigration.migrate(:up)
+      CreateCompositeKeyActiveRecordModelTransitionMigration.migrate(:up)
+    end
+
+    def transition(parent, to_state)
+      parent.composite_key_active_record_model_transitions.
+        create!(to_state: to_state, sort_key: 10, most_recent: true)
+    end
+
+    # The parents share key columns pairwise, so a join on one column would mix them up.
+    let!(:succeeded) do
+      CompositeKeyActiveRecordModel.create!(tenant_id: 1, number: 1).tap { |p| transition(p, :succeeded) }
+    end
+    let!(:failed) do
+      CompositeKeyActiveRecordModel.create!(tenant_id: 2, number: 1).tap { |p| transition(p, :failed) }
+    end
+    let!(:initial) { CompositeKeyActiveRecordModel.create!(tenant_id: 1, number: 2) }
+
+    it "finds parents in a state" do
+      expect(CompositeKeyActiveRecordModel.in_state(:succeeded)).to contain_exactly(succeeded)
+    end
+
+    it "finds parents not in a state" do
+      expect(CompositeKeyActiveRecordModel.not_in_state(:succeeded)).to contain_exactly(failed, initial)
+    end
+
+    it "finds parents with no transitions in the initial state" do
+      expect(CompositeKeyActiveRecordModel.in_state(:initial)).to contain_exactly(initial)
+    end
+  end
 end
