@@ -5,6 +5,13 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- The `ActiveRecord` adapter works on Rails main, which removed `join_primary_key` and `join_keys` from association reflections. It now reads the parent column from the association's `foreign_key`, and drops the dead fallbacks for Rails 5.1 and earlier.
+- The `ActiveRecord` adapter now honours a `primary_key:` option on the parent's `has_many` association. It used to match transitions on the parent's `id`, so the previous transition was never cleared and every transition after the first raised `TransitionConflictError`.
+
 ## v13.4.0 14th October 2026
 
 ### Added

@@ -211,7 +211,7 @@ module Statesman
       end
 
       def transitions_of_parent
-        transition_table[parent_join_foreign_key.to_sym].eq(parent_model.id)
+        transition_table[parent_join_foreign_key.to_sym].eq(parent_model[parent_join_primary_key])
       end
 
       # Generates update_all Arel values that will touch the updated timestamp (if valid
@@ -312,6 +312,12 @@ module Statesman
 
       def parent_join_foreign_key
         parent_association.foreign_key
+      end
+
+      # The association's primary_key option if it has one, otherwise the parent's
+      # primary key.
+      def parent_join_primary_key
+        parent_association.active_record_primary_key
       end
 
       # updated_column_and_timestamp should return [column_name, value]

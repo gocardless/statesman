@@ -432,9 +432,31 @@ class CustomForeignKeyActiveRecordModelTransition < ActiveRecord::Base
   belongs_to :custom_foreign_key_active_record_model, foreign_key: :owner_id
 end
 
+# Shares its tables with the custom foreign key models above, but joins on a parent
+# column other than the primary key, via the association's primary_key option.
+class CustomPrimaryKeyActiveRecordModel < ActiveRecord::Base
+  self.table_name = "custom_foreign_key_active_record_models"
+
+  has_many :custom_primary_key_active_record_model_transitions,
+           primary_key: :external_id,
+           foreign_key: :owner_id,
+           autosave: false
+end
+
+class CustomPrimaryKeyActiveRecordModelTransition < ActiveRecord::Base
+  include Statesman::Adapters::ActiveRecordTransition
+
+  self.table_name = "custom_foreign_key_active_record_model_transitions"
+
+  belongs_to :custom_primary_key_active_record_model,
+             primary_key: :external_id,
+             foreign_key: :owner_id
+end
+
 class CreateCustomForeignKeyActiveRecordModelMigration < MIGRATION_CLASS
   def change
     create_table :custom_foreign_key_active_record_models do |t|
+      t.integer :external_id
       t.timestamps null: false
     end
   end
