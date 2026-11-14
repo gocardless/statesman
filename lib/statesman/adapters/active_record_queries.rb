@@ -130,8 +130,7 @@ module Statesman
 
         def most_recent_transition_join
           "LEFT OUTER JOIN #{model_table} AS #{most_recent_transition_alias} " \
-            "ON #{model.table_name}.#{model_primary_key} = " \
-            "#{most_recent_transition_alias}.#{model_foreign_key} " \
+            "ON #{join_keys_condition} " \
             "AND #{most_recent_transition_alias}.most_recent = #{db_true}"
         end
 
@@ -147,12 +146,15 @@ module Statesman
           ActiveRecordQueries.transition_reflection_for(model, transition_class)
         end
 
-        def model_primary_key
-          transition_reflection.active_record_primary_key
-        end
-
-        def model_foreign_key
-          transition_reflection.foreign_key
+        # Matches each parent key column to its transition column. More than one pair
+        # when the association uses a composite foreign key.
+        def join_keys_condition
+          Array(transition_reflection.active_record_primary_key).
+            zip(Array(transition_reflection.foreign_key)).
+            map do |primary_key, foreign_key|
+              "#{model.table_name}.#{primary_key} = #{most_recent_transition_alias}.#{foreign_key}"
+            end.
+            join(" AND ")
         end
 
         def model_table

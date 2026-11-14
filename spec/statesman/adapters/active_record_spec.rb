@@ -499,4 +499,64 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
                     described_class, MyNamespace::MyActiveRecordModelTransition,
                     association_name: :my_active_record_model_transitions
   end
+
+  context "when the parent association uses a composite foreign key" do
+    before do
+      CreateCompositeKeyActiveRecordModelMigration.migrate(:up)
+      CreateCompositeKeyActiveRecordModelTransitionMigration.migrate(:up)
+    end
+
+    let(:transition_class) { CompositeKeyActiveRecordModelTransition }
+    let(:model) { CompositeKeyActiveRecordModel.create!(tenant_id: 1, number: 1) }
+    let(:adapter) { described_class.new(transition_class, model, observer) }
+
+    # Each shares one key column with model, so matching on only one column would
+    # pick up their transitions too.
+    let(:same_number_model) { CompositeKeyActiveRecordModel.create!(tenant_id: 2, number: 1) }
+    let(:same_tenant_model) { CompositeKeyActiveRecordModel.create!(tenant_id: 1, number: 2) }
+
+    it "stores every key column" do
+      transition = adapter.create(:x, :y)
+
+      expect([transition.tenant_id, transition.parent_number]).to eq([1, 1])
+    end
+
+    it "updates the previous transition's most_recent flag" do
+      previous_transition = adapter.create(:x, :y)
+
+      expect { adapter.create(:y, :z) }.
+        to change { previous_transition.reload.most_recent }.
+        from(true).to be_falsey
+    end
+
+    it "leaves exactly one most_recent transition after several transitions" do
+      adapter.create(:x, :y)
+      adapter.create(:y, :z)
+      adapter.create(:z, :x)
+
+      expect(adapter.history(force_reload: true).map(&:most_recent)).
+        to match([be_falsey, be_falsey, true])
+    end
+
+    it "doesn't touch parents that share one of the key columns" do
+      others = [same_number_model, same_tenant_model].map do |other|
+        described_class.new(transition_class, other, observer).create(:x, :y)
+      end
+
+      adapter.create(:x, :y)
+      adapter.create(:y, :z)
+
+      expect(others.map { |t| t.reload.most_recent }).to eq([true, true])
+    end
+
+    it "raises a TransitionConflictError when there is a race" do
+      adapter2 = adapter.dup
+      adapter2.create(:x, :y)
+      adapter.last
+      adapter2.create(:y, :z)
+
+      expect { adapter.create(:y, :z) }.
+        to raise_exception(Statesman::TransitionConflictError)
+    end
+  end
 end

@@ -389,4 +389,23 @@ describe Statesman::BulkTransition, :active_record do
       end
     end
   end
+
+  context "with a composite foreign key" do
+    before do
+      CreateCompositeKeyActiveRecordModelMigration.migrate(:up)
+      CreateCompositeKeyActiveRecordModelTransitionMigration.migrate(:up)
+    end
+
+    it "raises ValidationError before writing anything" do
+      parent = CompositeKeyActiveRecordModel.create!(tenant_id: 1, number: 1)
+
+      expect do
+        described_class.
+          new(model_class: CompositeKeyActiveRecordModel, machine_class: machine_class, from: :initial, to: :succeeded).
+          call!([[parent.tenant_id, parent.number]])
+      end.to raise_error(Statesman::BulkTransition::ValidationError, /composite key/)
+
+      expect(CompositeKeyActiveRecordModelTransition.count).to eq(0)
+    end
+  end
 end
