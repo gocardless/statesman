@@ -368,6 +368,77 @@ describe Statesman::Adapters::ActiveRecord, :active_record do
     end
   end
 
+  shared_examples "a parent association with custom keys" do
+    before do
+      CreateCustomForeignKeyActiveRecordModelMigration.migrate(:up)
+      CreateCustomForeignKeyActiveRecordModelTransitionMigration.migrate(:up)
+    end
+
+    it "stores the parent's key in the foreign key column" do
+      expect(adapter.create(:x, :y).owner_id).to eq(parent_key)
+    end
+
+    it "updates the previous transition's most_recent flag" do
+      previous_transition = adapter.create(:x, :y)
+
+      expect { adapter.create(:y, :z) }.
+        to change { previous_transition.reload.most_recent }.
+        from(true).to be_falsey
+    end
+
+    it "leaves exactly one most_recent transition after several transitions" do
+      adapter.create(:x, :y)
+      adapter.create(:y, :z)
+      adapter.create(:z, :x)
+
+      expect(adapter.history(force_reload: true).map(&:most_recent)).
+        to match([be_falsey, be_falsey, true])
+    end
+
+    it "doesn't touch another parent's most recent transition" do
+      other_adapter = described_class.new(transition_class, other_model, observer, options)
+      other_transition = other_adapter.create(:x, :y)
+
+      adapter.create(:x, :y)
+      adapter.create(:y, :z)
+
+      expect(other_transition.reload.most_recent).to be(true)
+    end
+
+    it "raises a TransitionConflictError when there is a race" do
+      adapter2 = adapter.dup
+      adapter2.create(:x, :y)
+      adapter.last
+      adapter2.create(:y, :z)
+
+      expect { adapter.create(:y, :z) }.
+        to raise_exception(Statesman::TransitionConflictError)
+    end
+  end
+
+  context "when the parent association uses a custom foreign key" do
+    let(:transition_class) { CustomForeignKeyActiveRecordModelTransition }
+    let(:model) { CustomForeignKeyActiveRecordModel.create }
+    let(:other_model) { CustomForeignKeyActiveRecordModel.create }
+    let(:options) { {} }
+    let(:parent_key) { model.id }
+    let(:adapter) { described_class.new(transition_class, model, observer, options) }
+
+    it_behaves_like "a parent association with custom keys"
+  end
+
+  context "when the parent association uses a custom primary key" do
+    let(:transition_class) { CustomPrimaryKeyActiveRecordModelTransition }
+    # external_id is offset from id so a query on the wrong parent column finds nothing.
+    let(:model) { CustomPrimaryKeyActiveRecordModel.create(external_id: 1_000) }
+    let(:other_model) { CustomPrimaryKeyActiveRecordModel.create(external_id: 2_000) }
+    let(:options) { { association_name: :custom_primary_key_active_record_model_transitions } }
+    let(:parent_key) { 1_000 }
+    let(:adapter) { described_class.new(transition_class, model, observer, options) }
+
+    it_behaves_like "a parent association with custom keys"
+  end
+
   describe "#last" do
     let(:transition_class) { MyActiveRecordModelTransition }
     let(:adapter) { described_class.new(transition_class, model, observer) }
